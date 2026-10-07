@@ -100,6 +100,20 @@ export function playLevelUpSound(): void {
   tone(1047, 220, "triangle", 210);
 }
 
+/** A sparkling rising 4-note chime for a brilliant move. */
+export function playBrilliantSound(): void {
+  tone(587, 80, "triangle");
+  tone(880, 80, "triangle", 70);
+  tone(1174, 90, "triangle", 140);
+  tone(1760, 220, "triangle", 210);
+}
+
+/** A subtle, low, muffled thud for a blunder — juicy feedback without being harsh. */
+export function playBlunderSound(): void {
+  tone(150, 160, "sawtooth");
+  tone(110, 200, "sawtooth", 90);
+}
+
 /** A little 5-note fanfare — the whole Today set complete, or beating the
  * bot. The biggest sound in the app; used sparingly. */
 export function playFanfareSound(): void {

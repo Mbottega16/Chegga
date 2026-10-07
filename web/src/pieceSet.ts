@@ -13,13 +13,14 @@
 // #7); Modern is the one set built specifically to give Chegga its own
 // look. Per-viewer localStorage, same tier as board theme / sound.
 
-export type PieceSetId = "cburnett" | "merida" | "modern" | "unicode";
+export type PieceSetId = "cburnett" | "merida" | "modern" | "pixel" | "unicode";
 
 const KEY = "chegga-web:piece-set";
 const DEFAULT: PieceSetId = "modern";
 
 export const PIECE_SET_OPTIONS: { id: PieceSetId; label: string }[] = [
   { id: "modern", label: "Modern (default)" },
+  { id: "pixel", label: "Pixel (Retro)" },
   { id: "cburnett", label: "Cburnett" },
   { id: "merida", label: "Merida" },
   { id: "unicode", label: "Classic (text)" },
@@ -33,7 +34,7 @@ export const PIECE_GLYPH: Record<string, string> = {
 export function getPieceSet(): PieceSetId {
   try {
     const v = localStorage.getItem(KEY);
-    if (v === "cburnett" || v === "merida" || v === "modern" || v === "unicode") return v;
+    if (v === "cburnett" || v === "merida" || v === "modern" || v === "pixel" || v === "unicode") return v;
   } catch {
     /* ignore */
   }
@@ -48,11 +49,12 @@ export function setPieceSet(id: PieceSetId): void {
   }
 }
 
-/** URL for one piece's SVG in the active (or given) set, or null for the
+/** URL for one piece's image in the active (or given) set, or null for the
  * Unicode set. `color` is "w"|"b", `type` is "p".."k" (chess.js style). */
 export function pieceImgUrl(color: string, type: string, set: PieceSetId = getPieceSet()): string | null {
   if (set === "unicode") return null;
-  return `${import.meta.env.BASE_URL}piece/${set}/${color}${type.toUpperCase()}.svg`;
+  const ext = set === "pixel" ? "png" : "svg";
+  return `${import.meta.env.BASE_URL}piece/${set}/${color}${type.toUpperCase()}.${ext}`;
 }
 
 /** Piece markup for an HTML board square (playBoard.ts). Returns an <img>

@@ -112,7 +112,15 @@ export class PlayBoard {
   private static nextUid = 0;
   private readonly uid = PlayBoard.nextUid++;
   private heatmapMode: HeatmapMode = "off";
-  private qualityFlash: { square: Square; color: string; label?: string; hold?: boolean } | null = null;
+  private qualityFlash: {
+    square: Square;
+    color: string;
+    label?: string;
+    glyph?: string;
+    tier?: string;
+    hold?: boolean;
+  } | null = null;
+  private moveFlowTrail: { from: Square; to: Square; color: string; tier: string } | null = null;
   private qualityFlashTimeout: number | null = null;
   // Browsers fire a synthetic `click` right after `pointerup` even when
   // the pointerdown->pointerup pair was a real drag, not a tap -- this
@@ -322,23 +330,38 @@ export class PlayBoard {
    * getClassColor() — this board doesn't know or care what the color
    * means, same as showArrow() not knowing about engine lines. `label`
    * (e.g. "Best!") is shown for tiers worth calling out; omit it for a
-   * plain color pulse. Respects the effects-off / reduced-motion
-   * preferences juice.ts's own effects already do.
+   * plain color pulse. `opts.glyph` renders a pixelated annotation glyph
+   * (e.g. "!!", "!", "✦", "✓", "?!", "?", "??"). `opts.from` renders
+   * a flowing dashed trail from origin square to destination.
    *
    * `ms = 0` holds the marker until the next call instead of fading it —
    * what the game review needs, where the marker is the answer to "how
    * good was this move?" for as long as the viewer sits on it. A held
    * marker is static, so it ignores the effects-off preference: that
    * setting turns off animation and celebration, not information. */
-  showMoveQuality(square: Square, color: string, label?: string, ms = 1100): void {
+  showMoveQuality(
+    square: Square,
+    color: string,
+    label?: string,
+    ms = 1100,
+    opts?: { glyph?: string; tier?: string; from?: Square },
+  ): void {
     this.clearQualityFlash();
     const hold = ms <= 0;
     if (!hold && !effectsEnabled()) return;
-    this.qualityFlash = { square, color, label, hold };
+    const glyph = opts?.glyph;
+    const tier = opts?.tier;
+    this.qualityFlash = { square, color, label, glyph, tier, hold };
+    if (opts?.from) {
+      this.moveFlowTrail = { from: opts.from, to: square, color, tier: tier ?? "good" };
+    } else {
+      this.moveFlowTrail = null;
+    }
     this.render();
     if (hold) return;
     this.qualityFlashTimeout = window.setTimeout(() => {
       this.qualityFlash = null;
+      this.moveFlowTrail = null;
       this.qualityFlashTimeout = null;
       this.render();
     }, ms);
@@ -350,6 +373,7 @@ export class PlayBoard {
       this.qualityFlashTimeout = null;
     }
     this.qualityFlash = null;
+    this.moveFlowTrail = null;
   }
 
   // --- External input sources (the 3D board's raycasted clicks have no
@@ -639,8 +663,12 @@ export class PlayBoard {
             ${isBrilliant ? `<span class="play-brilliant-badge" aria-hidden="true">✦</span>` : ""}
             ${pieceHtml}
             ${dot}
-            ${quality ? `<span class="play-quality-ring${quality.hold ? " play-quality-hold" : ""}" style="--quality-color:${quality.color}"></span>` : ""}
-            ${quality?.label ? `<span class="play-quality-label${quality.hold ? " play-quality-hold" : ""}" style="--quality-color:${quality.color}">${quality.label}</span>` : ""}
+            ${quality ? `<span class="play-quality-ring${quality.hold ? " play-quality-hold" : ""}${quality.tier === "brilliant" ? " play-quality-ring-brilliant" : ""}" style="--quality-color:${quality.color}"></span>` : ""}
+            ${quality ? `
+              <div class="play-quality-pixel-badge${quality.hold ? " play-quality-hold" : ""}${quality.tier === "brilliant" ? " play-quality-badge-brilliant" : ""}" style="--quality-color:${quality.color}" role="status">
+                ${quality.glyph ? `<span class="pixel-glyph">${quality.glyph}</span>` : ""}
+                ${quality.label ? `<span class="pixel-label">${quality.label}</span>` : ""}
+              </div>` : ""}
           </div>`;
       }
     }
@@ -659,16 +687,53 @@ export class PlayBoard {
       : "";
 
     const trailSvg = this.candidateTrails.length ? this.renderTrails(displayFiles, displayRanks) : "";
+    const moveFlowSvg = this.moveFlowTrail ? this.renderMoveFlow(displayFiles, displayRanks) : "";
     const arrowSvg = this.arrows.length ? this.renderArrows(displayFiles, displayRanks) : "";
 
-    // Trails first, arrows after: the best/played/preview call-outs stay
-    // the most prominent thing on the board wherever they'd overlap with
-    // the broader, quieter trail layer.
-    this.container.innerHTML = `<div class="play-board">${squaresHtml}</div>${trailSvg}${arrowSvg}${promoOverlay}`;
+    // Trails first, then active move flow, arrows after: the call-outs
+    // stay the most prominent thing on the board wherever they overlap.
+    this.container.innerHTML = `<div class="play-board">${squaresHtml}</div>${trailSvg}${moveFlowSvg}${arrowSvg}${promoOverlay}`;
     if (this.animateTintsOnce) this.celebrateBrilliantTints();
     this.animateTintsOnce = false;
     this.animateArrowsOnce = false;
     this.animateTrailsOnce = false;
+  }
+
+  /** A glowing, flowing dashed ribbon between a move's origin and destination square. */
+  private renderMoveFlow(displayFiles: string[], displayRanks: number[]): string {
+    if (!this.moveFlowTrail) return "";
+    const squarePx = 100 / 8;
+    const center = (square: Square) => {
+      const file = displayFiles.indexOf(square[0]);
+      const rank = displayRanks.indexOf(parseInt(square[1], 10));
+      return { x: file * squarePx + squarePx / 2, y: rank * squarePx + squarePx / 2 };
+    };
+    const from = center(this.moveFlowTrail.from);
+    const to = center(this.moveFlowTrail.to);
+    const color = this.moveFlowTrail.color;
+    const tier = this.moveFlowTrail.tier;
+    const isBrilliant = tier === "brilliant";
+    return `
+      <svg class="play-flow-layer" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <defs>
+          <filter id="flow-glow-${this.uid}" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="0" stdDeviation="0.8" flood-color="${color}" flood-opacity="0.8"/>
+          </filter>
+        </defs>
+        <!-- Background soft glow -->
+        <line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"
+              stroke="${color}" stroke-width="${isBrilliant ? 4.5 : 3.8}" stroke-opacity="0.35"
+              stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+        <!-- Flowing animated dashes -->
+        <line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"
+              class="play-flow-line${isBrilliant ? " play-flow-brilliant" : ""}"
+              stroke="${color}" stroke-width="${isBrilliant ? 2.8 : 2.2}" stroke-opacity="0.95"
+              stroke-linecap="round"
+              filter="url(#flow-glow-${this.uid})"
+              vector-effect="non-scaling-stroke"/>
+        <!-- Origin pulsing dot -->
+        <circle cx="${from.x}" cy="${from.y}" r="1.4" fill="${color}" opacity="0.8" class="play-flow-origin"/>
+      </svg>`;
   }
 
   /** The heatmap's "unveil" moment: any brilliant candidate gets a confetti

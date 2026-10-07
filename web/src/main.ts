@@ -53,7 +53,7 @@ import { PlayBoard } from "./playBoard";
 import { chooseBotMove } from "./botEngine";
 import { hasHangingPiece } from "./blunderTagger";
 import { Chess, type Square } from "chess.js";
-import { getClassColor } from "./classificationColors";
+import { getClassColor, getClassGlyph } from "./classificationColors";
 import {
   accuracyFromCpLoss,
   leakHeadline,
@@ -184,6 +184,8 @@ import {
   playFailSound,
   playLevelUpSound,
   playFanfareSound,
+  playBrilliantSound,
+  playBlunderSound,
   isSoundEnabled,
   setSoundEnabled,
 } from "./soundEffects";
@@ -1058,6 +1060,11 @@ const MOVE_QUALITY_LABELS: Record<string, string> = {
   brilliant: "Brilliant!",
   best: "Best!",
   excellent: "Excellent",
+  good: "Good",
+  inaccuracy: "Inaccuracy",
+  mistake: "Mistake",
+  blunder: "Blunder",
+  book: "Book",
 };
 
 /** The celebration a brilliancy gets wherever one shows up: the cyan flash
@@ -1092,10 +1099,24 @@ function applyMoveQualityJuice(
   const classification =
     graded === "best" && playedUci && isSacrifice(lastPositionEval.fen, playedUci) ? "brilliant" : graded;
   const color = getClassColor(classification);
-  board.showMoveQuality(toSquare, color, MOVE_QUALITY_LABELS[classification]);
+  const glyph = getClassGlyph(classification);
+  const fromSquare = playedUci ? (playedUci.slice(0, 2) as Square) : undefined;
+  board.showMoveQuality(toSquare, color, MOVE_QUALITY_LABELS[classification], 1100, {
+    glyph,
+    tier: classification,
+    from: fromSquare,
+  });
   board3dInstance?.flashSquareQuality(toSquare, color);
-  if (classification === "brilliant") celebrateBrilliantSquare(toSquare);
-  else if (classification === "best") confetti(playBoardWrap, 0.35);
+  if (fromSquare) board3dInstance?.showMoveTrail(fromSquare, toSquare, color, classification);
+  if (classification === "brilliant") {
+    celebrateBrilliantSquare(toSquare);
+    playBrilliantSound();
+  } else if (classification === "best") {
+    confetti(playBoardWrap, 0.35);
+  } else if (classification === "blunder") {
+    shake(playBoardWrap);
+    playBlunderSound();
+  }
 }
 
 /** Live analysis: eval bar + best-move arrow + top candidate lines,
@@ -1434,14 +1455,26 @@ function showReviewStep(index: number) {
       const classification =
         step.classification === "best" && isSacrifice(step.fenBefore, step.uci) ? "brilliant" : step.classification;
       const color = getClassColor(classification);
+      const glyph = getClassGlyph(classification);
       // ms = 0: the marker holds while the viewer sits on this move.
-      playBoard.showMoveQuality(step.to, color, REVIEW_QUALITY_LABELS[classification], 0);
+      playBoard.showMoveQuality(step.to, color, REVIEW_QUALITY_LABELS[classification], 0, {
+        glyph,
+        tier: classification,
+        from: step.from,
+      });
       board3dInstance?.flashSquareQuality(step.to, color);
-      // Only on the way forward -- stepping back over a best move shouldn't
-      // re-fire the celebration.
+      board3dInstance?.showMoveTrail(step.from, step.to, color, classification);
+      // Only on the way forward -- stepping back over a move shouldn't re-fire juice.
       if (movingForward) {
-        if (classification === "brilliant") celebrateBrilliantSquare(step.to);
-        else if (classification === "best") confetti(playBoardWrap, 0.3);
+        if (classification === "brilliant") {
+          celebrateBrilliantSquare(step.to);
+          playBrilliantSound();
+        } else if (classification === "best") {
+          confetti(playBoardWrap, 0.3);
+        } else if (classification === "blunder") {
+          shake(playBoardWrap);
+          playBlunderSound();
+        }
       }
     }
     if (step && shouldShowBetterMove(step) && step.bestMoveUci && betterMoveArrowFitsAfterBoard(step)) {

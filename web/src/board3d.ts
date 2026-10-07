@@ -427,6 +427,14 @@ export class Board3D {
     }, ms);
   }
 
+  /** Shows a flowing dashed ribbon from `from` to `to` for the move just played or reviewed. */
+  showMoveTrail(from: string, to: string, color: string, tier: string = "best"): void {
+    this.disposeOverlays();
+    this.addTrail({ from, to, color, tier });
+    this.render();
+    this.startOverlayAnimation();
+  }
+
   /** Replaces the review overlay: color washes on squares, flat arrows, and
    * one flowing dashed ribbon per shaded candidate. Pass empty lists (or
    * call clearOverlays) to remove it. The picked squares are ordinary board

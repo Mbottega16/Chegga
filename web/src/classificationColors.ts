@@ -26,6 +26,7 @@ const CLASS_COLOR_DEFAULT: Record<string, string> = {
   inaccuracy: "#ffb300",
   mistake: "#fb8c00",
   blunder: "#e53935",
+  book: "#a855f7", // vivid purple
 };
 
 const CLASS_COLOR_COLORBLIND: Record<string, string> = {
@@ -36,7 +37,44 @@ const CLASS_COLOR_COLORBLIND: Record<string, string> = {
   inaccuracy: "#f2c14e", // gold (deliberately between the two hue families, reads as neutral-caution either way)
   mistake: "#e8842c", // orange
   blunder: "#b23a00", // deep burnt orange
+  book: "#9333ea",
 };
+
+/** Compact pixelated annotations / glyphs for each move quality tier.
+ * Matches standard chess punctuation (NAG notation) and pixel aesthetics. */
+export const MOVE_QUALITY_GLYPHS: Record<string, string> = {
+  brilliant: "!!",
+  best: "!",
+  excellent: "✦",
+  good: "✓",
+  inaccuracy: "?!",
+  mistake: "?",
+  blunder: "??",
+  book: "📖",
+};
+
+/** Full titles for UI tooltips, summaries, and screen readers. */
+export const MOVE_QUALITY_TITLES: Record<string, string> = {
+  brilliant: "Brilliant",
+  best: "Best",
+  excellent: "Excellent",
+  good: "Good",
+  inaccuracy: "Inaccuracy",
+  mistake: "Mistake",
+  blunder: "Blunder",
+  book: "Book Move",
+};
+
+export const ALL_CLASSIFICATIONS = [
+  "brilliant",
+  "best",
+  "excellent",
+  "good",
+  "inaccuracy",
+  "mistake",
+  "blunder",
+  "book",
+];
 
 /** Kept exported for any code that genuinely wants the default palette
  * specifically (none currently does) -- real consumers should call
@@ -66,6 +104,11 @@ export function setColorblindPalette(enabled: boolean): void {
   } catch {
     // best-effort only -- private browsing / blocked storage just means the choice doesn't persist
   }
+}
+
+/** Returns the pixelated glyph/symbol for this move quality tier. */
+export function getClassGlyph(key: string): string {
+  return MOVE_QUALITY_GLYPHS[key] ?? "";
 }
 
 /** The real accessor every consumer should use instead of indexing

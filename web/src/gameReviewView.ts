@@ -8,7 +8,7 @@
 //     neutral so the reviewer's own shape is what reads at a glance.
 //   - the tally: how many of their moves landed in each tier.
 
-import { getClassColor } from "./classificationColors";
+import { getClassColor, getClassGlyph } from "./classificationColors";
 import { moveLabel, tallyHumanQuality, REVIEW_QUALITY_LABELS, type ReviewGame } from "./gameReview";
 import { formatCandidateEval, isShadedTier, type Candidate } from "./candidateMoves";
 
@@ -35,7 +35,8 @@ export function renderReviewStrip(review: ReviewGame, currentIndex: number): str
       // the dark page, and the opponent's moves are still the beat of the
       // game even when they aren't what the review is grading.
       const color = step.isHuman && tier ? getClassColor(tier) : "var(--muted-dim)";
-      return `<button type="button" class="${classes}" data-review-index="${i}" style="--chip-color:${color}" title="${escapeAttr(aria)}" aria-label="${escapeAttr(aria)}"></button>`;
+      const glyph = step.isHuman && tier ? getClassGlyph(tier) : "";
+      return `<button type="button" class="${classes}" data-review-index="${i}" data-tier="${tier ?? ""}" style="--chip-color:${color}" title="${escapeAttr(aria)}" aria-label="${escapeAttr(aria)}">${glyph ? `<span class="chip-pixel-glyph">${glyph}</span>` : ""}</button>`;
     })
     .join("");
   return `<div class="review-strip" id="review-strip">${chips}</div>`;
@@ -58,7 +59,9 @@ export function renderQualityTally(review: ReviewGame): string {
   const items = tally
     .map(({ classification, count }) => {
       const noun = TALLY_NOUN[classification] ?? [classification, classification];
-      return `<span class="quality-tally-item"><span class="quality-dot" style="background:${getClassColor(classification)}"></span>${count} ${count === 1 ? noun[0] : noun[1]}</span>`;
+      const color = getClassColor(classification);
+      const glyph = getClassGlyph(classification);
+      return `<span class="quality-tally-item" data-tier="${classification}"><span class="quality-pixel-badge" style="--badge-color:${color}"><span class="pixel-glyph">${glyph}</span><span class="pixel-count">${count}</span></span><span class="tally-label">${count === 1 ? noun[0] : noun[1]}</span></span>`;
     })
     .join("");
   return `<div class="quality-tally">${items}</div>`;
@@ -81,7 +84,8 @@ export function renderCandidateList(
         .join(" ");
       const label = REVIEW_QUALITY_LABELS[c.tier] ?? c.tier;
       const title = `${c.san}: ${label}${c.gapCp > 0 ? `, ${c.gapCp}cp behind the best move` : ""}${played ? " — the move you played" : ""}`;
-      return `<button type="button" class="${classes}" data-candidate="${escapeAttr(c.uci)}" style="--chip-color:${color}" title="${escapeAttr(title)}" aria-label="${escapeAttr(title)}"><span class="quality-dot" style="background:${color}"></span><span class="cand-san">${escapeAttr(c.san)}</span><span class="cand-eval">${escapeAttr(formatCandidateEval(c))}</span>${played ? `<span class="cand-tag">played</span>` : ""}</button>`;
+      const glyph = getClassGlyph(c.tier);
+      return `<button type="button" class="${classes}" data-candidate="${escapeAttr(c.uci)}" data-tier="${c.tier}" style="--chip-color:${color}" title="${escapeAttr(title)}" aria-label="${escapeAttr(title)}"><span class="cand-pixel-glyph" style="background:${color}">${glyph}</span><span class="cand-san">${escapeAttr(c.san)}</span><span class="cand-eval">${escapeAttr(formatCandidateEval(c))}</span>${played ? `<span class="cand-tag cand-tag-played">played</span>` : ""}</button>`;
     })
     .join("");
   const playedListed = opts.playedUci ? candidates.some((c) => c.uci === opts.playedUci) : true;

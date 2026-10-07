@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   CLASSIFICATION_ORDER,
   getClassColor,
+  getClassGlyph,
   isColorblindPalette,
   setColorblindPalette,
 } from "../../src/classificationColors";
@@ -36,5 +37,22 @@ describe("classification colours", () => {
 
   it("does not throw on an unknown key", () => {
     expect(() => getClassColor("not-a-tier")).not.toThrow();
+  });
+
+  it("provides pixel glyphs for quality tiers", () => {
+    expect(getClassGlyph("brilliant")).toBe("!!");
+    expect(getClassGlyph("best")).toBe("!");
+    expect(getClassGlyph("excellent")).toBe("✦");
+    expect(getClassGlyph("good")).toBe("✓");
+    expect(getClassGlyph("inaccuracy")).toBe("?!");
+    expect(getClassGlyph("mistake")).toBe("?");
+    expect(getClassGlyph("blunder")).toBe("??");
+    expect(getClassGlyph("book")).toBe("📖");
+    expect(getClassGlyph("unknown")).toBe("");
+  });
+
+  it("supports brilliant and book color classifications", () => {
+    expect(getClassColor("brilliant")).toBe("#22d3ee");
+    expect(getClassColor("book")).toBe("#a855f7");
   });
 });
