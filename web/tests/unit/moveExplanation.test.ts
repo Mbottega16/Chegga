@@ -35,6 +35,18 @@ describe("explainMove", () => {
     ]);
   });
 
+  it("identifies a brilliant move sacrifice", () => {
+    expect(explainMove(input({ classification: "brilliant", centipawnLoss: 0 }))).toEqual([
+      "A brilliant move! You found a piece sacrifice that breaks open the position for a winning attack.",
+    ]);
+  });
+
+  it("identifies a theoretical book move", () => {
+    expect(explainMove(input({ classification: "book", centipawnLoss: 0 }))).toEqual([
+      "Standard opening book move. Theoretical and well-established.",
+    ]);
+  });
+
   it("names the better move for a close alternative", () => {
     const [line] = explainMove(input({ classification: "good", centipawnLoss: 35, bestMoveSan: "exd5" }));
     expect(line).toContain("exd5");

@@ -198,6 +198,14 @@ export function explainMove(input: ExplainInput): string[] {
   const bestDiffers = !!best && best !== input.san;
   const out: string[] = [];
 
+  if (tier === "brilliant") {
+    out.push("A brilliant move! You found a piece sacrifice that breaks open the position for a winning attack.");
+    return out;
+  }
+  if (tier === "book") {
+    out.push("Standard opening book move. Theoretical and well-established.");
+    return out;
+  }
   if (tier === "best") {
     out.push("This was the engine's top choice.");
     return out;

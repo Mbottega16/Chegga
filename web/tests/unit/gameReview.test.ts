@@ -7,6 +7,7 @@ import {
   tallyHumanQuality,
   worstHumanStepIndex,
 } from "../../src/gameReview";
+import { renderEvalGraph } from "../../src/gameReviewView";
 import { move } from "./_factories";
 
 // 1. e4 e5 2. Nf3 Nc6 3. Bb5 — five half-moves, three of them White's.
@@ -190,5 +191,24 @@ describe("move labels and captions", () => {
   it("says so when a move wasn't graded", () => {
     const partial = buildReview(PGN, GRADES.slice(0, 2), "white");
     expect(describeStep(partial, 4)).toBe("3. Bb5 — your move (not graded).");
+  });
+});
+
+describe("renderEvalGraph", () => {
+  const review = buildReview(PGN, GRADES, "white");
+
+  it("renders SVG evaluation graph with curve and midline", () => {
+    const html = renderEvalGraph(review, 2);
+    expect(html).toContain("eval-graph-container");
+    expect(html).toContain("eval-graph-svg");
+    expect(html).toContain("Evaluation Flow");
+    expect(html).toContain("eval-graph-cursor");
+    expect(html).toContain("data-review-index");
+  });
+
+  it("handles empty reviews cleanly", () => {
+    const emptyReview = buildReview(PGN, [], "white");
+    emptyReview.steps = [];
+    expect(renderEvalGraph(emptyReview, -1)).toBe("");
   });
 });

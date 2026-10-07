@@ -155,7 +155,7 @@ import {
   type ReviewGame,
   type ReviewStep,
 } from "./gameReview";
-import { renderReviewStrip, renderQualityTally, renderCandidateList } from "./gameReviewView";
+import { renderEvalGraph, renderReviewStrip, renderQualityTally, renderCandidateList } from "./gameReviewView";
 import { explainMove, explainInputFromStep, explainInputFromPuzzle } from "./moveExplanation";
 import {
   buildCandidates,
@@ -1485,10 +1485,18 @@ function showReviewStep(index: number) {
 
   reviewCaption.textContent = beforeView ? describeBefore(review, clamped) : describeStep(review, clamped);
   const why = step && step.isHuman ? explainMove(explainInputFromStep(step)) : [];
-  reviewWhy.textContent = why.join(" ");
+  if (step && step.isHuman && step.classification) {
+    const glyph = getClassGlyph(step.classification);
+    const color = getClassColor(step.classification);
+    const label = REVIEW_QUALITY_LABELS[step.classification] ?? step.classification;
+    const badgeHtml = `<span class="quality-pixel-badge" style="--badge-color:${color}"><span class="pixel-glyph">${glyph}</span> ${label}</span> `;
+    reviewWhy.innerHTML = badgeHtml + why.join(" ");
+  } else {
+    reviewWhy.textContent = why.join(" ");
+  }
   reviewWhy.style.display = why.length ? "" : "none";
   updateReviewActions(step);
-  reviewStripHost.innerHTML = renderReviewStrip(review, clamped);
+  reviewStripHost.innerHTML = renderEvalGraph(review, clamped) + renderReviewStrip(review, clamped);
   const atStart = clamped < 0;
   const atEnd = clamped >= review.steps.length - 1;
   reviewFirstBtn.disabled = atStart;
