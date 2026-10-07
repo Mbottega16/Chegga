@@ -64,7 +64,10 @@ export function renderProfile(
           <td style="color:${winTone};font-weight:600">${winPct}%</td>
           <td>${cpLossStr}</td>
           <td>
-            <button type="button" class="btn-quiet opening-review-jump" data-open-games-opening="${escapeHtml(o.openingName)}" title="Filter synced games to this opening">Review →</button>
+            <div class="opening-actions-group">
+              <button type="button" class="btn-quiet opening-practice-btn" data-practice-opening="${escapeHtml(o.openingName)}" title="Practice this opening against the bot">Practice ⚔️</button>
+              <button type="button" class="btn-quiet opening-review-jump" data-open-games-opening="${escapeHtml(o.openingName)}" title="Filter synced games to this opening">Review →</button>
+            </div>
           </td>
         </tr>`;
     })

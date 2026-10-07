@@ -124,6 +124,23 @@ export function playFanfareSound(): void {
   tone(784, 320, "sine", 480);
 }
 
+/** A pleasant rising two-tone confirmation ping when copying to clipboard. */
+export function playCopySound(): void {
+  tone(880, 80, "sine");
+  tone(1320, 130, "sine", 60);
+}
+
+/** A light, tactile click for stepping moves or scrub navigation. */
+export function playStepSound(): void {
+  tone(580, 35, "triangle");
+}
+
+/** A soft two-tone chime for opening leak alerts. */
+export function playLeakAlertSound(): void {
+  tone(392, 110, "sine");
+  tone(330, 160, "sine", 90);
+}
+
 export function isSoundEnabled(): boolean {
   try {
     return localStorage.getItem(STORAGE_KEY) !== "0"; // on by default

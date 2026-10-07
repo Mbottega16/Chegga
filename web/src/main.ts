@@ -193,6 +193,9 @@ import {
   playFanfareSound,
   playBrilliantSound,
   playBlunderSound,
+  playCopySound,
+  playStepSound,
+  playLeakAlertSound,
   isSoundEnabled,
   setSoundEnabled,
 } from "./soundEffects";
@@ -333,7 +336,27 @@ app.innerHTML = `
               <button type="button" id="review-autoplay" class="btn-ghost">▶ Play it back</button>
               <button type="button" id="review-worst" class="btn-ghost">Your worst move</button>
             </div>
-            <p class="tagline review-hint">Arrow keys step through it too.</p>
+            <p class="tagline review-hint">
+              <span class="review-kbd-hint">Shortcuts: <kbd>←</kbd><kbd>→</kbd> step · <kbd>Space</kbd> play · <kbd>B</kbd> before · <kbd>W</kbd> worst · <kbd>S</kbd> share · <button type="button" class="kbd-help-btn" id="review-kbd-help-btn" title="View keyboard shortcuts">?</button></span>
+            </p>
+            <div id="review-shortcuts-help" class="review-shortcuts-help" style="display:none">
+              <div class="shortcuts-header">
+                <strong>Review Keyboard Shortcuts</strong>
+                <button type="button" id="review-shortcuts-close" class="btn-ghost" aria-label="Close shortcuts help">✕</button>
+              </div>
+              <div class="shortcuts-grid">
+                <div><kbd>←</kbd> / <kbd>→</kbd></div><div>Previous / Next move</div>
+                <div><kbd>Home</kbd> / <kbd>End</kbd></div><div>First / Last move</div>
+                <div><kbd>Space</kbd></div><div>Play back game (autoplay)</div>
+                <div><kbd>B</kbd></div><div>Toggle "Before" view & candidates</div>
+                <div><kbd>W</kbd></div><div>Jump to your worst move</div>
+                <div><kbd>T</kbd></div><div>Try this position</div>
+                <div><kbd>S</kbd></div><div>Copy shareable summary card</div>
+                <div><kbd>C</kbd></div><div>Copy annotated PGN</div>
+                <div><kbd>D</kbd></div><div>Download .pgn file</div>
+                <div><kbd>?</kbd></div><div>Toggle this shortcuts cheat-sheet</div>
+              </div>
+            </div>
             <label class="play-checkbox-label review-before-label"><input type="checkbox" id="review-before" /> Show the position before the move, with the best moves</label>
             <div id="review-candidates"></div>
             <div class="review-buttons review-practice">
@@ -1320,6 +1343,9 @@ const reviewShareSummaryBtn = document.querySelector<HTMLButtonElement>("#review
 const reviewCopyPgnBtn = document.querySelector<HTMLButtonElement>("#review-copy-pgn-btn")!;
 const reviewDownloadPgnBtn = document.querySelector<HTMLButtonElement>("#review-download-pgn-btn")!;
 const reviewExportStatus = document.querySelector<HTMLParagraphElement>("#review-export-status")!;
+const reviewKbdHelpBtn = document.querySelector<HTMLButtonElement>("#review-kbd-help-btn")!;
+const reviewShortcutsHelp = document.querySelector<HTMLDivElement>("#review-shortcuts-help")!;
+const reviewShortcutsClose = document.querySelector<HTMLButtonElement>("#review-shortcuts-close")!;
 const tryPanel = document.querySelector<HTMLDivElement>("#try-panel")!;
 const tryStatus = document.querySelector<HTMLParagraphElement>("#try-status")!;
 const tryAgainBtn = document.querySelector<HTMLButtonElement>("#try-again")!;
@@ -1455,12 +1481,14 @@ function updateReviewActions(step: ReviewStep | null) {
 function showReviewStep(index: number) {
   if (!review || !playBoard) return;
   endTry(); // stepping the review leaves any position being tried
+  const oldIndex = reviewIndex;
   const clamped = Math.max(-1, Math.min(index, review.steps.length - 1));
-  const movingForward = clamped > reviewIndex;
+  const movingForward = clamped > oldIndex;
   reviewIndex = clamped;
   reviewPreviewUci = null;
   const step = clamped >= 0 ? review.steps[clamped] : null;
   const beforeView = reviewShowBefore && !!step;
+  let playedMoveAudio = false;
 
   if (beforeView && step) {
     // The position the move was chosen in: what could have been played.
@@ -1494,17 +1522,22 @@ function showReviewStep(index: number) {
         if (classification === "brilliant") {
           celebrateBrilliantSquare(step.to);
           playBrilliantSound();
+          playedMoveAudio = true;
         } else if (classification === "best") {
           confetti(playBoardWrap, 0.3);
         } else if (classification === "blunder") {
           shake(playBoardWrap);
           playBlunderSound();
+          playedMoveAudio = true;
         }
       }
     }
     if (step && shouldShowBetterMove(step) && step.bestMoveUci && betterMoveArrowFitsAfterBoard(step)) {
       playBoard.showArrow(step.bestMoveUci.slice(0, 2) as Square, step.bestMoveUci.slice(2, 4) as Square);
     }
+  }
+  if (!playedMoveAudio && clamped !== oldIndex) {
+    playStepSound();
   }
   board3dInstance?.setPosition(playBoard.getFen());
 
@@ -1574,6 +1607,7 @@ function exitReview() {
   reviewOpening = undefined;
   reviewCandidates = [];
   reviewPanel.style.display = "none";
+  reviewShortcutsHelp.style.display = "none";
   reviewStripHost.innerHTML = "";
   reviewTally.innerHTML = "";
   reviewCaption.textContent = "";
@@ -1582,6 +1616,14 @@ function exitReview() {
   reviewCandidatesHost.innerHTML = "";
   clearOverlayState();
 }
+
+reviewKbdHelpBtn.addEventListener("click", () => {
+  reviewShortcutsHelp.style.display = reviewShortcutsHelp.style.display === "none" ? "" : "none";
+});
+
+reviewShortcutsClose.addEventListener("click", () => {
+  reviewShortcutsHelp.style.display = "none";
+});
 
 reviewFirstBtn.addEventListener("click", () => {
   stopReviewAutoplay();
@@ -1613,16 +1655,55 @@ reviewStripHost.addEventListener("click", (e) => {
   showReviewStep(parseInt(chip.dataset.reviewIndex!, 10));
 });
 
-// Arrow-key stepping, the same convention the move-by-move heatmap card
-// already uses -- ignored while typing, and only while a review is open.
+// Keyboard shortcuts for reviewing games: arrow keys, Home/End, Space, B, W, T, S, C, D, ?
+// Ignored while typing in inputs, and active only while a review is open.
 document.addEventListener("keydown", (e) => {
   if (!review) return;
-  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
   const target = e.target as HTMLElement | null;
   if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
-  e.preventDefault();
-  stopReviewAutoplay();
-  showReviewStep(reviewIndex + (e.key === "ArrowRight" ? 1 : -1));
+
+  if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+    e.preventDefault();
+    stopReviewAutoplay();
+    showReviewStep(reviewIndex + (e.key === "ArrowRight" ? 1 : -1));
+  } else if (e.key === "Home") {
+    e.preventDefault();
+    stopReviewAutoplay();
+    showReviewStep(-1);
+  } else if (e.key === "End") {
+    e.preventDefault();
+    stopReviewAutoplay();
+    showReviewStep(review.steps.length - 1);
+  } else if (e.key === " ") {
+    e.preventDefault();
+    toggleReviewAutoplay();
+  } else if (e.key === "b" || e.key === "B") {
+    e.preventDefault();
+    reviewBeforeCheckbox.checked = !reviewBeforeCheckbox.checked;
+    reviewBeforeCheckbox.dispatchEvent(new Event("change"));
+  } else if (e.key === "w" || e.key === "W") {
+    e.preventDefault();
+    stopReviewAutoplay();
+    const worst = worstHumanStepIndex(review);
+    if (worst >= 0) showReviewStep(worst);
+  } else if (e.key === "t" || e.key === "T") {
+    e.preventDefault();
+    const step = currentReviewStep();
+    const p = step ? puzzleFromStep(review, step, reviewOpening) : null;
+    if (p) startTry(p);
+  } else if (e.key === "s" || e.key === "S") {
+    e.preventDefault();
+    reviewShareSummaryBtn.click();
+  } else if (e.key === "c" || e.key === "C") {
+    e.preventDefault();
+    reviewCopyPgnBtn.click();
+  } else if (e.key === "d" || e.key === "D") {
+    e.preventDefault();
+    reviewDownloadPgnBtn.click();
+  } else if (e.key === "?") {
+    e.preventDefault();
+    reviewShortcutsHelp.style.display = reviewShortcutsHelp.style.display === "none" ? "" : "none";
+  }
 });
 
 // --- Review: "before" view, tapping a candidate ---
@@ -1649,6 +1730,7 @@ reviewShareSummaryBtn.addEventListener("click", async () => {
   const summary = buildShareableSummary(review, { opening: reviewOpening });
   const ok = await copyToClipboard(summary);
   if (ok) {
+    playCopySound();
     floatText(reviewShareSummaryBtn, "Copied! ✨", "gold");
     reviewExportStatus.textContent = "Copied game review summary to clipboard!";
     reviewExportStatus.style.display = "";
@@ -1663,6 +1745,7 @@ reviewCopyPgnBtn.addEventListener("click", async () => {
   const annotated = buildAnnotatedPgn(review.pgn, review.steps, review.humanColor);
   const ok = await copyToClipboard(annotated);
   if (ok) {
+    playCopySound();
     floatText(reviewCopyPgnBtn, "Copied PGN! 📋", "good");
     reviewExportStatus.textContent = "Copied annotated PGN to clipboard!";
     reviewExportStatus.style.display = "";
@@ -1682,7 +1765,9 @@ reviewDownloadPgnBtn.addEventListener("click", () => {
   } else {
     reviewExportStatus.textContent = "Download blocked by browser. PGN copied to clipboard instead.";
     reviewExportStatus.style.display = "";
-    void copyToClipboard(annotated);
+    void copyToClipboard(annotated).then((copied) => {
+      if (copied) playCopySound();
+    });
   }
 });
 
@@ -1913,6 +1998,115 @@ function renderPicker() {
   if (next) next.scrollLeft = scrollLeft;
 }
 
+let lastProfileGames: GameRecord[] = [];
+let lastProfileOwnMoves: MoveAnalysisRecord[] = [];
+let lastProfileAllGames: GameRecord[] = [];
+
+/** Launches an interactive opening line practice drill directly on the Play vs. Bot board.
+ * Sets the board orientation to the user's primary color in this opening, loads either
+ * the critical position before the user's biggest mistake in that line, or the standard
+ * tabiya (opening starting position), and triggers the bot to respond if it's the bot's turn. */
+async function startOpeningPractice(openingName: string) {
+  const gamesPool = lastProfileGames.length ? lastProfileGames : lastProfileAllGames;
+  const matching = gamesPool.filter((g) => g.openingName === openingName);
+  if (!matching.length) {
+    showToast(`No recorded games found for ${openingName}.`);
+    return;
+  }
+
+  // Determine user's most frequent color in this opening
+  const whiteCount = matching.filter((g) => g.userColor === "white").length;
+  const blackCount = matching.filter((g) => g.userColor === "black").length;
+  const targetColor: "white" | "black" = whiteCount >= blackCount ? "white" : "black";
+
+  // Check if there is an opening mistake / leak identified
+  const worstPos = worstPositionInOpening(lastProfileGames, lastProfileOwnMoves, openingName);
+  let startFen = new Chess().fen();
+  let objective = `Practice ${openingName} as ${targetColor === "white" ? "White" : "Black"}.`;
+  let initialSans: string[] = [];
+  let isLeakRepair = false;
+
+  if (worstPos) {
+    const blunderGame = lastProfileGames.find((g) => g.chessComUuid === worstPos.gameId);
+    if (blunderGame) {
+      try {
+        const chess = new Chess();
+        chess.loadPgn(blunderGame.pgn);
+        const moves = chess.history();
+        // Step back to the half-move right before the mistake (worstPos.ply is 1-indexed)
+        const cutoff = Math.max(0, worstPos.ply - 1);
+        const replay = new Chess();
+        for (let i = 0; i < cutoff && i < moves.length; i++) {
+          replay.move(moves[i]);
+        }
+        startFen = replay.fen();
+        initialSans = moves.slice(0, cutoff);
+        const moveNum = Math.floor(cutoff / 2) + 1;
+        const lossPawn = (worstPos.centipawnLoss / 100).toFixed(1);
+        objective = `Fix your ${openingName} leak! At move ${moveNum}, you lost ${lossPawn} pawns. Find the better move.`;
+        isLeakRepair = true;
+      } catch {
+        // Fallback to standard tabiya if PGN replay fails
+      }
+    }
+  }
+
+  if (!isLeakRepair) {
+    // Replay opening tabiya from the most recent game (up to 6 plies / 3 moves)
+    const recent = matching[0];
+    try {
+      const chess = new Chess();
+      chess.loadPgn(recent.pgn);
+      const moves = chess.history();
+      const cutoff = Math.min(6, moves.length);
+      const replay = new Chess();
+      for (let i = 0; i < cutoff; i++) {
+        replay.move(moves[i]);
+      }
+      startFen = replay.fen();
+      initialSans = moves.slice(0, cutoff);
+      objective = `Practice the starting lines of ${openingName} as ${targetColor === "white" ? "White" : "Black"}.`;
+    } catch {
+      // Fallback
+    }
+  }
+
+  humanColor = targetColor;
+  botColorSelect.value = targetColor;
+  sanHistory = [...initialSans];
+  gameReportedThisGame = false;
+  lastAnnotatedPgn = null;
+  renderMoveList();
+  playHangWarning.style.display = "none";
+  postGameReportSection.style.display = "none";
+  exitReview();
+  endTry();
+  setStatus(drillObjective, objective, "ok");
+  clearSavedBotGame();
+
+  expandCard("play-section");
+  const board = ensurePlayBoard();
+  board.reset(humanColor, startFen);
+
+  if (isLeakRepair) {
+    playLeakAlertSound();
+    showToast(`Loaded leak drill: ${openingName} (Move ${Math.floor(initialSans.length / 2) + 1})`);
+  } else {
+    playStepSound();
+    showToast(`Loaded opening drill: ${openingName}`);
+  }
+
+  const botColor = humanColor === "white" ? "black" : "white";
+  const isBotTurn = board.getFen().split(" ")[1] === (botColor === "white" ? "w" : "b");
+  setStatus(playStatus, isBotTurn ? "Opening loaded — bot is thinking…" : "Opening loaded — your move!");
+
+  playBoardWrap.scrollIntoView({ behavior: "smooth", block: "center" });
+
+  await updateAnalysisPanel(board);
+  updateHeatmap(board);
+  await maybePlayBotMove(board);
+}
+
 /** The "See these games" jump from a weak-opening diagnostic (critique
  * #7): narrows the picker to that exact opening line and brings it into
  * view, same treatment as the other growth-card jump buttons. */
@@ -2048,6 +2242,7 @@ postGameShareBtn.addEventListener("click", async () => {
   const summary = buildShareableSummary(review, { opening: reviewOpening });
   const ok = await copyToClipboard(summary);
   if (ok) {
+    playCopySound();
     floatText(postGameShareBtn, "Copied! ✨", "gold");
     postGameExportStatus.textContent = "Copied game review summary to clipboard!";
     postGameExportStatus.style.display = "";
@@ -2061,6 +2256,7 @@ postGameCopyPgnBtn.addEventListener("click", async () => {
   if (!lastAnnotatedPgn) return;
   const ok = await copyToClipboard(lastAnnotatedPgn);
   if (ok) {
+    playCopySound();
     floatText(postGameCopyPgnBtn, "Copied PGN! 📋", "good");
     postGameExportStatus.textContent = "Copied annotated PGN to clipboard!";
     postGameExportStatus.style.display = "";
@@ -3246,6 +3442,9 @@ async function refreshProfile() {
   if (!currentUsername) return;
   const { profile, strength, openingFrequency, depthFrequency, analyzedGames, ownMoves, allGames } =
     await computeProfileForUsername(currentUsername);
+  lastProfileGames = analyzedGames;
+  lastProfileOwnMoves = ownMoves;
+  lastProfileAllGames = allGames;
 
   // Game patterns only need synced games, not analyzed ones -- shown
   // independent of whether any analysis has run yet.
@@ -3522,6 +3721,7 @@ function renderInsights(
   if (opening) {
     const worstPos = worstPositionInOpening(games, ownMoves, opening.openingName);
     const actions = [
+      `<button type="button" data-practice-opening="${escAttr(opening.openingName)}">Practice this line ⚔️</button>`,
       `<button type="button" data-open-games-opening="${escAttr(opening.openingName)}">See these games ↓</button>`,
       worstPos
         ? `<button type="button" data-review-worst-game="${escAttr(worstPos.gameId)}" data-review-worst-ply="${worstPos.ply}">Review the key position ↓</button>`
@@ -3543,6 +3743,11 @@ function renderInsights(
 // refreshProfile call (same reasoning as focusOutput/roadOutput above).
 insightsOutput.addEventListener("click", (e) => {
   const target = e.target as HTMLElement;
+  const practiceBtn = target.closest<HTMLButtonElement>("[data-practice-opening]");
+  if (practiceBtn?.dataset.practiceOpening) {
+    void startOpeningPractice(practiceBtn.dataset.practiceOpening);
+    return;
+  }
   const gamesBtn = target.closest<HTMLButtonElement>("[data-open-games-opening]");
   if (gamesBtn) {
     jumpToGamesInOpening(gamesBtn.dataset.openGamesOpening!);
@@ -3556,6 +3761,11 @@ insightsOutput.addEventListener("click", (e) => {
 
 profileOutput.addEventListener("click", (e) => {
   const target = e.target as HTMLElement;
+  const practiceBtn = target.closest<HTMLButtonElement>("[data-practice-opening]");
+  if (practiceBtn?.dataset.practiceOpening) {
+    void startOpeningPractice(practiceBtn.dataset.practiceOpening);
+    return;
+  }
   const gamesBtn = target.closest<HTMLButtonElement>("[data-open-games-opening]");
   if (gamesBtn?.dataset.openGamesOpening) {
     jumpToGamesInOpening(gamesBtn.dataset.openGamesOpening);
