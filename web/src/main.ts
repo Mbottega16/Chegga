@@ -127,6 +127,7 @@ import { computeRivalRecords, computeRivalInsights, computeRivalDeltas, snapshot
 import type { RivalDelta } from "./rivalTracking";
 import { renderRivalTracking } from "./rivalTrackingView";
 import { setupCollapsibleCards, expandCard } from "./collapsibleCards";
+import { setupMobileTaglines } from "./mobileTaglines";
 import { setupFeedbackWidget } from "./feedback";
 import { setupFeedbackForm } from "./feedbackForm";
 import { BOARD_THEMES, applyBoardTheme, loadSavedBoardTheme } from "./boardTheme";
@@ -158,10 +159,12 @@ import { explainMove, explainInputFromStep, explainInputFromPuzzle } from "./mov
 import {
   buildCandidates,
   buildOverlay,
+  isSacrifice,
   quickArrows,
   type Candidate,
   type OverlayArrow,
   type OverlayTint,
+  type OverlayTrail,
 } from "./candidateMoves";
 import { analyzeCandidates, cachedCandidateLines } from "./candidateAnalysis";
 import { buildPickerCards, pickerCounts, PICKER_CARD_LIMIT, type PickerFilter } from "./gamePicker";
@@ -416,6 +419,8 @@ app.innerHTML = `
       </form>
       <p id="analyze-recent-log" class="status-line"></p>
       <div id="analyze-progress"></div>
+      <p id="background-analyze-log" class="status-line status-ok" style="display:none"></p>
+      <div id="background-analyze-progress"></div>
     </section>
 
     <section class="card" id="picker-section" data-tier="primary" style="display:none">
@@ -807,6 +812,7 @@ app.innerHTML = `
 `;
 
 setupCollapsibleCards();
+setupMobileTaglines();
 wireEmptyStateCtas();
 showEmptyStates(); // seed data-dependent cards for a visitor with no synced account (redesign #5)
 setupFeedbackWidget(); // Featurebase widget — org slug "mibottega" set in feedback.ts
@@ -1027,39 +1033,67 @@ function playSoundForSan(san: string) {
   else playMoveSound();
 }
 
-// Cache of the last analyzed position's white-relative eval -- since
-// updateAnalysisPanel() runs after every ply (while the checkbox is on),
-// this is exactly "the eval right before the move about to be classified,"
-// letting live move-quality juice reuse it instead of paying for a
-// second engine call. Cleared whenever a position goes unanalyzed (panel
-// off, or a failed call) so a stale value can't produce a bogus diff.
-let lastPositionEval: { cp: number | undefined; mate: number | undefined } | null = null;
+// Cache of the last analyzed position's white-relative eval, and the FEN
+// it was the eval of -- since updateAnalysisPanel() runs after every ply
+// (while the checkbox is on), this is exactly "the position and eval right
+// before the move about to be classified," letting live move-quality juice
+// reuse it instead of paying for a second engine call. The FEN is what
+// isSacrifice() needs: by the time a move is being graded the board is
+// already past it. Cleared whenever a position goes unanalyzed (panel off,
+// or a failed call) so a stale value can't produce a bogus diff.
+let lastPositionEval: { cp: number | undefined; mate: number | undefined; fen: string } | null = null;
 
-const MOVE_QUALITY_LABELS: Record<string, string> = { best: "Best!", excellent: "Excellent" };
+const MOVE_QUALITY_LABELS: Record<string, string> = {
+  brilliant: "Brilliant!",
+  best: "Best!",
+  excellent: "Excellent",
+};
+
+/** The celebration a brilliancy gets wherever one shows up: the cyan flash
+ * + confetti right on the square, the same pair playBoard.ts's
+ * celebrateBrilliantTints() fires when the heatmap reveals one. */
+function celebrateBrilliantSquare(square: Square) {
+  const el = playBoardWrap.querySelector<HTMLElement>(`[data-square="${square}"]`);
+  flash(el, "brilliant");
+  confetti(el ?? playBoardWrap, 0.7);
+}
 
 /** Classifies the human move that just landed on `toSquare` (centipawn
  * loss vs. the pre-move best line, same math as engineAnalysis.ts's
- * classify()) and flashes the result on whichever boards are live. Only
- * called for the human's own move -- see updateAnalysisPanel's caller. */
-function applyMoveQualityJuice(board: PlayBoard, toSquare: Square, sideToMoveNow: "white" | "black", after: AnalysisResult) {
+ * classify()) and flashes the result on whichever boards are live. A move
+ * graded "best" that is also a real sacrifice shows as "brilliant" -- the
+ * same display-time refinement the candidate heatmap applies to the
+ * engine's top line, never a stored classification. Only called for the
+ * human's own move -- see updateAnalysisPanel's caller. */
+function applyMoveQualityJuice(
+  board: PlayBoard,
+  toSquare: Square,
+  sideToMoveNow: "white" | "black",
+  after: AnalysisResult,
+  playedUci?: string,
+) {
   if (!lastPositionEval) return; // no pre-move eval cached yet (panel just turned on, or game just started)
   const moverSign = sideToMoveNow === "white" ? -1 : 1; // mover is the side that just moved, i.e. NOT sideToMoveNow
   const beforeMover = cpEquivalent(lastPositionEval.cp, lastPositionEval.mate) * moverSign;
   const afterMover = cpEquivalent(after.whiteRelativeCp, after.whiteRelativeMate) * moverSign;
   const centipawnLoss = Math.min(Math.max(0, beforeMover - afterMover), DISPLAY_CLAMP_CP);
-  const classification = classify(centipawnLoss);
+  const graded = classify(centipawnLoss);
+  const classification =
+    graded === "best" && playedUci && isSacrifice(lastPositionEval.fen, playedUci) ? "brilliant" : graded;
   const color = getClassColor(classification);
   board.showMoveQuality(toSquare, color, MOVE_QUALITY_LABELS[classification]);
   board3dInstance?.flashSquareQuality(toSquare, color);
-  if (classification === "best") confetti(document.getElementById("play-board-wrap"), 0.35);
+  if (classification === "brilliant") celebrateBrilliantSquare(toSquare);
+  else if (classification === "best") confetti(playBoardWrap, 0.35);
 }
 
 /** Live analysis: eval bar + best-move arrow + top candidate lines,
  * driven by analysisPanel.ts's own dedicated (always full-strength)
  * engine. No-ops (and clears the arrow) when the checkbox is off.
- * `justMovedTo` is passed only from the human's own move -- when set,
- * this also classifies and juices that move once the fresh eval is in. */
-async function updateAnalysisPanel(board: PlayBoard, justMovedTo?: Square) {
+ * `justMovedTo` / `justMovedUci` are passed only from the human's own move
+ * -- when set, this also classifies and juices that move once the fresh
+ * eval is in. */
+async function updateAnalysisPanel(board: PlayBoard, justMovedTo?: Square, justMovedUci?: string) {
   if (review || tryTarget) return; // the review or puzzle owns the board and its arrows
   if (!botShowAnalysisCheckbox.checked) {
     analysisOutput.innerHTML = "";
@@ -1073,8 +1107,8 @@ async function updateAnalysisPanel(board: PlayBoard, justMovedTo?: Square) {
   try {
     const result = await analyzePosition(fen, sideToMove);
     if (review || tryTarget) return; // taken over while the engine was thinking
-    if (justMovedTo) applyMoveQualityJuice(board, justMovedTo, sideToMove, result);
-    lastPositionEval = { cp: result.whiteRelativeCp, mate: result.whiteRelativeMate };
+    if (justMovedTo) applyMoveQualityJuice(board, justMovedTo, sideToMove, result, justMovedUci);
+    lastPositionEval = { cp: result.whiteRelativeCp, mate: result.whiteRelativeMate, fen };
 
     const whiteFraction = evalBarWhiteFraction(result.whiteRelativeCp, result.whiteRelativeMate);
     const lines = describeLines(fen, result);
@@ -1136,7 +1170,7 @@ async function updateBoard3D(board: PlayBoard) {
   }
   openFullscreen3D();
   board3dInstance.setPosition(board.getFen());
-  if (currentOverlay) board3dInstance.setOverlays(currentOverlay.tints, currentOverlay.arrows);
+  if (currentOverlay) board3dInstance.setOverlays(currentOverlay.tints, currentOverlay.arrows, currentOverlay.trails);
   refreshBoard3DSelection(board);
   updatePromotionPicker(board);
 }
@@ -1280,14 +1314,22 @@ function toggleReviewAutoplay() {
 const OVERLAY_ARROW_WIDTH: Record<OverlayArrow["kind"], number> = { best: 5, played: 4, preview: 3 };
 // Kept so the 3D board, if it is opened after the overlay was drawn, can
 // pick it up instead of starting bare until the next step.
-let currentOverlay: { arrows: OverlayArrow[]; tints: OverlayTint[] } | null = null;
+let currentOverlay: { arrows: OverlayArrow[]; tints: OverlayTint[]; trails: OverlayTrail[] } | null = null;
 
-function applyOverlay(arrows: OverlayArrow[], tints: OverlayTint[]) {
+/** `animate` should be true only for the heatmap's actual "unveil" moment
+ * (the engine just finished ranking this position's candidates) -- a
+ * re-render from tapping a candidate to preview it, or the pre-engine
+ * placeholder arrows, must not replay the fade-in / brilliant confetti a
+ * second time for the same position. `animate` is 2D-only: the 3D board's
+ * brilliant pulse and trail flow are continuous, so they have no separate
+ * reveal to replay. */
+function applyOverlay(arrows: OverlayArrow[], tints: OverlayTint[], trails: OverlayTrail[] = [], animate = false) {
   if (!playBoard) return;
-  currentOverlay = { arrows, tints };
+  currentOverlay = { arrows, tints, trails };
   playBoard.showArrows(arrows.map((a) => ({ from: a.from, to: a.to, color: a.color, width: OVERLAY_ARROW_WIDTH[a.kind] })));
-  playBoard.setCandidateTints(tints);
-  board3dInstance?.setOverlays(tints, arrows);
+  playBoard.setCandidateTints(tints, { animate });
+  playBoard.setCandidateTrails(trails, { animate });
+  board3dInstance?.setOverlays(tints, arrows, trails);
 }
 
 /** Forgets the overlay on the 3D board (the 2D board drops its own whenever
@@ -1301,10 +1343,14 @@ function currentReviewStep(): ReviewStep | null {
   return review && reviewIndex >= 0 ? (review.steps[reviewIndex] ?? null) : null;
 }
 
-/** Paints the candidate overlay and list for the step now on the board. */
-function renderCandidates(step: ReviewStep) {
+/** Paints the candidate overlay and list for the step now on the board.
+ * `animate` is true only right after the engine hands back a fresh ranking
+ * for this position (see loadCandidatesFor) -- re-painting because the
+ * viewer tapped a candidate to preview it reuses the same candidates and
+ * must not replay the reveal. */
+function renderCandidates(step: ReviewStep, animate = false) {
   const overlay = buildOverlay(reviewCandidates, step.uci, step.classification, reviewPreviewUci);
-  applyOverlay(overlay.arrows, overlay.tints);
+  applyOverlay(overlay.arrows, overlay.tints, overlay.trails, animate);
   reviewCandidatesHost.innerHTML = renderCandidateList(reviewCandidates, {
     playedUci: step.uci,
     playedSan: step.san,
@@ -1333,7 +1379,7 @@ async function loadCandidatesFor(step: ReviewStep) {
   }
   if (stale() || !lines) return; // superseded by a newer position -- that one will paint
   reviewCandidates = buildCandidates(step.fenBefore, lines);
-  renderCandidates(step);
+  renderCandidates(step, true); // the real unveil: this position's ranking just became available
 }
 
 function updateReviewActions(step: ReviewStep | null) {
@@ -1372,13 +1418,20 @@ function showReviewStep(index: number) {
     clearOverlayState();
     playBoard.showPosition(step ? step.fenAfter : review.startFen, step ? { from: step.from, to: step.to } : undefined);
     if (step?.isHuman && step.classification) {
-      const color = getClassColor(step.classification);
+      // A stored "best" that was also a real sacrifice reads as brilliant
+      // here too, so a brilliancy looks the same reviewed as it did live.
+      const classification =
+        step.classification === "best" && isSacrifice(step.fenBefore, step.uci) ? "brilliant" : step.classification;
+      const color = getClassColor(classification);
       // ms = 0: the marker holds while the viewer sits on this move.
-      playBoard.showMoveQuality(step.to, color, REVIEW_QUALITY_LABELS[step.classification], 0);
+      playBoard.showMoveQuality(step.to, color, REVIEW_QUALITY_LABELS[classification], 0);
       board3dInstance?.flashSquareQuality(step.to, color);
       // Only on the way forward -- stepping back over a best move shouldn't
       // re-fire the celebration.
-      if (step.classification === "best" && movingForward) confetti(playBoardWrap, 0.3);
+      if (movingForward) {
+        if (classification === "brilliant") celebrateBrilliantSquare(step.to);
+        else if (classification === "best") confetti(playBoardWrap, 0.3);
+      }
     }
     if (step && shouldShowBetterMove(step) && step.bestMoveUci && betterMoveArrowFitsAfterBoard(step)) {
       playBoard.showArrow(step.bestMoveUci.slice(0, 2) as Square, step.bestMoveUci.slice(2, 4) as Square);
@@ -1956,7 +2009,7 @@ function ensurePlayBoard(): PlayBoard {
       if (!playBoard) return;
       checkHangWarning(playBoard);
       saveBotGame({ pgn: playBoard.getPgn(), humanColor, elo: parseInt(botEloInput.value, 10), savedAt: Date.now() });
-      void updateAnalysisPanel(playBoard, uci.slice(2, 4) as Square).then(() => {
+      void updateAnalysisPanel(playBoard, uci.slice(2, 4) as Square, uci).then(() => {
         if (playBoard) updateHeatmap(playBoard);
       });
       void maybePlayBotMove(playBoard);
@@ -2153,7 +2206,7 @@ async function runLichessSync(username: string) {
         lichessHistoryText.textContent = `That's your ${result.gamesAdded} most recent games.`;
       }
       await refreshProfile();
-      if (isFirstEverSync) await runAnalyzeRecent(QUICK_SYNC_ANALYZE_COUNT);
+      if (isFirstEverSync) await runAnalyzeFirstThenBackground(QUICK_SYNC_ANALYZE_COUNT);
     } catch (err) {
       db.close();
       throw err;
@@ -2215,7 +2268,11 @@ async function runSync(username: string, site: Site = currentSite) {
       // The actual "don't make them click twice to see anything" fix --
       // runs the same analysis path Analyze-recent's button does, just
       // triggered automatically instead of waiting for a second click.
-      await runAnalyzeRecent(QUICK_SYNC_ANALYZE_COUNT);
+      // Only the single newest game is awaited here; the rest of the
+      // batch continues quietly in the background (see
+      // runAnalyzeFirstThenBackground) so the dashboard has something
+      // real to show well before the whole batch finishes.
+      await runAnalyzeFirstThenBackground(QUICK_SYNC_ANALYZE_COUNT);
     } else {
       const result = await syncGames(db, client, username, onProgress);
       db.close();
@@ -2464,10 +2521,13 @@ const analyzeCountInput = document.querySelector<HTMLInputElement>("#analyze-cou
 const analyzeRecentBtn = document.querySelector<HTMLButtonElement>("#analyze-recent-btn")!;
 const analyzeRecentLog = document.querySelector<HTMLParagraphElement>("#analyze-recent-log")!;
 const analyzeProgressBar = createProgressBar(document.querySelector<HTMLElement>("#analyze-progress")!);
+const backgroundAnalyzeLog = document.querySelector<HTMLParagraphElement>("#background-analyze-log")!;
+const backgroundAnalyzeBar = createProgressBar(document.querySelector<HTMLElement>("#background-analyze-progress")!);
 
-/** Shared by the "Analyze most recent" form and the automatic first
- * batch that runs right after a brand-new visitor's quick sync -- same
- * logic either way, just two different triggers. */
+/** The "Analyze most recent" form's own explicit batch -- a full,
+ * blocking pass over `count` games. The automatic first-sync batch uses
+ * `runAnalyzeFirstThenBackground` below instead, so a brand-new visitor
+ * sees their dashboard after one game, not the whole batch. */
 async function runAnalyzeRecent(count: number) {
   if (!currentUsername) {
     setStatus(analyzeRecentLog, "Sync a username first.", "error");
@@ -2552,6 +2612,96 @@ analyzeRecentForm.addEventListener("submit", async (e) => {
   const count = Math.max(1, Math.min(200, parseInt(analyzeCountInput.value, 10) || 10));
   await runAnalyzeRecent(count);
 });
+
+/** The automatic first-sync batch, split in two: analyze just the single
+ * newest game and refresh the dashboard so a brand-new visitor sees
+ * something real right away, then keep going through the rest of the
+ * batch quietly in the background instead of making them wait for the
+ * whole thing (the empty-first-impression gap named in the 2026-08-29 and
+ * 2026-09-03 critiques). Caller awaits only the first game. */
+async function runAnalyzeFirstThenBackground(count: number) {
+  if (!currentUsername || count < 1) return;
+
+  const db = await openDb();
+  const engine = new Engine();
+  try {
+    await engine.init();
+
+    const allGames = await getGamesByUsername(db, currentUsername);
+    const candidates = allGames
+      .filter((g) => !g.analyzed && g.rules === "chess")
+      .sort((a, b) => b.endTime - a.endTime)
+      .slice(0, count);
+
+    if (candidates.length === 0) {
+      engine.terminate();
+      db.close();
+      return;
+    }
+
+    const [first, ...rest] = candidates;
+    try {
+      const moves = await analyzeGame(engine, first, DEFAULT_ANALYSIS_OPTIONS);
+      await putMoveAnalyses(db, moves);
+      await markGameAnalyzed(db, first);
+    } catch (err: any) {
+      console.warn(`Skipping game ${first.chessComUuid}: ${err.message ?? err}`);
+    }
+    await refreshProfile();
+
+    if (rest.length > 0) {
+      void runBackgroundAnalyze(engine, db, rest);
+    } else {
+      engine.terminate();
+      db.close();
+    }
+  } catch (err: any) {
+    engine.terminate();
+    db.close();
+    console.warn(`First-game analyze failed: ${err.message ?? err}`);
+  }
+}
+
+/** The rest of a first-sync batch, analyzed after the visitor already has
+ * one real game on screen. Owns the `db`/`engine` it's handed and closes
+ * them when done. Reports through a quiet status line + progress bar
+ * (`#background-analyze-progress`) instead of the blocking one Analyze-
+ * recent uses, since the visitor isn't waiting on this. */
+async function runBackgroundAnalyze(engine: Engine, db: IDBDatabase, candidates: GameRecord[]) {
+  let analyzed = 0;
+  let consecutiveFailures = 0;
+  backgroundAnalyzeLog.style.display = "";
+  setStatus(backgroundAnalyzeLog, `Analyzing ${candidates.length} more of your games in the background…`, "ok");
+  try {
+    for (let i = 0; i < candidates.length; i++) {
+      const game = candidates[i];
+      const dateLabel = game.endTime ? new Date(game.endTime * 1000).toISOString().slice(0, 10) : game.chessComUuid;
+      backgroundAnalyzeBar.update(i + 1, candidates.length, `Analyzing ${dateLabel}`);
+      try {
+        const moves = await analyzeGame(engine, game, DEFAULT_ANALYSIS_OPTIONS);
+        await putMoveAnalyses(db, moves);
+        await markGameAnalyzed(db, game);
+        analyzed += 1;
+        consecutiveFailures = 0;
+      } catch (err: any) {
+        console.warn(`Skipping game ${game.chessComUuid}: ${err.message ?? err}`);
+        consecutiveFailures += 1;
+        if (consecutiveFailures >= 3) {
+          setStatus(backgroundAnalyzeLog, `Stopped early after 3 games in a row failed — see console. ${analyzed} analyzed in the background.`, "error");
+          break;
+        }
+      }
+    }
+  } finally {
+    backgroundAnalyzeBar.hide();
+    engine.terminate();
+    db.close();
+  }
+  if (analyzed > 0) {
+    if (consecutiveFailures < 3) backgroundAnalyzeLog.style.display = "none";
+    await refreshProfile();
+  }
+}
 
 // --- Phase 3 + 4: profile dashboard ---
 
@@ -4112,7 +4262,7 @@ async function onTutorialDone(result: TutorialResult) {
       ? "Your games are ready under “Review a game”. The position from the tutorial is saved there too."
       : "Your games are ready under “Review a game”.",
   );
-  await runAnalyzeRecent(QUICK_SYNC_ANALYZE_COUNT);
+  await runAnalyzeFirstThenBackground(QUICK_SYNC_ANALYZE_COUNT);
 }
 
 if (showTutorialThisLoad) startTutorial((result) => void onTutorialDone(result));

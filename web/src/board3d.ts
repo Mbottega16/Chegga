@@ -21,6 +21,7 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { Chess } from "chess.js";
+import { effectsEnabled } from "./juice";
 
 const SQUARE = 1; // world units per board square
 const BOARD_HALF = SQUARE * 4;
@@ -142,11 +143,14 @@ function buildPieceGeometries(): Record<PieceType, THREE.BufferGeometry> {
   };
 }
 
-/** A candidate-move wash on one square. `color` is any CSS color. */
+/** A candidate-move wash on one square. `color` is any CSS color. `tier`,
+ * when it's "brilliant", gets a pulsing emissive glow instead of a flat
+ * wash -- the 3D answer to the 2D board's shimmer + sparkle badge. */
 export interface Board3DTint {
   square: string;
   color: string;
   opacity: number;
+  tier?: string;
 }
 
 /** A flat arrow lying on the board from one square's center to another's. */
@@ -154,6 +158,69 @@ export interface Board3DArrow {
   from: string;
   to: string;
   color: string;
+}
+
+/** "Where the piece should go": a flowing dashed ribbon lying on the board
+ * from a candidate's origin square to its destination. The 3D counterpart
+ * of playBoard.ts's CandidateTrail, one per shaded candidate. */
+export interface Board3DTrail {
+  from: string;
+  to: string;
+  color: string;
+  tier: string;
+}
+
+// Trail weighting, matched tier for tier to playBoard.ts's 2D version so
+// both boards read the same: width and opacity step up together, which
+// keeps the hierarchy legible even in the colourblind palette. Widths are
+// world units (one square is 1).
+const TRAIL_WIDTH: Record<string, number> = { good: 0.045, excellent: 0.06, best: 0.078, brilliant: 0.105 };
+const TRAIL_OPACITY: Record<string, number> = { good: 0.42, excellent: 0.55, best: 0.72, brilliant: 0.95 };
+// Lower tiers draw first, so a best/brilliant path reads on top wherever
+// ribbons cross -- the answer to overlap is importance, not draw order.
+const TRAIL_TIER_ORDER: Record<string, number> = { good: 0, excellent: 1, best: 2, brilliant: 3 };
+// Dash cycles per world unit, and how much of each cycle is drawn. A finer,
+// fuller dash for brilliant so its flow reads faster, the same distinction
+// the 2D board makes with its two stroke-dasharray values.
+const TRAIL_DASH_DENSITY: Record<string, number> = { good: 2.2, excellent: 2.6, best: 3, brilliant: 3.6 };
+const TRAIL_DASH_ON: Record<string, number> = { good: 0.46, excellent: 0.46, best: 0.46, brilliant: 0.58 };
+const TRAIL_FLOW_PER_SECOND = 1; // one dash cycle a second, like the 2D flow animation
+const BRILLIANT_PULSE_SECONDS = 1.8; // the 2D shimmer's cadence
+const BRILLIANT_EMISSIVE_MIN = 0.25;
+const BRILLIANT_EMISSIVE_MAX = 0.7;
+
+// A flowing dash needs the fragment's distance along the ribbon, which a
+// plane's own U coordinate already is -- so the flow is a shader on a
+// static quad, not per-frame geometry work or an animated texture.
+const TRAIL_VERTEX_SHADER = `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+
+const TRAIL_FRAGMENT_SHADER = `
+uniform vec3 uColor;
+uniform float uOpacity;
+uniform float uTime;
+uniform float uDensity;
+uniform float uOnFraction;
+varying vec2 vUv;
+void main() {
+  float cycle = fract(vUv.x * uDensity - uTime);
+  float edge = 0.04;
+  float alpha = smoothstep(0.0, edge, cycle) * (1.0 - smoothstep(uOnFraction - edge, uOnFraction, cycle));
+  if (alpha <= 0.001) discard;
+  gl_FragColor = vec4(uColor, uOpacity * alpha);
+}`;
+
+/** Motion is a preference, information isn't: with effects off or
+ * reduced-motion set, the trails and the brilliant glow still draw -- they
+ * just hold still, exactly what the 2D board's `animation: none` rule
+ * does under the same conditions. */
+function motionAllowed(): boolean {
+  if (!effectsEnabled()) return false;
+  return !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
 
 function squareCenter(square: string): { x: number; z: number } {
@@ -172,6 +239,15 @@ export class Board3D {
   private overlayGroup = new THREE.Group();
   private overlayGeometries: THREE.BufferGeometry[] = [];
   private overlayMaterials: THREE.Material[] = [];
+  // The animated slice of the overlay, kept separately so one frame can
+  // drive them without walking the scene graph. Both are also in
+  // overlayMaterials, so disposal stays in one place.
+  private brilliantTintMaterials: THREE.MeshStandardMaterial[] = [];
+  private trailMaterials: THREE.ShaderMaterial[] = [];
+  // This scene renders on demand, not on a permanent loop -- so the
+  // overlay's animation owns the only frame loop there is, and it exists
+  // only while there is something animated to draw.
+  private overlayAnimationId: number | null = null;
   private squareMeshes: THREE.Mesh[] = [];
   private squareGeometry!: THREE.BufferGeometry;
   private baseMesh!: THREE.Mesh;
@@ -351,32 +427,130 @@ export class Board3D {
     }, ms);
   }
 
-  /** Replaces the review overlay: color washes on squares plus flat arrows.
-   * Pass empty lists (or call clearOverlays) to remove it. The picked
-   * squares are ordinary board squares, so tap-to-move raycasting -- which
-   * only tests the square meshes -- is unaffected. */
-  setOverlays(tints: Board3DTint[], arrows: Board3DArrow[]): void {
+  /** Replaces the review overlay: color washes on squares, flat arrows, and
+   * one flowing dashed ribbon per shaded candidate. Pass empty lists (or
+   * call clearOverlays) to remove it. The picked squares are ordinary board
+   * squares, so tap-to-move raycasting -- which only tests the square
+   * meshes -- is unaffected. */
+  setOverlays(tints: Board3DTint[], arrows: Board3DArrow[], trails: Board3DTrail[] = []): void {
     this.disposeOverlays();
 
     const tintGeometry = new THREE.PlaneGeometry(SQUARE * 0.94, SQUARE * 0.94);
     tintGeometry.rotateX(-Math.PI / 2);
     this.overlayGeometries.push(tintGeometry);
     for (const t of tints) {
-      const material = new THREE.MeshBasicMaterial({
-        color: new THREE.Color(t.color),
-        transparent: true,
-        opacity: t.opacity,
-        depthWrite: false,
-      });
+      // A brilliant tile glows on its own instead of sitting flat: an
+      // emissive standard material, pulsed by the frame loop below, is the
+      // 3D reading of the 2D shimmer. Every other tier stays an unlit
+      // wash, which is all it needs to be.
+      const brilliant = t.tier === "brilliant";
+      const material = brilliant
+        ? new THREE.MeshStandardMaterial({
+            color: new THREE.Color(t.color),
+            emissive: new THREE.Color(t.color),
+            emissiveIntensity: BRILLIANT_EMISSIVE_MAX,
+            roughness: 0.4,
+            transparent: true,
+            opacity: t.opacity,
+            depthWrite: false,
+          })
+        : new THREE.MeshBasicMaterial({
+            color: new THREE.Color(t.color),
+            transparent: true,
+            opacity: t.opacity,
+            depthWrite: false,
+          });
       this.overlayMaterials.push(material);
+      if (brilliant) this.brilliantTintMaterials.push(material as THREE.MeshStandardMaterial);
       const mesh = new THREE.Mesh(tintGeometry, material);
       const { x, z } = squareCenter(t.square);
       mesh.position.set(x, 0.012, z);
+      if (brilliant) mesh.renderOrder = 1;
       this.overlayGroup.add(mesh);
     }
 
+    for (const t of trails) this.addTrail(t);
     for (const a of arrows) this.addArrow(a);
     this.render();
+    this.startOverlayAnimation();
+  }
+
+  /** One flowing dashed ribbon from a candidate's origin to its
+   * destination. A THREE.Line can't carry the 2D version's per-tier
+   * stroke width -- WebGL ignores linewidth on most platforms -- so this
+   * is a thin quad lying on the board instead, which can be as wide as the
+   * tier deserves and takes the dash shader on its own U coordinate. */
+  private addTrail(t: Board3DTrail): void {
+    const from = squareCenter(t.from);
+    const to = squareCenter(t.to);
+    const dx = to.x - from.x;
+    const dz = to.z - from.z;
+    const length = Math.hypot(dx, dz);
+    if (length < 0.01) return;
+
+    const geometry = new THREE.PlaneGeometry(length, TRAIL_WIDTH[t.tier] ?? 0.06);
+    geometry.rotateX(-Math.PI / 2); // stand it down onto the board, length along local +X
+    this.overlayGeometries.push(geometry);
+
+    const material = new THREE.ShaderMaterial({
+      vertexShader: TRAIL_VERTEX_SHADER,
+      fragmentShader: TRAIL_FRAGMENT_SHADER,
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      uniforms: {
+        uColor: { value: new THREE.Color(t.color) },
+        uOpacity: { value: TRAIL_OPACITY[t.tier] ?? 0.5 },
+        uTime: { value: 0 },
+        // Density is per world unit, so a long trail gets more dashes
+        // rather than longer ones -- the flow reads at one speed board-wide.
+        uDensity: { value: length * (TRAIL_DASH_DENSITY[t.tier] ?? 2.4) },
+        uOnFraction: { value: TRAIL_DASH_ON[t.tier] ?? 0.46 },
+      },
+    });
+    this.overlayMaterials.push(material);
+    this.trailMaterials.push(material);
+
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set((from.x + to.x) / 2, 0.014, (from.z + to.z) / 2);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), new THREE.Vector3(dx, 0, dz).normalize());
+    // Layering, bottom to top: square tints (0-1), trails (2-5), arrows
+    // (10) -- the same stack the 2D board draws, so the call-out arrows
+    // stay the most prominent thing wherever they overlap.
+    mesh.renderOrder = 2 + (TRAIL_TIER_ORDER[t.tier] ?? 0);
+    this.overlayGroup.add(mesh);
+  }
+
+  /** The overlay's frame loop: pulses every brilliant tile and advances
+   * every trail's dash flow. Runs only while an overlay with something
+   * animated is on the board, and skips the draw while the 3D view is
+   * hidden (the instance outlives the closed full-screen overlay). */
+  private startOverlayAnimation(): void {
+    if (this.overlayAnimationId !== null) return;
+    if (!this.brilliantTintMaterials.length && !this.trailMaterials.length) return;
+    if (!motionAllowed()) return; // the static overlay just drawn is the finished picture
+
+    const start = performance.now();
+    const tick = (now: number) => {
+      this.overlayAnimationId = requestAnimationFrame(tick);
+      if (this.container.clientWidth === 0) return; // 3D view closed -- keep the loop cheap, don't draw
+      const elapsed = (now - start) / 1000;
+      const pulse = 0.5 + 0.5 * Math.sin((elapsed / BRILLIANT_PULSE_SECONDS) * Math.PI * 2);
+      for (const mat of this.brilliantTintMaterials) {
+        mat.emissiveIntensity = BRILLIANT_EMISSIVE_MIN + (BRILLIANT_EMISSIVE_MAX - BRILLIANT_EMISSIVE_MIN) * pulse;
+      }
+      for (const mat of this.trailMaterials) {
+        mat.uniforms.uTime.value = elapsed * TRAIL_FLOW_PER_SECOND;
+      }
+      this.render();
+    };
+    this.overlayAnimationId = requestAnimationFrame(tick);
+  }
+
+  private stopOverlayAnimation(): void {
+    if (this.overlayAnimationId === null) return;
+    cancelAnimationFrame(this.overlayAnimationId);
+    this.overlayAnimationId = null;
   }
 
   clearOverlays(): void {
@@ -395,7 +569,15 @@ export class Board3D {
     const headLength = 0.34;
     const startGap = 0.18; // leave the origin piece's own footprint clear
     const shaftLength = Math.max(0.1, distance - headLength - startGap);
-    const material = new THREE.MeshBasicMaterial({ color: new THREE.Color(a.color), depthTest: false });
+    // Transparent (at full opacity) so it shares the trails' render pass:
+    // three.js draws every opaque object before any transparent one, and
+    // renderOrder only sorts within a pass -- left opaque, the arrow would
+    // be painted over by the trail running along the same squares.
+    const material = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(a.color),
+      depthTest: false,
+      transparent: true,
+    });
     const shaftGeometry = new THREE.CylinderGeometry(0.055, 0.055, shaftLength, 12);
     const headGeometry = new THREE.ConeGeometry(0.16, headLength, 16);
     this.overlayMaterials.push(material);
@@ -417,11 +599,14 @@ export class Board3D {
   }
 
   private disposeOverlays(): void {
+    this.stopOverlayAnimation();
     this.overlayGroup.clear();
     this.overlayGeometries.forEach((g) => g.dispose());
     this.overlayMaterials.forEach((m) => m.dispose());
     this.overlayGeometries = [];
     this.overlayMaterials = [];
+    this.brilliantTintMaterials = [];
+    this.trailMaterials = [];
   }
 
   /** Moves the canvas into a different container (e.g. the small inline

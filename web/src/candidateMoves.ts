@@ -24,7 +24,48 @@ export interface Candidate {
   scoreCp: number; // the mover's own view; a mate is a very large number
   mate?: number; // mover-relative moves to mate, when the line is a mate
   gapCp: number; // how far short of the best candidate this one falls
-  tier: string; // best / excellent / good / inaccuracy / mistake / blunder
+  tier: string; // brilliant / best / excellent / good / inaccuracy / mistake / blunder
+}
+
+const PIECE_VALUES: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+
+/** A lightweight "is this a real sacrifice" check -- not a full static-
+ * exchange evaluator (this project's blunder-tag heuristics aren't one
+ * either, see engineAnalysis.ts). After the candidate move, is the piece
+ * that just moved sitting on a square a cheaper enemy piece can capture it
+ * on? A queen landing where only a pawn can take it, with the engine still
+ * calling it the top line, is the shape of a brilliancy -- an ordinary
+ * trade or a safe best move isn't. Applied to the engine's own top
+ * candidate in buildCandidates (the heatmap), and, exported, to a move a
+ * human actually played once it's already graded "best" (main.ts's live
+ * juice and the review's played-move marker) -- never a new stored
+ * classification, just a display-time refinement of "best" either way. */
+export function isSacrifice(fen: string, uci: string): boolean {
+  const board = new Chess(fen);
+  const from = uci.slice(0, 2) as Square;
+  const to = uci.slice(2, 4) as Square;
+  const movingPiece = board.get(from);
+  if (!movingPiece || movingPiece.type === "k") return false;
+  const movingValue = PIECE_VALUES[movingPiece.type];
+  const capturedValue = PIECE_VALUES[board.get(to)?.type ?? ""] ?? 0;
+
+  try {
+    if (!board.move({ from, to, promotion: uci.slice(4) || undefined })) return false;
+  } catch {
+    return false;
+  }
+
+  // Cheapest enemy piece that can now recapture on the destination square.
+  let cheapestRecapture = Infinity;
+  for (const reply of board.moves({ verbose: true })) {
+    if (reply.to === to && reply.captured) {
+      cheapestRecapture = Math.min(cheapestRecapture, PIECE_VALUES[reply.piece]);
+    }
+  }
+  if (cheapestRecapture === Infinity) return false; // nothing can actually take it back
+
+  const materialLostIfTaken = movingValue - capturedValue;
+  return materialLostIfTaken >= 2 && cheapestRecapture < movingValue;
 }
 
 /** Lines are the engine's own, mover-relative. A line whose first move
@@ -55,7 +96,11 @@ export function buildCandidates(fen: string, lines: AnalysisLine[]): Candidate[]
   const bestScore = scored[0]?.scoreCp ?? 0;
   return scored.map((c, i) => {
     const gapCp = Math.max(0, bestScore - c.scoreCp);
-    return { ...c, rank: i + 1, gapCp, tier: classify(gapCp) };
+    const tier = classify(gapCp);
+    // "Brilliant" only ever refines the engine's own top choice -- a
+    // sacrifice that merely ties for best isn't the point.
+    const brilliant = i === 0 && tier === "best" && isSacrifice(fen, c.uci);
+    return { ...c, rank: i + 1, gapCp, tier: brilliant ? "brilliant" : tier };
   });
 }
 
@@ -70,6 +115,7 @@ export interface OverlayTint {
   square: Square;
   color: string;
   opacity: number;
+  tier: string;
 }
 
 export interface OverlayArrow {
@@ -79,14 +125,29 @@ export interface OverlayArrow {
   kind: "best" | "played" | "preview";
 }
 
+/** A pulsing from-square-to-square path for one shaded candidate --
+ * "where the piece should go," not just the destination tint or the
+ * three call-out arrows (best/played/preview). One per shaded candidate,
+ * not deduped by destination the way tints are: two different pieces
+ * that can both reach the same square are two different real options,
+ * and both are worth showing. */
+export interface OverlayTrail {
+  from: Square;
+  to: Square;
+  color: string;
+  tier: string;
+}
+
 export interface CandidateOverlay {
   tints: OverlayTint[];
   arrows: OverlayArrow[];
+  trails: OverlayTrail[];
 }
 
 // Only moves that are still good get shaded: the point is "where can I
-// go", not a map of every legal move.
-const SHADED_TIERS: Record<string, number> = { best: 0.62, excellent: 0.5, good: 0.38 };
+// go", not a map of every legal move. Brilliant gets the strongest wash --
+// it's the rare, attention-worthy one.
+const SHADED_TIERS: Record<string, number> = { brilliant: 0.7, best: 0.62, excellent: 0.5, good: 0.38 };
 
 export function isShadedTier(tier: string): boolean {
   return tier in SHADED_TIERS;
@@ -107,12 +168,12 @@ export function buildOverlay(
   for (const c of candidates) {
     if (!isShadedTier(c.tier) || tinted.has(c.to)) continue; // best-ranked candidate wins a shared destination
     tinted.add(c.to);
-    tints.push({ square: c.to, color: getClassColor(c.tier), opacity: SHADED_TIERS[c.tier] });
+    tints.push({ square: c.to, color: getClassColor(c.tier), opacity: SHADED_TIERS[c.tier], tier: c.tier });
   }
 
   const arrows: OverlayArrow[] = [];
   const best = candidates[0];
-  if (best) arrows.push({ from: best.from, to: best.to, color: getClassColor("best"), kind: "best" });
+  if (best) arrows.push({ from: best.from, to: best.to, color: getClassColor(best.tier), kind: "best" });
   if (playedUci && playedUci !== best?.uci) {
     arrows.push({
       from: playedUci.slice(0, 2) as Square,
@@ -125,7 +186,12 @@ export function buildOverlay(
   if (preview && preview.uci !== best?.uci && preview.uci !== playedUci) {
     arrows.push({ from: preview.from, to: preview.to, color: getClassColor(preview.tier), kind: "preview" });
   }
-  return { tints, arrows };
+
+  const trails: OverlayTrail[] = candidates
+    .filter((c) => isShadedTier(c.tier))
+    .map((c) => ({ from: c.from, to: c.to, color: getClassColor(c.tier), tier: c.tier }));
+
+  return { tints, arrows, trails };
 }
 
 /** Arrows available before the engine has answered: the stored best move

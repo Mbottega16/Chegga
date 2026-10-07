@@ -164,6 +164,50 @@ body {
   }
 }
 
+/* ---- Card taglines: tap-to-reveal instead of a wall of text ----
+   Requested after the first real phone test -- a dozen-plus cards each
+   opening with a full explanatory paragraph read as busy/heavy stacked
+   down a phone screen. `mobileTaglines.ts` builds the button + popover
+   for every `.tagline` inside a `section.card`; this just switches which
+   one is visible below the phone breakpoint. Desktop is unaffected. */
+@media (max-width: 600px) {
+  section.card .tagline {
+    display: none;
+  }
+  section.card .tagline-info-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0 0 14px;
+    padding: 5px 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font: 500 0.82rem var(--font-body);
+    cursor: pointer;
+  }
+  section.card .tagline-info-btn[aria-expanded="true"] {
+    color: var(--text);
+    border-color: var(--accent);
+    background: var(--accent-wash);
+  }
+  section.card .tagline-popover {
+    display: block;
+    margin: 0 0 16px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--panel-hover);
+    color: var(--muted);
+    font-size: 0.88rem;
+    line-height: 1.55;
+  }
+  section.card .tagline-popover[hidden] {
+    display: none;
+  }
+}
+
 /* ---- Stat grid --------------------------------------------- */
 
 @media (max-width: 600px) {

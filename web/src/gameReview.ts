@@ -58,6 +58,7 @@ export interface ReviewGame {
  * see main.ts's MOVE_QUALITY_LABELS); a review is for finding out what
  * happened, so every tier says what it was. */
 export const REVIEW_QUALITY_LABELS: Record<string, string> = {
+  brilliant: "Brilliant!", // never stored -- main.ts upgrades a sacrificial "best" at display time
   best: "Best!",
   excellent: "Excellent",
   good: "Good",

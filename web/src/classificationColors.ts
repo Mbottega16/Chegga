@@ -19,6 +19,7 @@
 export const CLASSIFICATION_ORDER = ["best", "excellent", "good", "inaccuracy", "mistake", "blunder"];
 
 const CLASS_COLOR_DEFAULT: Record<string, string> = {
+  brilliant: "#22d3ee", // cyan -- a "best" move that's also a real sacrifice, see candidateMoves.ts's isSacrifice()
   best: "#4caf50",
   excellent: "#8bc34a",
   good: "#cddc39",
@@ -28,6 +29,7 @@ const CLASS_COLOR_DEFAULT: Record<string, string> = {
 };
 
 const CLASS_COLOR_COLORBLIND: Record<string, string> = {
+  brilliant: "#22d3ee", // same cyan -- distinct enough in lightness/saturation from the blue ramp below to stay legible
   best: "#1565c0", // deep blue
   excellent: "#4fa8e0", // light blue
   good: "#8ec7e8", // pale blue

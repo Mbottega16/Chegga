@@ -254,6 +254,16 @@ textarea:focus-visible,
   margin: 0 0 32px;
 }
 
+/* mobileTaglines.ts's "What's this?" button + popover -- hidden here,
+   shown below mobile.css's breakpoint instead of the plain paragraph.
+   Desktop keeps the paragraph exactly as before. */
+.tagline-info-btn {
+  display: none;
+}
+.tagline-popover {
+  display: none;
+}
+
 /* Stays visible even while its card is collapsed (collapsibleCards.ts's
    data-card-teaser exception) -- a one-line hook for why to open it. */
 .card-teaser {
@@ -977,6 +987,42 @@ td {
   width: 100%;
   height: 100%;
   pointer-events: none;
+}
+
+/* Candidate trails (playBoard.ts's renderTrails): a pulsing path from a
+   candidate move's origin to its destination, under the arrow layer so
+   the best/played/preview call-outs stay the most prominent thing on the
+   board. The flowing-dash look comes from animating stroke-dashoffset
+   over the dasharray set inline per line in renderTrails(). */
+.play-trail-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.play-trail-line {
+  animation: play-trail-flow-anim 1s linear infinite;
+}
+@keyframes play-trail-flow-anim {
+  to { stroke-dashoffset: -11.6; } /* one full dash+gap cycle (see the two dasharray values in renderTrails) */
+}
+.play-trail-brilliant {
+  filter: drop-shadow(0 0 3px rgba(34, 211, 238, 0.85));
+}
+/* The heatmap's reveal: trails fade in together with the flow already
+   running, instead of snapping onto the board fully formed. */
+.play-trail-layer-in .play-trail-line {
+  animation:
+    play-trail-in-anim 0.45s ease-out both,
+    play-trail-flow-anim 1s linear infinite;
+}
+@keyframes play-trail-in-anim {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .play-trail-line { animation: none; }
 }
 
 /* Warm classic piece treatment, matched to the tan board: ivory/cream for
@@ -1860,9 +1906,15 @@ input[type="range"] {
   25% { box-shadow: 0 0 0 4px rgba(227, 168, 87, 0.6), 0 0 26px rgba(227, 168, 87, 0.5); }
   100% { box-shadow: 0 0 0 0 rgba(227, 168, 87, 0); }
 }
+@keyframes juice-flash-brilliant-anim {
+  0% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0); }
+  25% { box-shadow: 0 0 0 5px rgba(34, 211, 238, 0.65), 0 0 30px rgba(34, 211, 238, 0.55); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0); }
+}
 .juice-flash-good { animation: juice-flash-good-anim 0.65s ease; }
 .juice-flash-bad { animation: juice-flash-bad-anim 0.65s ease; }
 .juice-flash-gold { animation: juice-flash-gold-anim 0.65s ease; }
+.juice-flash-brilliant { animation: juice-flash-brilliant-anim 0.75s ease; }
 
 .juice-float {
   position: fixed;
@@ -2807,7 +2859,44 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
   to { opacity: 1; }
 }
 
+/* Brilliant candidate tiles (candidateMoves.ts's isSacrifice heuristic):
+   a persistent shimmer beyond the plain fade-in, so the tile keeps
+   announcing itself while the position is studied, not just at the
+   instant it appears. The two-class rule below runs the fade-in and the
+   shimmer together (as separate comma-separated animations) instead of
+   one clobbering the other on the reveal frame, since both classes land
+   on the same element then. The one-time confetti + cyan flash on first
+   reveal are playBoard.ts's celebrateBrilliantTints(), not CSS. */
+.play-candidate-tint-brilliant {
+  animation: play-brilliant-shimmer-anim 1.8s ease-in-out infinite;
+}
+.play-candidate-tint-brilliant.play-candidate-tint-in {
+  animation:
+    candidate-tint-in 0.7s ease-out both,
+    play-brilliant-shimmer-anim 1.8s ease-in-out infinite 0.7s;
+}
+@keyframes play-brilliant-shimmer-anim {
+  0%, 100% { filter: brightness(1) saturate(1); }
+  50% { filter: brightness(1.35) saturate(1.5); }
+}
+.play-brilliant-badge {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  font-size: 0.72rem;
+  color: #22d3ee;
+  text-shadow: 0 0 6px rgba(34, 211, 238, 0.9), 0 0 2px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  z-index: 4;
+  animation: play-brilliant-badge-anim 1.8s ease-in-out infinite;
+}
+@keyframes play-brilliant-badge-anim {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.25); opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .play-candidate-tint-in, .play-arrow-layer-in, .tutorial-progress-bar { animation: none; }
+  .play-candidate-tint-brilliant, .play-brilliant-badge { animation: none; }
   .tutorial-progress-bar { width: 100%; }
 }

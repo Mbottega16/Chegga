@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildCandidates, buildOverlay, formatCandidateEval, quickArrows } from "../../src/candidateMoves";
+import { buildCandidates, buildOverlay, formatCandidateEval, isSacrifice, quickArrows } from "../../src/candidateMoves";
 import type { AnalysisLine } from "../../src/engine";
 import { CLASS_COLOR } from "../../src/classificationColors";
 
@@ -36,6 +36,45 @@ describe("buildCandidates", () => {
     const [c] = buildCandidates(START, [line(1, -135, "e2e4")]);
     expect(formatCandidateEval(c)).toBe("-1.4");
   });
+
+  // White queen d5, lone Black king h8, White king g1: Qxg8 gives check
+  // along the 8th rank and the g-file, so the only legal reply is the
+  // forced Kxg8 -- a real queen-for-nothing sacrifice that the engine
+  // (per this fabricated line) still calls the clear best move.
+  const SAC_FEN = "7k/8/8/3Q4/8/8/8/6K1 w - - 0 1";
+
+  it("tags a real sacrifice that's still the engine's top line as brilliant", () => {
+    const [c] = buildCandidates(SAC_FEN, [line(1, 900, "d5g8")]);
+    expect(c.tier).toBe("brilliant");
+  });
+
+  it("does not tag an ordinary best move (nothing to recapture with) as brilliant", () => {
+    // Same queen, a quiet move to a square nothing attacks -- best by
+    // score, but not a sacrifice of anything.
+    const [c] = buildCandidates(SAC_FEN, [line(1, 200, "d5a2")]);
+    expect(c.tier).toBe("best");
+  });
+});
+
+// Exported for the move a human actually played (main.ts's live juice and
+// the review marker), where the tier comes from grading rather than from a
+// candidate list.
+describe("isSacrifice", () => {
+  const SAC_FEN = "7k/8/8/3Q4/8/8/8/6K1 w - - 0 1";
+
+  it("is true for a piece left where a cheaper one takes it", () => {
+    expect(isSacrifice(SAC_FEN, "d5g8")).toBe(true);
+  });
+
+  it("is false for a quiet move nothing can capture", () => {
+    expect(isSacrifice(SAC_FEN, "d5a2")).toBe(false);
+  });
+
+  it("is false for a move that doesn't fit the position", () => {
+    // The caller pairs a cached pre-move FEN with the move played; if the
+    // two ever drift apart it degrades to "not a sacrifice", never throws.
+    expect(isSacrifice(SAC_FEN, "e2e4")).toBe(false);
+  });
 });
 
 describe("buildOverlay", () => {
@@ -66,7 +105,23 @@ describe("buildOverlay", () => {
   });
 
   it("has nothing to draw with no candidates", () => {
-    expect(buildOverlay([], undefined, undefined)).toEqual({ tints: [], arrows: [] });
+    expect(buildOverlay([], undefined, undefined)).toEqual({ tints: [], arrows: [], trails: [] });
+  });
+
+  it("draws a trail per shaded candidate, not deduped by destination", () => {
+    const { trails } = buildOverlay(candidates, undefined, undefined);
+    expect(trails).toEqual([
+      { from: "e2", to: "e4", color: CLASS_COLOR.best, tier: "best" },
+      { from: "d2", to: "d4", color: CLASS_COLOR.best, tier: "best" },
+      { from: "g1", to: "f3", color: CLASS_COLOR.good, tier: "good" },
+    ]);
+  });
+
+  it("shades a brilliant candidate in its own color, and the best-move arrow follows it", () => {
+    const sacCandidates = buildCandidates("7k/8/8/3Q4/8/8/8/6K1 w - - 0 1", [line(1, 900, "d5g8")]);
+    const { tints, arrows } = buildOverlay(sacCandidates, undefined, undefined);
+    expect(tints).toEqual([{ square: "g8", color: CLASS_COLOR.brilliant, opacity: 0.7, tier: "brilliant" }]);
+    expect(arrows[0]).toMatchObject({ kind: "best", color: CLASS_COLOR.brilliant });
   });
 });
 

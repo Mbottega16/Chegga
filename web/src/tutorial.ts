@@ -222,6 +222,12 @@ export function startTutorial(onDone: (result: TutorialResult) => void): void {
       { square: "c4", color: getClassColor("good"), opacity: 0.38 },
       { square: "f3", color: getClassColor("good"), opacity: 0.38 },
     ]);
+    board.setCandidateTrails([
+      { from: "e2", to: "e4", color: getClassColor("best"), tier: "best" },
+      { from: "d2", to: "d4", color: getClassColor("best"), tier: "best" },
+      { from: "c2", to: "c4", color: getClassColor("good"), tier: "good" },
+      { from: "g1", to: "f3", color: getClassColor("good"), tier: "good" },
+    ]);
     captionEl.textContent = "This is the heatmap, shown on the starting position.";
     legendEl.hidden = true;
   }
@@ -463,6 +469,7 @@ export function startTutorial(onDone: (result: TutorialResult) => void): void {
       legendEl.hidden = false;
       board.showArrows([]);
       board.setCandidateTints(tints, { animate: true });
+      board.setCandidateTrails(overlay.trails, { animate: true });
     });
     await runBeat("whyBest", 4, "Let me play it", () => {
       board.showArrows([bestArrow], { animate: true });
@@ -486,6 +493,7 @@ export function startTutorial(onDone: (result: TutorialResult) => void): void {
           board.undoMoves(1);
           board.showArrows([bestArrow]);
           board.setCandidateTints(tints);
+          board.setCandidateTrails(overlay.trails);
           board.setLocked(false);
           shake(boardEl);
           playFailSound();

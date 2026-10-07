@@ -61,8 +61,8 @@ export function shake(el: HTMLElement | null | undefined): void {
   pulseClass(el, "juice-shake", 450);
 }
 
-/** Brief coloured glow. `tone` picks the palette: good / bad / gold. */
-export function flash(el: HTMLElement | null | undefined, tone: "good" | "bad" | "gold" = "good"): void {
+/** Brief coloured glow. `tone` picks the palette: good / bad / gold / brilliant. */
+export function flash(el: HTMLElement | null | undefined, tone: "good" | "bad" | "gold" | "brilliant" = "good"): void {
   pulseClass(el, `juice-flash-${tone}`, 650);
 }
 

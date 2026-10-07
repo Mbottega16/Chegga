@@ -20,7 +20,7 @@
 
 import { Chess, type Square } from "chess.js";
 import { playPieceHtml, pieceImgUrl, PIECE_GLYPH } from "./pieceSet";
-import { effectsEnabled } from "./juice";
+import { effectsEnabled, flash, confetti } from "./juice";
 
 const SELECTED_COLOR = "#3a4a2e";
 const LAST_MOVE_COLOR = "rgba(227, 168, 87, 0.18)";
@@ -28,6 +28,15 @@ const CHECK_COLOR = "rgba(242, 85, 90, 0.35)";
 const DRAG_HOVER_COLOR = "rgba(227, 168, 87, 0.30)";
 const DRAG_START_PX = 4; // movement threshold before a pointerdown counts as a drag, not a tap
 const DEFAULT_ARROW_COLOR = "rgba(227,168,87,0.9)";
+
+// Candidate trails ("where the piece should go"): lower tiers drawn first
+// so best/brilliant read on top wherever paths cross -- the answer to
+// overlap is importance, not draw-order luck. Width and opacity step up
+// the same way so the hierarchy holds even without color (colorblind
+// palette).
+const TRAIL_TIER_ORDER: Record<string, number> = { good: 0, excellent: 1, best: 2, brilliant: 3 };
+const TRAIL_WIDTH: Record<string, number> = { good: 1.6, excellent: 2.1, best: 2.7, brilliant: 3.6 };
+const TRAIL_OPACITY: Record<string, number> = { good: 0.42, excellent: 0.55, best: 0.72, brilliant: 0.95 };
 
 /** One arrow on the board. `color` is any CSS color. */
 export interface BoardArrow {
@@ -38,11 +47,26 @@ export interface BoardArrow {
 }
 
 /** A translucent color wash on one square -- the candidate-move heatmap.
- * `opacity` is 0-1; `color` is any CSS color. */
+ * `opacity` is 0-1; `color` is any CSS color. `tier`, when it's
+ * "brilliant", gets an extra persistent shimmer + a one-time confetti
+ * burst on reveal (see render()/celebrateBrilliantTints()) -- optional
+ * because not every caller (the tutorial's own hand-built preview tints)
+ * has a real tier to give it. */
 export interface SquareTint {
   square: Square;
   color: string;
   opacity: number;
+  tier?: string;
+}
+
+/** "Where the piece should go," not just the tinted destination: a
+ * pulsing path drawn from a candidate's origin square to its
+ * destination. One per shaded candidate -- see setCandidateTrails(). */
+export interface CandidateTrail {
+  from: Square;
+  to: Square;
+  color: string;
+  tier: string;
 }
 
 export type GameStatus =
@@ -81,6 +105,8 @@ export class PlayBoard {
   private tintOrder = new Map<Square, number>();
   private animateTintsOnce = false;
   private animateArrowsOnce = false;
+  private candidateTrails: CandidateTrail[] = [];
+  private animateTrailsOnce = false;
   // Each board draws its own SVG arrowheads; the marker ids must not
   // collide between the several boards on one page.
   private static nextUid = 0;
@@ -269,9 +295,21 @@ export class PlayBoard {
     this.render();
   }
 
+  /** "Where the piece should go" -- a pulsing path per shaded candidate,
+   * from its origin square to its destination, distinct from the tinted
+   * destination squares and from the three call-out arrows
+   * (best/played/preview). Replaces any earlier set; an empty list
+   * clears it. */
+  setCandidateTrails(trails: CandidateTrail[], opts: { animate?: boolean } = {}): void {
+    this.candidateTrails = trails;
+    this.animateTrailsOnce = !!opts.animate;
+    this.render();
+  }
+
   private clearAnnotations(): void {
     this.arrows = [];
     this.candidateTints.clear();
+    this.candidateTrails = [];
   }
 
   setHeatmapMode(mode: HeatmapMode): void {
@@ -583,6 +621,7 @@ export class PlayBoard {
 
         const tint = this.heatmapMode === "control" ? this.controlTint(square) : null;
         const candidate = this.candidateTints.get(square);
+        const isBrilliant = candidate?.tier === "brilliant";
 
         const piece = this.chess.get(square);
         const dot = legalTargets.has(square) ? `<span class="play-legal-dot"></span>` : "";
@@ -596,7 +635,8 @@ export class PlayBoard {
         squaresHtml += `
           <div class="play-square" data-square="${square}" style="background:${bg}">
             ${tint ? `<span class="play-heatmap-tint" style="background:${tint}"></span>` : ""}
-            ${candidate ? `<span class="play-heatmap-tint play-candidate-tint${this.animateTintsOnce ? " play-candidate-tint-in" : ""}" style="background:${candidate.color};opacity:${candidate.opacity};--tint-opacity:${candidate.opacity}${this.animateTintsOnce ? `;animation-delay:${(this.tintOrder.get(square) ?? 0) * 110}ms` : ""}"></span>` : ""}
+            ${candidate ? `<span class="play-heatmap-tint play-candidate-tint${isBrilliant ? " play-candidate-tint-brilliant" : ""}${this.animateTintsOnce ? " play-candidate-tint-in" : ""}" style="background:${candidate.color};opacity:${candidate.opacity};--tint-opacity:${candidate.opacity}${this.animateTintsOnce ? `;animation-delay:${(this.tintOrder.get(square) ?? 0) * 110}ms` : ""}"></span>` : ""}
+            ${isBrilliant ? `<span class="play-brilliant-badge" aria-hidden="true">✦</span>` : ""}
             ${pieceHtml}
             ${dot}
             ${quality ? `<span class="play-quality-ring${quality.hold ? " play-quality-hold" : ""}" style="--quality-color:${quality.color}"></span>` : ""}
@@ -618,11 +658,74 @@ export class PlayBoard {
         </div>`
       : "";
 
+    const trailSvg = this.candidateTrails.length ? this.renderTrails(displayFiles, displayRanks) : "";
     const arrowSvg = this.arrows.length ? this.renderArrows(displayFiles, displayRanks) : "";
 
-    this.container.innerHTML = `<div class="play-board">${squaresHtml}</div>${arrowSvg}${promoOverlay}`;
+    // Trails first, arrows after: the best/played/preview call-outs stay
+    // the most prominent thing on the board wherever they'd overlap with
+    // the broader, quieter trail layer.
+    this.container.innerHTML = `<div class="play-board">${squaresHtml}</div>${trailSvg}${arrowSvg}${promoOverlay}`;
+    if (this.animateTintsOnce) this.celebrateBrilliantTints();
     this.animateTintsOnce = false;
     this.animateArrowsOnce = false;
+    this.animateTrailsOnce = false;
+  }
+
+  /** The heatmap's "unveil" moment: any brilliant candidate gets a confetti
+   * burst + a cyan flash right on its square, on top of the plain fade-in
+   * every shaded tile gets. Only fires on a genuine reveal (setCandidateTints
+   * called with `animate: true`), not a re-render from an unrelated click --
+   * confetti() and flash() already respect the effects-off / reduced-motion
+   * preferences themselves. */
+  private celebrateBrilliantTints(): void {
+    for (const [square, tint] of this.candidateTints) {
+      if (tint.tier !== "brilliant") continue;
+      const el = this.container.querySelector<HTMLElement>(`[data-square="${square}"]`);
+      if (!el) continue;
+      flash(el, "brilliant");
+      confetti(el, 0.7);
+    }
+  }
+
+  /** One pulsing dashed line per shaded candidate, from its origin square
+   * to its destination -- "where the piece should go," not just the
+   * tinted end square. Several trails can start from different pieces and
+   * cross on the board; the "artistic" answer to that overlap is tier
+   * order (see TRAIL_TIER_ORDER/-WIDTH/-OPACITY above): a brilliant or
+   * best path draws on top of, and reads through, a merely-good one
+   * underneath it, rather than whichever happened to be drawn last. */
+  private renderTrails(displayFiles: string[], displayRanks: number[]): string {
+    const squarePx = 100 / 8;
+    const center = (square: Square) => {
+      const file = displayFiles.indexOf(square[0]);
+      const rank = displayRanks.indexOf(parseInt(square[1], 10));
+      return { x: file * squarePx + squarePx / 2, y: rank * squarePx + squarePx / 2 };
+    };
+    const sorted = [...this.candidateTrails].sort(
+      (a, b) => (TRAIL_TIER_ORDER[a.tier] ?? 0) - (TRAIL_TIER_ORDER[b.tier] ?? 0),
+    );
+    const lines = sorted.map((t, i) => {
+      const from = center(t.from);
+      const to = center(t.to);
+      const width = TRAIL_WIDTH[t.tier] ?? 2;
+      const opacity = TRAIL_OPACITY[t.tier] ?? 0.5;
+      // A slightly finer dash for brilliant so its flow reads faster/more
+      // urgent than the calmer lower tiers. Staggered delay so parallel
+      // or crossing trails don't all pulse in obviously locked step.
+      const dasharray = t.tier === "brilliant" ? "3,2.2" : "2.6,3";
+      const delay = (i % 5) * 0.15;
+      return `
+        <line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"
+              class="play-trail-line${t.tier === "brilliant" ? " play-trail-brilliant" : ""}"
+              stroke="${t.color}" stroke-width="${width}" stroke-opacity="${opacity}"
+              stroke-dasharray="${dasharray}" stroke-linecap="round"
+              style="animation-delay:-${delay}s"
+              vector-effect="non-scaling-stroke"/>`;
+    });
+    return `
+      <svg class="play-trail-layer${this.animateTrailsOnce ? " play-trail-layer-in" : ""}" viewBox="0 0 100 100" preserveAspectRatio="none">
+        ${lines.join("")}
+      </svg>`;
   }
 
   private renderArrows(displayFiles: string[], displayRanks: number[]): string {
