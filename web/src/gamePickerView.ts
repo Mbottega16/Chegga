@@ -9,7 +9,7 @@
 
 import type { PickerCard, PickerFilter } from "./gamePicker";
 import type { SavedPuzzleRecord } from "./db";
-import { describeSavedPuzzle } from "./savedPuzzles";
+import { describeSavedPuzzle, isDueForReview, describeSpacedBox } from "./savedPuzzles";
 
 function esc(text: string): string {
   return text.replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -85,12 +85,25 @@ export function renderGamePicker(
 
 export function renderSavedPositions(saved: SavedPuzzleRecord[], solvedIds: Set<string>): string {
   if (!saved.length) return "";
+  const dueCount = saved.filter((p) => isDueForReview(p)).length;
+  const dueSummary = dueCount > 0 ? `<span class="saved-due-summary">🔥 ${dueCount} due for review</span>` : "";
+
   const rows = saved
     .map((p) => {
       const solved = solvedIds.has(p.id);
-      return `<li class="saved-row">
+      const due = isDueForReview(p);
+      const box = p.box ?? 1;
+      const boxLabel = describeSpacedBox(box);
+      const dueTag = due ? `<span class="saved-due-tag">Due today</span>` : "";
+      const boxBadge = `<span class="saved-box-badge box-${box}">${esc(boxLabel)}</span>`;
+
+      return `<li class="saved-row${due ? " is-due" : ""}">
         <div class="saved-text">
-          <span class="saved-title">${p.sideToMove === "white" ? "White" : "Black"} to move${solved ? ` <span class="saved-solved">solved</span>` : ""}</span>
+          <div class="saved-title-row">
+            <span class="saved-title">${p.sideToMove === "white" ? "White" : "Black"} to move${solved ? ` <span class="saved-solved">solved</span>` : ""}</span>
+            ${boxBadge}
+            ${dueTag}
+          </div>
           <span class="saved-meta">${esc(describeSavedPuzzle(p))}${p.openingName ? ` · ${esc(p.openingName)}` : ""}</span>
         </div>
         <button type="button" class="btn-quiet" data-saved-try="${esc(p.id)}">Try it</button>
@@ -98,5 +111,5 @@ export function renderSavedPositions(saved: SavedPuzzleRecord[], solvedIds: Set<
       </li>`;
     })
     .join("");
-  return `<h3 class="picker-subheading">Saved positions <span class="picker-count">${saved.length}</span></h3><ul class="saved-list">${rows}</ul>`;
+  return `<h3 class="picker-subheading">Saved positions <span class="picker-count">${saved.length}</span> ${dueSummary}</h3><ul class="saved-list">${rows}</ul>`;
 }

@@ -212,3 +212,26 @@ describe("renderEvalGraph", () => {
     expect(renderEvalGraph(emptyReview, -1)).toBe("");
   });
 });
+
+describe("clock alerts in review", () => {
+  const CLOCK_PGN = `[Event "Clock Test"]\n[TimeControl "180+0"]\n\n1. e4 {[%clk 0:02:58]} 1... e5 {[%clk 0:02:55]} 2. Nf3 {[%clk 0:00:08]} 2... Nc6 {[%clk 0:02:50]}`;
+  const CLOCK_GRADES = [
+    move({ ply: 1, san: "e4", sideToMove: "white", classification: "best" }),
+    move({ ply: 2, san: "e5", sideToMove: "black", classification: "best" }),
+    move({ ply: 3, san: "Nf3", sideToMove: "white", classification: "blunder", centipawnLoss: 300 }),
+    move({ ply: 4, san: "Nc6", sideToMove: "black", classification: "best" }),
+  ];
+
+  it("extracts clockRemainingSec and timeSpentSec from %clk comments", () => {
+    const review = buildReview(CLOCK_PGN, CLOCK_GRADES, "white");
+    expect(review.steps[0].clockRemainingSec).toBe(178);
+    expect(review.steps[0].timeSpentSec).toBe(2);
+    expect(review.steps[2].clockRemainingSec).toBe(8);
+  });
+
+  it("flags moves under 10s as panic moves", () => {
+    const review = buildReview(CLOCK_PGN, CLOCK_GRADES, "white");
+    expect(review.steps[2].clockAlert).toBe("panic");
+    expect(describeStep(review, 2)).toContain("⏱️ Panic");
+  });
+});

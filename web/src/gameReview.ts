@@ -16,6 +16,7 @@
 import { Chess, type Square } from "chess.js";
 import type { MoveAnalysisRecord } from "./db";
 import { CLASSIFICATION_ORDER } from "./classificationColors";
+import { clocksByFen, parseTimeControlBaseSeconds } from "./clockParser";
 
 export interface ReviewStep {
   ply: number; // 1-based half-move, same convention as MoveAnalysisRecord.ply
@@ -43,6 +44,10 @@ export interface ReviewStep {
   evalBeforeMate?: number;
   evalAfterCp?: number;
   evalAfterMate?: number;
+  // Clock data from PGN %clk annotations, when present.
+  clockRemainingSec?: number;
+  timeSpentSec?: number;
+  clockAlert?: "panic" | "rush";
 }
 
 export interface ReviewGame {
@@ -111,12 +116,43 @@ export function buildReview(
   const startFen = chess.getHeaders().FEN ?? new Chess().fen();
   const byPly = new Map(moves.map((m) => [m.ply, m]));
 
+  const timeControl = chess.getHeaders().TimeControl;
+  const baseSeconds = timeControl ? parseTimeControlBaseSeconds(timeControl) : undefined;
+  const clocks = clocksByFen(chess.getComments());
+
+  let lastWhiteClock = baseSeconds;
+  let lastBlackClock = baseSeconds;
+
   const steps: ReviewStep[] = chess.history({ verbose: true }).map((move, i) => {
     const ply = i + 1;
     const side: "white" | "black" = move.color === "w" ? "white" : "black";
     const record = byPly.get(ply);
     // Guard against records from a different game sharing the ply number.
     const graded = record && record.san === move.san ? record : undefined;
+
+    const clockRemainingSec = clocks.get(move.after);
+    let timeSpentSec: number | undefined;
+    if (clockRemainingSec !== undefined) {
+      const prior = side === "white" ? lastWhiteClock : lastBlackClock;
+      if (prior !== undefined && prior >= clockRemainingSec) {
+        timeSpentSec = Math.round((prior - clockRemainingSec) * 10) / 10;
+      }
+      if (side === "white") lastWhiteClock = clockRemainingSec;
+      else lastBlackClock = clockRemainingSec;
+    }
+
+    let clockAlert: "panic" | "rush" | undefined;
+    if (clockRemainingSec !== undefined && clockRemainingSec <= 10) {
+      clockAlert = "panic";
+    } else if (
+      timeSpentSec !== undefined &&
+      timeSpentSec <= 2.5 &&
+      side === humanColor &&
+      (graded?.classification === "blunder" || graded?.classification === "mistake")
+    ) {
+      clockAlert = "rush";
+    }
+
     return {
       ply,
       moveNumber: Math.floor(i / 2) + 1,
@@ -139,6 +175,9 @@ export function buildReview(
       evalBeforeMate: graded?.evalBeforeMate,
       evalAfterCp: graded?.evalAfterCp,
       evalAfterMate: graded?.evalAfterMate,
+      clockRemainingSec,
+      timeSpentSec,
+      clockAlert,
     };
   });
 
@@ -216,6 +255,13 @@ export function describeStep(review: ReviewGame, index: number): string {
     const tail = showLoss ? `, ${loss}cp lost.` : label.endsWith("!") ? "" : ".";
     parts.push(`— ${label}${tail}`);
     if (shouldShowBetterMove(step)) parts.push(`Engine preferred ${step.bestMoveSan}.`);
+  }
+  if (step.clockAlert === "panic" && step.clockRemainingSec !== undefined) {
+    parts.push(`⏱️ Panic: only ${Math.round(step.clockRemainingSec)}s left!`);
+  } else if (step.clockAlert === "rush" && step.timeSpentSec !== undefined) {
+    parts.push(`⚡ Rushed: played in ${step.timeSpentSec}s.`);
+  } else if (step.timeSpentSec !== undefined) {
+    parts.push(`(${step.timeSpentSec}s)`);
   }
   return parts.join(" ");
 }

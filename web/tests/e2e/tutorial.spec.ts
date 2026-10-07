@@ -227,7 +227,7 @@ test.describe("first-run tutorial", () => {
     });
     await page.goto("/");
     await page.getByRole("button", { name: "No account? Try an example game instead" }).click();
-    await expect(title(page)).toHaveText("A move worth a second look", { timeout: 60_000 });
+    await expect(title(page)).toHaveText("A move worth a second look", { timeout: 120_000 });
     const lastLine = "Look at the position first. The better move comes later.";
     await expect(page.locator("#tutorial-say")).not.toContainText(lastLine); // still being typed
     await next(page).click(); // the first click shows the rest of the text

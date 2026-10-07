@@ -177,7 +177,7 @@ import {
 import { analyzeCandidates, cachedCandidateLines } from "./candidateAnalysis";
 import { buildPickerCards, pickerCounts, PICKER_CARD_LIMIT, type PickerFilter } from "./gamePicker";
 import { renderGamePicker, renderSavedPositions } from "./gamePickerView";
-import { puzzleFromStep } from "./savedPuzzles";
+import { puzzleFromStep, advanceSpacedRepetition } from "./savedPuzzles";
 import { shouldShowTutorial } from "./firstRun";
 import { startTutorial, type TutorialResult } from "./tutorial";
 import { getLastSite, setLastSite, syncLichess, usernameProblem, SITE_NAMES, type Site } from "./siteSync";
@@ -1706,6 +1706,87 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+// Mobile touch swipe gestures for reviewing games: swipe left -> next, swipe right -> prev
+let boardTouchStartX = 0;
+let boardTouchStartY = 0;
+let boardTouchStartTime = 0;
+
+playBoardWrap.addEventListener(
+  "touchstart",
+  (e) => {
+    if (!review || e.touches.length !== 1) return;
+    boardTouchStartX = e.touches[0].clientX;
+    boardTouchStartY = e.touches[0].clientY;
+    boardTouchStartTime = Date.now();
+  },
+  { passive: true },
+);
+
+playBoardWrap.addEventListener(
+  "touchend",
+  (e) => {
+    if (!review || e.changedTouches.length !== 1) return;
+    const deltaX = e.changedTouches[0].clientX - boardTouchStartX;
+    const deltaY = e.changedTouches[0].clientY - boardTouchStartY;
+    const duration = Date.now() - boardTouchStartTime;
+
+    // Horizontal swipe: threshold 40px, predominantly horizontal, within 450ms
+    if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2 && duration < 450) {
+      stopReviewAutoplay();
+      if (deltaX < 0) {
+        showReviewStep(reviewIndex + 1);
+      } else {
+        showReviewStep(reviewIndex - 1);
+      }
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        try { navigator.vibrate(15); } catch {}
+      }
+    }
+  },
+  { passive: true },
+);
+
+// Evaluation flow curve interactive scrubbing
+let isScrubbingEvalGraph = false;
+
+function scrubEvalGraphAt(clientX: number) {
+  if (!review || !review.steps.length) return;
+  const svg = reviewStripHost.querySelector<SVGElement>(".eval-graph-svg");
+  if (!svg) return;
+  const rect = svg.getBoundingClientRect();
+  if (rect.width <= 0) return;
+  const relX = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  const targetStep = Math.min(review.steps.length - 1, Math.round(relX * (review.steps.length - 1)));
+  if (targetStep !== reviewIndex) {
+    stopReviewAutoplay();
+    showReviewStep(targetStep);
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      try { navigator.vibrate(8); } catch {}
+    }
+  }
+}
+
+reviewStripHost.addEventListener("pointerdown", (e) => {
+  const container = (e.target as HTMLElement).closest(".eval-graph-container");
+  if (container && review) {
+    isScrubbingEvalGraph = true;
+    scrubEvalGraphAt(e.clientX);
+  }
+});
+
+window.addEventListener("pointermove", (e) => {
+  if (isScrubbingEvalGraph && review) {
+    scrubEvalGraphAt(e.clientX);
+  }
+});
+
+window.addEventListener("pointerup", () => {
+  isScrubbingEvalGraph = false;
+});
+window.addEventListener("pointercancel", () => {
+  isScrubbingEvalGraph = false;
+});
+
 // --- Review: "before" view, tapping a candidate ---
 
 reviewBeforeCheckbox.addEventListener("change", () => {
@@ -1927,7 +2008,20 @@ function onTryMove(uci: string, san: string) {
     playFailSound();
   }
   refreshAchievements();
-  void refreshSavedPositions(); // the "solved" badge on a saved card
+  const savedRecord = savedRecords.find((r) => r.id === p.id);
+  if (savedRecord) {
+    const updated = advanceSpacedRepetition(savedRecord, correct);
+    void openDb().then(async (db) => {
+      try {
+        await putSavedPuzzles(db, [updated]);
+        await refreshSavedPositions();
+      } finally {
+        db.close();
+      }
+    });
+  } else {
+    void refreshSavedPositions(); // the "solved" badge on a saved card
+  }
   board3dInstance?.setPosition(playBoard.getFen());
 }
 
@@ -4713,3 +4807,16 @@ document.querySelector("#replay-tutorial")?.addEventListener("click", (e) => {
 });
 
 // Deployed via Vercel, connected to GitHub for auto-deploy (2026-08-26).
+
+// Register Service Worker for PWA & offline asset caching in production only; clean up in dev/test
+if (import.meta.env.PROD && typeof navigator !== "undefined" && "serviceWorker" in navigator && window.location.protocol.startsWith("http")) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // Best-effort offline cache registration
+    });
+  });
+} else if (typeof navigator !== "undefined" && "serviceWorker" in navigator && import.meta.env.DEV) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const reg of registrations) reg.unregister();
+  }).catch(() => {});
+}

@@ -1325,6 +1325,28 @@ input[type="range"] {
   margin-top: 1px;
   letter-spacing: -1px;
 }
+.chip-clock-dot {
+  position: absolute;
+  top: -3px;
+  right: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.chip-clock-dot.clock-panic {
+  background: var(--bad);
+  box-shadow: 0 0 4px var(--bad);
+  animation: pulse-panic 1s ease-in-out infinite alternate;
+}
+.chip-clock-dot.clock-rush {
+  background: #f59e0b;
+  box-shadow: 0 0 3px #f59e0b;
+}
+@keyframes pulse-panic {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.4); opacity: 1; }
+}
 .review-caption {
   font-size: 0.86rem;
   color: var(--text);
@@ -2868,6 +2890,46 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
   color: var(--win);
   margin-left: 6px;
 }
+.saved-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.saved-row.is-due {
+  border-left: 3px solid var(--accent);
+}
+.saved-due-summary {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--accent-strong);
+  margin-left: 8px;
+}
+.saved-due-tag {
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--accent-wash);
+  color: var(--accent-strong);
+  border: 1px solid var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.saved-box-badge {
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--panel-hover);
+  border: 1px solid var(--border-strong);
+  color: var(--muted);
+}
+.saved-box-badge.box-1 { color: #f97316; border-color: rgba(249, 115, 22, 0.4); }
+.saved-box-badge.box-2 { color: #eab308; border-color: rgba(234, 179, 8, 0.4); }
+.saved-box-badge.box-3 { color: #06b6d4; border-color: rgba(6, 182, 212, 0.4); }
+.saved-box-badge.box-4 { color: #3b82f6; border-color: rgba(59, 130, 246, 0.4); }
+.saved-box-badge.box-5 { color: #10b981; border-color: rgba(16, 185, 129, 0.5); background: rgba(16, 185, 129, 0.1); }
 
 /* ---- First-run tutorial (tutorial.ts, tutorialView.ts) ----
    A full-screen dialog. z-index 1100 sits above the 3D full-screen view

@@ -1,0 +1,23 @@
+{
+  "name": "Chegga — Chess Review & Training",
+  "short_name": "Chegga",
+  "description": "Client-side browser Chess.com analyzer, game review, and blunder trainer with WASM Stockfish.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0c10",
+  "theme_color": "#0a0c10",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

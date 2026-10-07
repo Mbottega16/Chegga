@@ -136,11 +136,15 @@ export function renderReviewStrip(review: ReviewGame, currentIndex: number): str
     .map((step, i) => {
       const tier = step.classification;
       const label = tier ? (REVIEW_QUALITY_LABELS[tier] ?? tier) : "not graded";
-      const aria = `${moveLabel(step)} — ${step.isHuman ? label : "opponent"}`;
+      let aria = `${moveLabel(step)} — ${step.isHuman ? label : "opponent"}`;
+      if (step.clockAlert === "panic") aria += ` (panic: ${Math.round(step.clockRemainingSec ?? 0)}s left)`;
+      else if (step.clockAlert === "rush") aria += ` (rushed: ${step.timeSpentSec}s)`;
+
       const classes = [
         "review-chip",
         step.isHuman ? "review-chip-mine" : "review-chip-theirs",
         i === currentIndex ? "review-chip-current" : "",
+        step.clockAlert ? `review-chip-${step.clockAlert}` : "",
       ]
         .filter(Boolean)
         .join(" ");
@@ -150,7 +154,10 @@ export function renderReviewStrip(review: ReviewGame, currentIndex: number): str
       // game even when they aren't what the review is grading.
       const color = step.isHuman && tier ? getClassColor(tier) : "var(--muted-dim)";
       const glyph = step.isHuman && tier ? getClassGlyph(tier) : "";
-      return `<button type="button" class="${classes}" data-review-index="${i}" data-tier="${tier ?? ""}" style="--chip-color:${color}" title="${escapeAttr(aria)}" aria-label="${escapeAttr(aria)}">${glyph ? `<span class="chip-pixel-glyph">${glyph}</span>` : ""}</button>`;
+      const clockTag = step.clockAlert
+        ? `<span class="chip-clock-dot clock-${step.clockAlert}"></span>`
+        : "";
+      return `<button type="button" class="${classes}" data-review-index="${i}" data-tier="${tier ?? ""}" style="--chip-color:${color}" title="${escapeAttr(aria)}" aria-label="${escapeAttr(aria)}">${glyph ? `<span class="chip-pixel-glyph">${glyph}</span>` : ""}${clockTag}</button>`;
     })
     .join("");
   return `<div class="review-strip" id="review-strip">${chips}</div>`;

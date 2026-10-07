@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { puzzleFromStep, puzzleIdFor, describeSavedPuzzle } from "../../src/savedPuzzles";
+import {
+  puzzleFromStep,
+  puzzleIdFor,
+  describeSavedPuzzle,
+  isDueForReview,
+  advanceSpacedRepetition,
+  describeSpacedBox,
+} from "../../src/savedPuzzles";
+import type { SavedPuzzleRecord } from "../../src/db";
 import {
   buildReview,
   keyMoments,
@@ -139,5 +147,42 @@ describe("puzzleFromStep", () => {
   it("summarizes a saved puzzle for its card", () => {
     const p = puzzleFromStep(synced, synced.steps[2])!;
     expect(describeSavedPuzzle(p)).toBe("Opening · lost 1.6 pawns with Nf3");
+  });
+});
+
+describe("spaced repetition mastery system", () => {
+  const synced = buildReview(PGN, GRADES, "white", "g-1");
+  const p = puzzleFromStep(synced, synced.steps[2], "Scandinavian")!;
+  const now = 1000000000;
+
+  it("considers fresh saved puzzles due for review immediately", () => {
+    const fresh: SavedPuzzleRecord = { ...p, username: "test", savedAt: now };
+    expect(isDueForReview(fresh, now)).toBe(true);
+  });
+
+  it("advances box on correct answer and schedules interval", () => {
+    const record: SavedPuzzleRecord = { ...p, username: "test", savedAt: now, box: 1 };
+    const advanced = advanceSpacedRepetition(record, true, now);
+    expect(advanced.box).toBe(2);
+    expect(advanced.reviewCount).toBe(1);
+    expect(advanced.lastReviewedAt).toBe(now);
+    expect(advanced.nextDueAt).toBe(now + 3 * 24 * 60 * 60 * 1000);
+    expect(isDueForReview(advanced, now)).toBe(false);
+    expect(isDueForReview(advanced, now + 3 * 24 * 60 * 60 * 1000 + 1)).toBe(true);
+  });
+
+  it("resets back to Box 1 on failed attempt", () => {
+    const record: SavedPuzzleRecord = { ...p, username: "test", savedAt: now, box: 4, reviewCount: 3 };
+    const failed = advanceSpacedRepetition(record, false, now);
+    expect(failed.box).toBe(1);
+    expect(failed.reviewCount).toBe(4);
+    expect(failed.nextDueAt).toBe(now + 1 * 24 * 60 * 60 * 1000);
+  });
+
+  it("caps progression at Box 5 Mastered", () => {
+    const record: SavedPuzzleRecord = { ...p, username: "test", savedAt: now, box: 5 };
+    const advanced = advanceSpacedRepetition(record, true, now);
+    expect(advanced.box).toBe(5);
+    expect(describeSpacedBox(5)).toBe("Mastered 🏆");
   });
 });

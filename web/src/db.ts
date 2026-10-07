@@ -216,6 +216,10 @@ export interface RivalSnapshotRecord {
 export type SavedPuzzleRecord = Puzzle & {
   username: string;
   savedAt: number; // unix ms
+  box?: number; // Leitner box 1..5 (default 1)
+  nextDueAt?: number; // unix ms when review is next due
+  reviewCount?: number;
+  lastReviewedAt?: number;
 };
 
 export interface CuratedPuzzleRecord {
