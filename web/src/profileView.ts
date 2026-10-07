@@ -46,10 +46,28 @@ export function renderProfile(
     .join("");
 
   const openingRows = profile.topOpenings
-    .map(
-      (o) =>
-        `<tr><td>${escapeHtml(o.openingName)}</td><td>${o.games}</td><td><span class="result-win">${o.wins}W</span> <span class="result-loss">${o.losses}L</span> <span class="result-draw">${o.draws}D</span></td></tr>`,
-    )
+    .map((o) => {
+      const winPct = Math.round(o.winRate * 100);
+      const winTone = winPct >= 55 ? "var(--good)" : winPct < 40 ? "var(--blunder)" : "var(--muted)";
+      const leakBadge = o.isLeak
+        ? `<span class="opening-leak-badge" title="Win rate under 40% or high blunder frequency">⚠️ Leak</span>`
+        : "";
+      const cpLossStr = o.avgCentipawnLoss !== undefined ? `${o.avgCentipawnLoss} cp` : "-";
+      return `
+        <tr>
+          <td>
+            <strong>${escapeHtml(o.openingName)}</strong>
+            ${leakBadge}
+          </td>
+          <td>${o.games}</td>
+          <td><span class="result-win">${o.wins}W</span> <span class="result-loss">${o.losses}L</span> <span class="result-draw">${o.draws}D</span></td>
+          <td style="color:${winTone};font-weight:600">${winPct}%</td>
+          <td>${cpLossStr}</td>
+          <td>
+            <button type="button" class="btn-quiet opening-review-jump" data-open-games-opening="${escapeHtml(o.openingName)}" title="Filter synced games to this opening">Review →</button>
+          </td>
+        </tr>`;
+    })
     .join("");
 
   const blunderTagRows = Object.entries(profile.blunderTagCounts)
@@ -119,10 +137,10 @@ export function renderProfile(
     <h3>By color</h3>
     <table><tbody>${colorRows || '<tr><td colspan="2" class="status-line">no data yet</td></tr>'}</tbody></table>
 
-    <h3>Opening repertoire</h3>
+    <h3>Opening repertoire & leak diagnostic</h3>
     <table>
-      <thead><tr><th>Opening</th><th>Games</th><th>Record</th></tr></thead>
-      <tbody>${openingRows || '<tr><td colspan="3" class="status-line">no data yet</td></tr>'}</tbody>
+      <thead><tr><th>Opening</th><th>Games</th><th>Record</th><th>Win rate</th><th>Avg loss</th><th>Action</th></tr></thead>
+      <tbody>${openingRows || '<tr><td colspan="6" class="status-line">no data yet</td></tr>'}</tbody>
     </table>
 
     <h3>Blunder patterns (why, not just how costly)</h3>

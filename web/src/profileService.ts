@@ -18,6 +18,10 @@ export interface OpeningStat {
   wins: number;
   losses: number;
   draws: number;
+  winRate: number; // 0.0 to 1.0
+  avgCentipawnLoss?: number;
+  blunderCount?: number;
+  isLeak?: boolean;
 }
 
 export interface MonthlyStat {
@@ -122,28 +126,76 @@ export function computeProfile(analyzedGames: GameRecord[], ownMoves: MoveAnalys
     timeClassBreakdown[game.timeClass] = (timeClassBreakdown[game.timeClass] ?? 0) + 1;
   }
 
-  const openingStats = new Map<string, OpeningStat>();
+  interface OpeningAccumulator {
+    openingName: string;
+    games: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    cpLossSum: number;
+    movesCount: number;
+    blunderCount: number;
+  }
+
+  const openingAccs = new Map<string, OpeningAccumulator>();
+  const movesByGame = new Map<string, MoveAnalysisRecord[]>();
+  for (const m of ownMoves) {
+    const list = movesByGame.get(m.gameId) ?? [];
+    list.push(m);
+    movesByGame.set(m.gameId, list);
+  }
+
   for (const game of analyzedGames) {
     if (!game.openingName) continue;
-    const stat = openingStats.get(game.openingName) ?? {
-      openingName: game.openingName,
-      games: 0,
-      wins: 0,
-      losses: 0,
-      draws: 0,
-    };
-    stat.games += 1;
-    if (game.userResult === "win") stat.wins += 1;
-    else if (game.userResult === "loss") stat.losses += 1;
-    else stat.draws += 1;
-    openingStats.set(game.openingName, stat);
+    let acc = openingAccs.get(game.openingName);
+    if (!acc) {
+      acc = {
+        openingName: game.openingName,
+        games: 0,
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        cpLossSum: 0,
+        movesCount: 0,
+        blunderCount: 0,
+      };
+      openingAccs.set(game.openingName, acc);
+    }
+    acc.games += 1;
+    if (game.userResult === "win") acc.wins += 1;
+    else if (game.userResult === "loss") acc.losses += 1;
+    else acc.draws += 1;
+
+    const gameMoves = movesByGame.get(game.chessComUuid) ?? [];
+    for (const m of gameMoves) {
+      acc.movesCount += 1;
+      acc.cpLossSum += m.centipawnLoss;
+      if (m.classification === "blunder") acc.blunderCount += 1;
+    }
   }
+
   // Secondary sort key breaks ties deterministically (alphabetical on
   // opening name) -- without one, a tie right at the top-10 cutoff picks a
   // different "10th" opening on every recompute, which reads as a bug once
   // an account has enough games for ties to be common (previously
   // undefined; flagged during Phase 3 verification).
-  const topOpenings = Array.from(openingStats.values())
+  const topOpenings: OpeningStat[] = Array.from(openingAccs.values())
+    .map((acc) => {
+      const winRate = acc.games > 0 ? acc.wins / acc.games : 0;
+      const avgCentipawnLoss = acc.movesCount > 0 ? Math.round(acc.cpLossSum / acc.movesCount) : undefined;
+      const isLeak = acc.games >= 3 && (winRate < 0.4 || (acc.movesCount > 0 && acc.blunderCount / acc.games >= 1.5));
+      return {
+        openingName: acc.openingName,
+        games: acc.games,
+        wins: acc.wins,
+        losses: acc.losses,
+        draws: acc.draws,
+        winRate,
+        avgCentipawnLoss,
+        blunderCount: acc.blunderCount,
+        isLeak,
+      };
+    })
     .sort((a, b) => b.games - a.games || a.openingName.localeCompare(b.openingName))
     .slice(0, 10);
 

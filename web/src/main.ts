@@ -141,7 +141,14 @@ import {
   describeLines,
   type AnalysisResult,
 } from "./analysisPanel";
-import { analyzeFinishedBotGame, renderPostGameReport, buildAnnotatedPgn, downloadTextFile } from "./postGameReport";
+import {
+  analyzeFinishedBotGame,
+  renderPostGameReport,
+  buildAnnotatedPgn,
+  downloadTextFile,
+  buildShareableSummary,
+  copyToClipboard,
+} from "./postGameReport";
 import {
   buildReview,
   describeStep,
@@ -335,6 +342,12 @@ app.innerHTML = `
               <button type="button" id="review-save-key" class="btn-quiet" style="display:none">Save this game's key moments</button>
             </div>
             <div id="review-tally"></div>
+            <div class="review-export-actions">
+              <button type="button" id="review-share-summary-btn" class="btn-quiet" title="Copy shareable summary card">✨ Share summary</button>
+              <button type="button" id="review-copy-pgn-btn" class="btn-quiet" title="Copy annotated PGN to clipboard">📋 Copy PGN</button>
+              <button type="button" id="review-download-pgn-btn" class="btn-quiet" title="Download annotated .pgn file">💾 Download .pgn</button>
+            </div>
+            <p id="review-export-status" class="status-line status-ok" style="display:none"></p>
             <p class="tagline review-hint">Reasons come from the engine's numbers and simple board checks, not from a human coach.</p>
           </div>
           <div id="try-panel" style="display:none">
@@ -353,7 +366,12 @@ app.innerHTML = `
           <div id="post-game-report" style="display:none">
             <h3>Game report</h3>
             <div id="post-game-report-output"></div>
-            <button type="button" id="download-pgn-btn">Download annotated PGN</button>
+            <div class="post-game-actions">
+              <button type="button" id="post-game-share-btn" class="btn-quiet" title="Copy shareable summary card">✨ Share summary</button>
+              <button type="button" id="post-game-copy-pgn-btn" class="btn-quiet" title="Copy annotated PGN to clipboard">📋 Copy PGN</button>
+              <button type="button" id="download-pgn-btn" class="btn-quiet" title="Download annotated .pgn file">💾 Download .pgn</button>
+            </div>
+            <p id="post-game-export-status" class="status-line status-ok" style="display:none"></p>
           </div>
         </div>
       </div>
@@ -936,6 +954,9 @@ const postGameReportSection = document.querySelector<HTMLDivElement>("#post-game
 const playSidebar = postGameReportSection.parentElement!;
 const postGameReportOutput = document.querySelector<HTMLDivElement>("#post-game-report-output")!;
 const downloadPgnBtn = document.querySelector<HTMLButtonElement>("#download-pgn-btn")!;
+const postGameShareBtn = document.querySelector<HTMLButtonElement>("#post-game-share-btn")!;
+const postGameCopyPgnBtn = document.querySelector<HTMLButtonElement>("#post-game-copy-pgn-btn")!;
+const postGameExportStatus = document.querySelector<HTMLParagraphElement>("#post-game-export-status")!;
 
 let botEngine: Engine | null = null;
 let sanHistory: string[] = [];
@@ -1295,6 +1316,10 @@ const reviewCandidatesHost = document.querySelector<HTMLDivElement>("#review-can
 const reviewTryBtn = document.querySelector<HTMLButtonElement>("#review-try")!;
 const reviewSaveBtn = document.querySelector<HTMLButtonElement>("#review-save")!;
 const reviewSaveKeyBtn = document.querySelector<HTMLButtonElement>("#review-save-key")!;
+const reviewShareSummaryBtn = document.querySelector<HTMLButtonElement>("#review-share-summary-btn")!;
+const reviewCopyPgnBtn = document.querySelector<HTMLButtonElement>("#review-copy-pgn-btn")!;
+const reviewDownloadPgnBtn = document.querySelector<HTMLButtonElement>("#review-download-pgn-btn")!;
+const reviewExportStatus = document.querySelector<HTMLParagraphElement>("#review-export-status")!;
 const tryPanel = document.querySelector<HTMLDivElement>("#try-panel")!;
 const tryStatus = document.querySelector<HTMLParagraphElement>("#try-status")!;
 const tryAgainBtn = document.querySelector<HTMLButtonElement>("#try-again")!;
@@ -1617,6 +1642,48 @@ reviewCandidatesHost.addEventListener("click", (e) => {
   const uci = chip.dataset.candidate!;
   reviewPreviewUci = reviewPreviewUci === uci ? null : uci;
   renderCandidates(step);
+});
+
+reviewShareSummaryBtn.addEventListener("click", async () => {
+  if (!review) return;
+  const summary = buildShareableSummary(review, { opening: reviewOpening });
+  const ok = await copyToClipboard(summary);
+  if (ok) {
+    floatText(reviewShareSummaryBtn, "Copied! ✨", "gold");
+    reviewExportStatus.textContent = "Copied game review summary to clipboard!";
+    reviewExportStatus.style.display = "";
+    window.setTimeout(() => {
+      reviewExportStatus.style.display = "none";
+    }, 3500);
+  }
+});
+
+reviewCopyPgnBtn.addEventListener("click", async () => {
+  if (!review) return;
+  const annotated = buildAnnotatedPgn(review.pgn, review.steps, review.humanColor);
+  const ok = await copyToClipboard(annotated);
+  if (ok) {
+    floatText(reviewCopyPgnBtn, "Copied PGN! 📋", "good");
+    reviewExportStatus.textContent = "Copied annotated PGN to clipboard!";
+    reviewExportStatus.style.display = "";
+    window.setTimeout(() => {
+      reviewExportStatus.style.display = "none";
+    }, 3500);
+  }
+});
+
+reviewDownloadPgnBtn.addEventListener("click", () => {
+  if (!review) return;
+  const annotated = buildAnnotatedPgn(review.pgn, review.steps, review.humanColor);
+  const filename = review.gameId ? `chegga-game-${review.gameId}.pgn` : `chegga-game-${Date.now()}.pgn`;
+  const ok = downloadTextFile(filename, annotated);
+  if (ok) {
+    floatText(reviewDownloadPgnBtn, "Downloaded! 💾", "good");
+  } else {
+    reviewExportStatus.textContent = "Download blocked by browser. PGN copied to clipboard instead.";
+    reviewExportStatus.style.display = "";
+    void copyToClipboard(annotated);
+  }
 });
 
 // --- Saved positions (practice later) and "try this position" ---
@@ -1971,6 +2038,35 @@ downloadPgnBtn.addEventListener("click", () => {
     // Downloads are blocked in some embedded browser contexts -- fall
     // back to showing the PGN as selectable text instead of failing silently.
     postGameReportOutput.innerHTML += `<pre class="log">${lastAnnotatedPgn.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c]!)}</pre>`;
+  } else {
+    floatText(downloadPgnBtn, "Downloaded! 💾", "good");
+  }
+});
+
+postGameShareBtn.addEventListener("click", async () => {
+  if (!review) return;
+  const summary = buildShareableSummary(review, { opening: reviewOpening });
+  const ok = await copyToClipboard(summary);
+  if (ok) {
+    floatText(postGameShareBtn, "Copied! ✨", "gold");
+    postGameExportStatus.textContent = "Copied game review summary to clipboard!";
+    postGameExportStatus.style.display = "";
+    window.setTimeout(() => {
+      postGameExportStatus.style.display = "none";
+    }, 3500);
+  }
+});
+
+postGameCopyPgnBtn.addEventListener("click", async () => {
+  if (!lastAnnotatedPgn) return;
+  const ok = await copyToClipboard(lastAnnotatedPgn);
+  if (ok) {
+    floatText(postGameCopyPgnBtn, "Copied PGN! 📋", "good");
+    postGameExportStatus.textContent = "Copied annotated PGN to clipboard!";
+    postGameExportStatus.style.display = "";
+    window.setTimeout(() => {
+      postGameExportStatus.style.display = "none";
+    }, 3500);
   }
 });
 
@@ -3455,6 +3551,14 @@ insightsOutput.addEventListener("click", (e) => {
   const worstBtn = target.closest<HTMLButtonElement>("[data-review-worst-game]");
   if (worstBtn) {
     void openPickedGame(worstBtn.dataset.reviewWorstGame!, Number(worstBtn.dataset.reviewWorstPly));
+  }
+});
+
+profileOutput.addEventListener("click", (e) => {
+  const target = e.target as HTMLElement;
+  const gamesBtn = target.closest<HTMLButtonElement>("[data-open-games-opening]");
+  if (gamesBtn?.dataset.openGamesOpening) {
+    jumpToGamesInOpening(gamesBtn.dataset.openGamesOpening);
   }
 });
 

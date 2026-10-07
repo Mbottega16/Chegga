@@ -441,10 +441,19 @@ body {
     flex-basis: 100%;
   }
   .review-practice button,
+  .review-export-actions button,
+  .post-game-actions button,
   #try-panel .review-buttons button,
   .candidate-chip,
   .saved-row button {
     min-height: 44px;
+  }
+  .eval-graph-container {
+    margin-bottom: 8px;
+  }
+  .repertoire-table td {
+    padding: 6px 4px;
+    font-size: 0.85rem;
   }
 }
 
