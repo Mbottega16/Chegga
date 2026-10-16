@@ -1660,7 +1660,7 @@ reviewStripHost.addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => {
   if (!review) return;
   const target = e.target as HTMLElement | null;
-  if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+  if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable || target.closest(".play-board") || target.closest("[data-square]"))) return;
 
   if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
     e.preventDefault();
@@ -3352,7 +3352,7 @@ depthNextBtn.addEventListener("click", () => {
 document.addEventListener("keydown", (e) => {
   if (depthSection.style.display === "none") return;
   const target = e.target as HTMLElement | null;
-  if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+  if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.closest(".play-board") || target.closest("[data-square]"))) return;
 
   if (e.key === "ArrowLeft") {
     e.preventDefault();

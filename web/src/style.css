@@ -1011,6 +1011,10 @@ td {
   overflow-y: auto;
 }
 
+.play-row {
+  display: contents;
+}
+
 .play-square {
   position: relative;
   display: flex;
@@ -1018,6 +1022,21 @@ td {
   justify-content: center;
   cursor: pointer;
   touch-action: none; /* so dragging a piece on touch doesn't also scroll the page */
+}
+
+/* WCAG 2.1 AA keyboard focus indicators */
+.play-square:focus,
+.play-square:focus-visible,
+.play-square.keyboard-focused {
+  outline: 3px solid var(--accent, #e3a857);
+  outline-offset: -3px;
+  z-index: 10;
+  box-shadow: inset 0 0 0 1.5px #ffffff, 0 0 10px rgba(227, 168, 87, 0.7);
+}
+
+.play-square:focus:not(:focus-visible):not(.keyboard-focused) {
+  outline: none;
+  box-shadow: none;
 }
 
 .play-heatmap-tint {
@@ -1142,6 +1161,13 @@ td {
 }
 .play-promo-btn:hover {
   background: var(--panel-hover);
+}
+.play-promo-btn:focus,
+.play-promo-btn:focus-visible {
+  outline: 3px solid var(--accent, #e3a857);
+  outline-offset: -2px;
+  z-index: 2;
+  box-shadow: 0 0 8px rgba(227, 168, 87, 0.7);
 }
 
 .play-controls {

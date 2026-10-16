@@ -29,6 +29,15 @@ const DRAG_HOVER_COLOR = "rgba(227, 168, 87, 0.30)";
 const DRAG_START_PX = 4; // movement threshold before a pointerdown counts as a drag, not a tap
 const DEFAULT_ARROW_COLOR = "rgba(227,168,87,0.9)";
 
+const PIECE_NAMES: Record<string, string> = {
+  p: "pawn",
+  n: "knight",
+  b: "bishop",
+  r: "rook",
+  q: "queen",
+  k: "king",
+};
+
 // Candidate trails ("where the piece should go"): lower tiers drawn first
 // so best/brilliant read on top wherever paths cross -- the answer to
 // overlap is importance, not draw-order luck. Width and opacity step up
@@ -129,10 +138,16 @@ export class PlayBoard {
   // cursor.
   private suppressNextClick = false;
 
+  private focusedSquare: Square | null = null;
+  private isKeyboardActive = false;
+
   private handlePointerDown = (e: PointerEvent) => this.onPointerDown(e);
   private handlePointerMove = (e: PointerEvent) => this.onPointerMove(e);
   private handlePointerUp = (e: PointerEvent) => this.onPointerUp(e);
   private handleContainerClick = (e: MouseEvent) => this.onContainerClick(e);
+  private handleKeyDown = (e: KeyboardEvent) => this.onKeyDown(e);
+  private handleFocusIn = (e: FocusEvent) => this.onFocusIn(e);
+  private handleFocusOut = (e: FocusEvent) => this.onFocusOut(e);
 
   constructor(container: HTMLElement, onPlayerMove: (uci: string, san: string) => void) {
     this.container = container;
@@ -141,6 +156,9 @@ export class PlayBoard {
     // Promotion-picker buttons and the "tap, no drag" path are plain
     // clicks -- pointerdown/up already handle drags, this catches taps.
     this.container.addEventListener("click", this.handleContainerClick);
+    this.container.addEventListener("keydown", this.handleKeyDown);
+    this.container.addEventListener("focusin", this.handleFocusIn);
+    this.container.addEventListener("focusout", this.handleFocusOut);
     this.render();
   }
 
@@ -158,6 +176,8 @@ export class PlayBoard {
     this.lastMove = null;
     this.pendingPromotion = null;
     this.drag = null;
+    this.focusedSquare = orientation === "white" ? "e2" : "e7";
+    this.isKeyboardActive = false;
     this.clearAnnotations();
     this.clearQualityFlash();
     const sideToMove = this.chess.turn() === "w" ? "white" : "black";
@@ -181,6 +201,8 @@ export class PlayBoard {
     const history = this.chess.history({ verbose: true });
     const last = history[history.length - 1];
     this.lastMove = last ? { from: last.from, to: last.to } : null;
+    this.focusedSquare = last ? last.to : (orientation === "white" ? "e2" : "e7");
+    this.isKeyboardActive = false;
     const sideToMove = this.chess.turn() === "w" ? "white" : "black";
     this.locked = sideToMove !== orientation;
     this.render();
@@ -201,6 +223,7 @@ export class PlayBoard {
     this.clearAnnotations();
     this.clearQualityFlash();
     this.lastMove = lastMove ?? null;
+    this.focusedSquare = lastMove ? lastMove.to : (this.focusedSquare ?? (this.orientation === "white" ? "e2" : "e7"));
     this.locked = true;
     this.render();
   }
@@ -238,9 +261,12 @@ export class PlayBoard {
     const from = uci.slice(0, 2) as Square;
     const to = uci.slice(2, 4) as Square;
     const promotion = uci.slice(4) || undefined;
-    this.chess.move({ from, to, promotion });
+    const move = this.chess.move({ from, to, promotion });
     this.lastMove = { from, to };
     this.render();
+    if (move) {
+      this.announceMove(move);
+    }
   }
 
   /** Undoes the last `count` half-moves (default 2: the human's move and
@@ -420,6 +446,9 @@ export class PlayBoard {
     if (!squareEl) return;
     const square = squareEl.dataset.square as Square;
 
+    this.isKeyboardActive = false;
+    this.focusedSquare = square;
+
     const piece = this.chess.get(square);
     if (!piece || piece.color !== this.chess.turn()) return; // only the mover's own pieces are draggable
 
@@ -537,6 +566,8 @@ export class PlayBoard {
 
     const squareEl = (e.target as HTMLElement).closest<HTMLElement>("[data-square]");
     if (!squareEl) return;
+    this.isKeyboardActive = false;
+    this.focusedSquare = squareEl.dataset.square as Square;
     this.handleTap(squareEl.dataset.square as Square);
   }
 
@@ -578,6 +609,9 @@ export class PlayBoard {
       // so the piece visibly returns instead of just staying selected.
       this.selected = null;
       this.render();
+      if (this.isKeyboardActive) {
+        this.focusSquare(from);
+      }
       return;
     }
     if (move.promotion) {
@@ -600,8 +634,15 @@ export class PlayBoard {
     const move = this.chess.move({ from, to, promotion });
     this.selected = null;
     this.lastMove = { from, to };
+    this.focusedSquare = to;
     this.clearAnnotations(); // last position's arrows and tints don't apply to the new position
     this.render();
+    if (this.isKeyboardActive) {
+      this.focusSquare(to);
+    }
+    if (move) {
+      this.announceMove(move);
+    }
     this.onPlayerMove(from + to + (promotion ?? ""), move.san);
   }
 
@@ -626,6 +667,10 @@ export class PlayBoard {
     const displayFiles = this.orientation === "white" ? files : [...files].reverse();
     const displayRanks = this.orientation === "white" ? ranks : [...ranks].reverse();
 
+    if (!this.focusedSquare) {
+      this.focusedSquare = this.orientation === "white" ? "e2" : "e7";
+    }
+
     const legalTargets = this.selected
       ? new Set(this.chess.moves({ square: this.selected, verbose: true }).map((m) => m.to))
       : new Set<string>();
@@ -633,31 +678,58 @@ export class PlayBoard {
     const kingInCheckSquare = this.chess.inCheck() ? this.findKingSquare(this.chess.turn()) : null;
     const isDraggingFrom = this.drag?.moved ? this.drag.fromSquare : null;
 
-    let squaresHtml = "";
-    for (const rank of displayRanks) {
-      for (const file of displayFiles) {
+    let rowsHtml = "";
+    for (let rIdx = 0; rIdx < displayRanks.length; rIdx++) {
+      const rank = displayRanks[rIdx];
+      let squaresHtml = "";
+      for (let fIdx = 0; fIdx < displayFiles.length; fIdx++) {
+        const file = displayFiles[fIdx];
         const square = `${file}${rank}` as Square;
         const isLight = (files.indexOf(file) + rank) % 2 === 1;
         let bg = isLight ? "var(--board-square-light)" : "var(--board-square-dark)";
-        if (this.selected === square) bg = SELECTED_COLOR;
-        else if (this.lastMove && (this.lastMove.from === square || this.lastMove.to === square)) bg = LAST_MOVE_COLOR;
-        if (kingInCheckSquare === square) bg = CHECK_COLOR;
+        const isSelected = this.selected === square;
+        const isLastMove = !!(this.lastMove && (this.lastMove.from === square || this.lastMove.to === square));
+        const isKingInCheck = kingInCheckSquare === square;
+
+        if (isSelected) bg = SELECTED_COLOR;
+        else if (isLastMove) bg = LAST_MOVE_COLOR;
+        if (isKingInCheck) bg = CHECK_COLOR;
 
         const tint = this.heatmapMode === "control" ? this.controlTint(square) : null;
         const candidate = this.candidateTints.get(square);
         const isBrilliant = candidate?.tier === "brilliant";
 
         const piece = this.chess.get(square);
-        const dot = legalTargets.has(square) ? `<span class="play-legal-dot"></span>` : "";
-        // The piece being actively dragged is dimmed in its origin square
-        // (not hidden outright) so the square still reads clearly while
-        // the ghost follows the cursor -- the same convention chess.com
-        // uses rather than leaving a hard gap on the board.
+        const isLegal = legalTargets.has(square);
+        const dot = isLegal ? `<span class="play-legal-dot"></span>` : "";
         const pieceHtml = piece ? playPieceHtml(piece.color, piece.type, { dim: square === isDraggingFrom }) : "";
         const quality = this.qualityFlash?.square === square ? this.qualityFlash : null;
 
+        const ariaLabel = this.getSquareAriaLabel(
+          square,
+          piece,
+          isSelected,
+          isLegal,
+          isKingInCheck,
+          candidate?.tier,
+          isLastMove,
+        );
+
+        const isFocused = this.focusedSquare === square;
+        const kbdClass = isFocused && this.isKeyboardActive ? " keyboard-focused" : "";
+
         squaresHtml += `
-          <div class="play-square" data-square="${square}" style="background:${bg}">
+          <div class="play-square${kbdClass}"
+               role="gridcell"
+               data-square="${square}"
+               data-row="${rank}"
+               data-col="${file}"
+               aria-rowindex="${rIdx + 1}"
+               aria-colindex="${fIdx + 1}"
+               aria-selected="${isSelected ? "true" : "false"}"
+               aria-label="${ariaLabel}"
+               tabindex="${isFocused ? 0 : -1}"
+               style="background:${bg}">
             ${tint ? `<span class="play-heatmap-tint" style="background:${tint}"></span>` : ""}
             ${candidate ? `<span class="play-heatmap-tint play-candidate-tint${isBrilliant ? " play-candidate-tint-brilliant" : ""}${this.animateTintsOnce ? " play-candidate-tint-in" : ""}" style="background:${candidate.color};opacity:${candidate.opacity};--tint-opacity:${candidate.opacity}${this.animateTintsOnce ? `;animation-delay:${(this.tintOrder.get(square) ?? 0) * 110}ms` : ""}"></span>` : ""}
             ${isBrilliant ? `<span class="play-brilliant-badge" aria-hidden="true">✦</span>` : ""}
@@ -671,15 +743,16 @@ export class PlayBoard {
               </div>` : ""}
           </div>`;
       }
+      rowsHtml += `<div role="row" class="play-row" style="display:contents">${squaresHtml}</div>`;
     }
 
     const promoOverlay = this.pendingPromotion
-      ? `<div class="play-promo-overlay">
-          <div class="play-promo-picker">
+      ? `<div class="play-promo-overlay" role="dialog" aria-modal="true" aria-label="Pawn promotion">
+          <div class="play-promo-picker" role="group" aria-label="Choose promotion piece">
             ${["q", "r", "b", "n"]
               .map(
                 (p) =>
-                  `<button type="button" data-promo="${p}" class="play-promo-btn">${PIECE_GLYPH[this.chess.turn() + p]}</button>`,
+                  `<button type="button" data-promo="${p}" class="play-promo-btn" aria-label="Promote to ${PIECE_NAMES[p]}">${PIECE_GLYPH[this.chess.turn() + p]}</button>`,
               )
               .join("")}
           </div>
@@ -690,13 +763,288 @@ export class PlayBoard {
     const moveFlowSvg = this.moveFlowTrail ? this.renderMoveFlow(displayFiles, displayRanks) : "";
     const arrowSvg = this.arrows.length ? this.renderArrows(displayFiles, displayRanks) : "";
 
+    const hadFocus = typeof document !== "undefined" && document.activeElement && this.container.contains(document.activeElement);
+    const wasSquareFocused = hadFocus && !!(document.activeElement as HTMLElement)?.dataset?.square;
+
     // Trails first, then active move flow, arrows after: the call-outs
     // stay the most prominent thing on the board wherever they overlap.
-    this.container.innerHTML = `<div class="play-board">${squaresHtml}</div>${trailSvg}${moveFlowSvg}${arrowSvg}${promoOverlay}`;
+    this.container.innerHTML = `<div class="play-board" role="grid" aria-label="Chessboard" aria-rowcount="8" aria-colcount="8">${rowsHtml}</div>${trailSvg}${moveFlowSvg}${arrowSvg}${promoOverlay}<div class="play-board-live sr-only" aria-live="polite" aria-atomic="true"></div>`;
+
+    if (this.pendingPromotion) {
+      const firstPromo = this.container.querySelector<HTMLButtonElement>(".play-promo-btn");
+      if (firstPromo) {
+        setTimeout(() => firstPromo.focus(), 0);
+      }
+    } else if (wasSquareFocused || (hadFocus && this.isKeyboardActive)) {
+      if (this.focusedSquare) {
+        this.focusSquare(this.focusedSquare);
+      }
+    }
+
     if (this.animateTintsOnce) this.celebrateBrilliantTints();
     this.animateTintsOnce = false;
     this.animateArrowsOnce = false;
     this.animateTrailsOnce = false;
+  }
+
+  private announceMove(move: { color: string; san: string }): void {
+    const side = move.color === "w" ? "White" : "Black";
+    let text = `${side} played ${move.san}`;
+    if (this.chess.isCheckmate()) {
+      const winner = this.chess.turn() === "w" ? "Black" : "White";
+      text += `, checkmate, ${winner} wins`;
+    } else if (this.chess.inCheck()) {
+      text += ", check";
+    }
+    this.liveAnnounce(text);
+  }
+
+  private liveAnnounce(text: string): void {
+    const liveEl = this.container.querySelector<HTMLElement>(".play-board-live");
+    if (liveEl) {
+      liveEl.textContent = "";
+      setTimeout(() => {
+        liveEl.textContent = text;
+      }, 50);
+    }
+  }
+
+  private onKeyDown(e: KeyboardEvent): void {
+    if (this.pendingPromotion) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        const from = this.pendingPromotion.from;
+        this.pendingPromotion = null;
+        this.render();
+        this.focusSquare(from);
+        return;
+      }
+      const promoButtons = Array.from(this.container.querySelectorAll<HTMLButtonElement>(".play-promo-btn"));
+      if (!promoButtons.length) return;
+      const currentIndex = promoButtons.indexOf(document.activeElement as HTMLButtonElement);
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        e.stopPropagation();
+        const next = (currentIndex + 1) % promoButtons.length;
+        promoButtons[next]?.focus();
+        return;
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        e.stopPropagation();
+        const prev = (currentIndex - 1 + promoButtons.length) % promoButtons.length;
+        promoButtons[prev]?.focus();
+        return;
+      }
+      return;
+    }
+
+    const target = (e.target as HTMLElement).closest<HTMLElement>("[data-square]");
+    if (!target) return;
+    const currentSquare = (target.dataset.square as Square) || this.focusedSquare;
+    if (!currentSquare) return;
+
+    const files = "abcdefgh".split("");
+    const curFile = currentSquare[0];
+    const curRank = parseInt(currentSquare[1], 10);
+    const fileIdx = files.indexOf(curFile);
+    const isWhite = this.orientation === "white";
+
+    let nextSquare: Square | null = null;
+
+    switch (e.key) {
+      case "ArrowUp": {
+        e.preventDefault();
+        e.stopPropagation();
+        const nextRank = isWhite ? curRank + 1 : curRank - 1;
+        if (nextRank >= 1 && nextRank <= 8) {
+          nextSquare = `${curFile}${nextRank}` as Square;
+        }
+        break;
+      }
+      case "ArrowDown": {
+        e.preventDefault();
+        e.stopPropagation();
+        const nextRank = isWhite ? curRank - 1 : curRank + 1;
+        if (nextRank >= 1 && nextRank <= 8) {
+          nextSquare = `${curFile}${nextRank}` as Square;
+        }
+        break;
+      }
+      case "ArrowLeft": {
+        e.preventDefault();
+        e.stopPropagation();
+        const nextFileIdx = isWhite ? fileIdx - 1 : fileIdx + 1;
+        if (nextFileIdx >= 0 && nextFileIdx < 8) {
+          nextSquare = `${files[nextFileIdx]}${curRank}` as Square;
+        }
+        break;
+      }
+      case "ArrowRight": {
+        e.preventDefault();
+        e.stopPropagation();
+        const nextFileIdx = isWhite ? fileIdx + 1 : fileIdx - 1;
+        if (nextFileIdx >= 0 && nextFileIdx < 8) {
+          nextSquare = `${files[nextFileIdx]}${curRank}` as Square;
+        }
+        break;
+      }
+      case "Home": {
+        e.preventDefault();
+        e.stopPropagation();
+        const firstFile = isWhite ? "a" : "h";
+        nextSquare = `${firstFile}${curRank}` as Square;
+        break;
+      }
+      case "End": {
+        e.preventDefault();
+        e.stopPropagation();
+        const lastFile = isWhite ? "h" : "a";
+        nextSquare = `${lastFile}${curRank}` as Square;
+        break;
+      }
+      case "PageUp": {
+        e.preventDefault();
+        e.stopPropagation();
+        const topRank = isWhite ? 8 : 1;
+        const leftFile = isWhite ? "a" : "h";
+        nextSquare = `${leftFile}${topRank}` as Square;
+        break;
+      }
+      case "PageDown": {
+        e.preventDefault();
+        e.stopPropagation();
+        const bottomRank = isWhite ? 1 : 8;
+        const rightFile = isWhite ? "h" : "a";
+        nextSquare = `${rightFile}${bottomRank}` as Square;
+        break;
+      }
+      case "Enter":
+      case " ": {
+        e.preventDefault();
+        e.stopPropagation();
+        this.isKeyboardActive = true;
+        if (this.locked) return;
+        this.handleTap(currentSquare);
+        if (this.focusedSquare) {
+          this.focusSquare(this.focusedSquare);
+        }
+        return;
+      }
+      case "Escape": {
+        if (this.selected) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.selected = null;
+          this.render();
+          if (this.focusedSquare) {
+            this.focusSquare(this.focusedSquare);
+          }
+          return;
+        }
+        break;
+      }
+    }
+
+    if (nextSquare && nextSquare !== currentSquare) {
+      this.isKeyboardActive = true;
+      this.moveFocusTo(nextSquare);
+    }
+  }
+
+  private moveFocusTo(square: Square): void {
+    this.focusedSquare = square;
+    const oldFocused = this.container.querySelector<HTMLElement>('.play-square[tabindex="0"]');
+    if (oldFocused) {
+      oldFocused.tabIndex = -1;
+      oldFocused.classList.remove("keyboard-focused");
+    }
+    const newSquareEl = this.container.querySelector<HTMLElement>(`[data-square="${square}"]`);
+    if (newSquareEl) {
+      newSquareEl.tabIndex = 0;
+      newSquareEl.classList.add("keyboard-focused");
+      newSquareEl.focus();
+    }
+  }
+
+  private focusSquare(square: Square): void {
+    const el = this.container.querySelector<HTMLElement>(`[data-square="${square}"]`);
+    if (el) {
+      el.tabIndex = 0;
+      if (this.isKeyboardActive) el.classList.add("keyboard-focused");
+      el.focus();
+    }
+  }
+
+  private onFocusIn(e: FocusEvent): void {
+    const target = (e.target as HTMLElement).closest<HTMLElement>("[data-square]");
+    if (target) {
+      const square = target.dataset.square as Square;
+      if (square) {
+        this.focusedSquare = square;
+      }
+    }
+  }
+
+  private onFocusOut(e: FocusEvent): void {
+    if (!e.relatedTarget || !this.container.contains(e.relatedTarget as Node)) {
+      this.isKeyboardActive = false;
+      const focusedEl = this.container.querySelector<HTMLElement>(".play-square.keyboard-focused");
+      if (focusedEl) {
+        focusedEl.classList.remove("keyboard-focused");
+      }
+    }
+  }
+
+  private getSquareAriaLabel(
+    square: Square,
+    piece: { color: "w" | "b"; type: string } | null | undefined,
+    isSelected: boolean,
+    isLegalTarget: boolean,
+    isKingInCheck: boolean,
+    candidateTier?: string,
+    isLastMove?: boolean,
+  ): string {
+    let label = square;
+    if (piece) {
+      const color = piece.color === "w" ? "white" : "black";
+      const name = PIECE_NAMES[piece.type] ?? piece.type;
+      label += `: ${color} ${name}`;
+    }
+
+    if (isSelected) {
+      label += ", selected";
+    } else if (isLegalTarget) {
+      label += piece ? ", capture" : ", legal move";
+    }
+
+    if (isKingInCheck) {
+      label += ", check";
+    }
+
+    if (candidateTier) {
+      label += `, ${candidateTier} move`;
+    }
+
+    if (isLastMove) {
+      label += ", last move";
+    }
+
+    return label;
+  }
+
+  dispose(): void {
+    this.container.removeEventListener("pointerdown", this.handlePointerDown);
+    this.container.removeEventListener("click", this.handleContainerClick);
+    this.container.removeEventListener("keydown", this.handleKeyDown);
+    this.container.removeEventListener("focusin", this.handleFocusIn);
+    this.container.removeEventListener("focusout", this.handleFocusOut);
+    window.removeEventListener("pointermove", this.handlePointerMove);
+    window.removeEventListener("pointerup", this.handlePointerUp);
+    if (this.qualityFlashTimeout) {
+      clearTimeout(this.qualityFlashTimeout);
+      this.qualityFlashTimeout = null;
+    }
   }
 
   /** A glowing, flowing dashed ribbon between a move's origin and destination square. */

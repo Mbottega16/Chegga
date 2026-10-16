@@ -1,0 +1,8 @@
+{
+  "name": "chegga",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix web run build",
+    "test": "npm --prefix web run test"
+  }
+}
