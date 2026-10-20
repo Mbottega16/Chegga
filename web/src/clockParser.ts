@@ -15,6 +15,22 @@ export function parseTimeControlBaseSeconds(timeControl: string): number | undef
   return Number.isFinite(n) ? n : undefined;
 }
 
+/** "180+2" -> 2. "600" -> 0. "1/259200" or nothing usable -> 0. */
+export function parseTimeControlIncrementSeconds(timeControl: string): number {
+  if (!timeControl || timeControl.includes("/")) return 0;
+  const increment = parseInt(timeControl.split("+")[1] ?? "", 10);
+  return Number.isFinite(increment) && increment > 0 ? increment : 0;
+}
+
+/** Seconds a move took: the mover's clock before it, minus the clock after
+ * it, plus the increment the move earned. Undefined when the clocks cannot
+ * be right (the clock after is higher than before plus the increment). */
+export function timeSpentSeconds(priorClock: number, clockAfter: number, incrementSec = 0): number | undefined {
+  const spent = priorClock - clockAfter + incrementSec;
+  if (spent < 0) return undefined;
+  return Math.round(spent * 10) / 10;
+}
+
 export function clockSecondsFromComment(comment: string): number | undefined {
   const match = CLK_RE.exec(comment);
   if (!match) return undefined;

@@ -3,7 +3,44 @@ import {
   parseTimeControlBaseSeconds,
   clockSecondsFromComment,
   clocksByFen,
+  parseTimeControlIncrementSeconds,
+  timeSpentSeconds,
 } from "../../src/clockParser";
+
+describe("parseTimeControlIncrementSeconds", () => {
+  it("reads the increment after the plus", () => {
+    expect(parseTimeControlIncrementSeconds("180+2")).toBe(2);
+    expect(parseTimeControlIncrementSeconds("600+10")).toBe(10);
+  });
+
+  it("is 0 when there is none, or the control is correspondence or unreadable", () => {
+    expect(parseTimeControlIncrementSeconds("600")).toBe(0);
+    expect(parseTimeControlIncrementSeconds("600+0")).toBe(0);
+    expect(parseTimeControlIncrementSeconds("1/259200")).toBe(0);
+    expect(parseTimeControlIncrementSeconds("")).toBe(0);
+    expect(parseTimeControlIncrementSeconds("180+x")).toBe(0);
+  });
+});
+
+describe("timeSpentSeconds", () => {
+  it("is the clock drop when there is no increment", () => {
+    expect(timeSpentSeconds(180, 177.5)).toBe(2.5);
+  });
+
+  it("adds back the increment the move earned", () => {
+    expect(timeSpentSeconds(180, 181, 2)).toBe(1);
+    expect(timeSpentSeconds(181, 181, 2)).toBe(2);
+  });
+
+  it("is undefined when the clock rose more than the increment allows", () => {
+    expect(timeSpentSeconds(180, 181)).toBeUndefined();
+    expect(timeSpentSeconds(180, 183, 2)).toBeUndefined();
+  });
+
+  it("is 0 for an instant move that earned its increment", () => {
+    expect(timeSpentSeconds(180, 182, 2)).toBe(0);
+  });
+});
 
 describe("parseTimeControlBaseSeconds", () => {
   it("returns the base for a plain second count", () => {

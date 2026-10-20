@@ -16,7 +16,7 @@
 import { Chess, type Square } from "chess.js";
 import type { MoveAnalysisRecord } from "./db";
 import { CLASSIFICATION_ORDER } from "./classificationColors";
-import { clocksByFen, parseTimeControlBaseSeconds } from "./clockParser";
+import { clocksByFen, parseTimeControlBaseSeconds, parseTimeControlIncrementSeconds, timeSpentSeconds } from "./clockParser";
 
 export interface ReviewStep {
   ply: number; // 1-based half-move, same convention as MoveAnalysisRecord.ply
@@ -118,6 +118,7 @@ export function buildReview(
 
   const timeControl = chess.getHeaders().TimeControl;
   const baseSeconds = timeControl ? parseTimeControlBaseSeconds(timeControl) : undefined;
+  const incrementSeconds = timeControl ? parseTimeControlIncrementSeconds(timeControl) : 0;
   const clocks = clocksByFen(chess.getComments());
 
   let lastWhiteClock = baseSeconds;
@@ -134,9 +135,7 @@ export function buildReview(
     let timeSpentSec: number | undefined;
     if (clockRemainingSec !== undefined) {
       const prior = side === "white" ? lastWhiteClock : lastBlackClock;
-      if (prior !== undefined && prior >= clockRemainingSec) {
-        timeSpentSec = Math.round((prior - clockRemainingSec) * 10) / 10;
-      }
+      if (prior !== undefined) timeSpentSec = timeSpentSeconds(prior, clockRemainingSec, incrementSeconds);
       if (side === "white") lastWhiteClock = clockRemainingSec;
       else lastBlackClock = clockRemainingSec;
     }

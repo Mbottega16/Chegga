@@ -153,10 +153,32 @@ describe("rush: a quick mistake or blunder by the reviewer", () => {
   });
 });
 
-// Not covered, on purpose: the increment. A "180+2" game is read as a 180s
-// base with no increment, so a fast move can show a clock higher than the one
-// before it, and its time spent comes out empty. The fix needs a decision on
-// how the review should show increment games, so it stays a todo here.
+// "180+2": every move earns 2s back, so a quick move can leave the clock
+// higher than before it.
 describe("increment games", () => {
-  it.todo("counts time spent as previous clock - new clock + increment");
+  const INC = "180+2";
+
+  it("counts time spent as previous clock - new clock + increment", () => {
+    // White: 180 -> 181 (1s spent) -> 181 (2s spent) -> 175 (8s spent)
+    const r = review(["0:03:01", "0:03:01", "0:03:01", "0:03:01", "0:02:55"], grades(), INC);
+    expect(r.steps[0].timeSpentSec).toBe(1);
+    expect(r.steps[2].timeSpentSec).toBe(2);
+    expect(r.steps[4].timeSpentSec).toBe(8);
+  });
+
+  it("still flags a quick blunder as a rush when the clock went up", () => {
+    const r = review(["0:03:01", "0:03:01", "0:03:01"], grades({ 3: "blunder" }), INC);
+    expect(r.steps[2].clockRemainingSec).toBe(181);
+    expect(r.steps[2].clockAlert).toBe("rush");
+  });
+
+  it("leaves time empty when the clock rose by more than the increment", () => {
+    const r = review(["0:03:00", "0:03:00", "0:03:10"], grades(), INC);
+    expect(r.steps[2].timeSpentSec).toBeUndefined();
+  });
+
+  it("does not add anything for a game with no increment", () => {
+    const r = review(["0:02:59", "0:02:58", "0:02:57"]);
+    expect(r.steps[2].timeSpentSec).toBe(2);
+  });
 });
