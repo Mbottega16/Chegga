@@ -201,6 +201,7 @@ import {
 } from "./soundEffects";
 import { saveBotGame, loadSavedBotGame, clearSavedBotGame } from "./botGameStorage";
 import { createProgressBar } from "./progressBar";
+import { readStorageSummary } from "./storageQuota";
 import { isColorblindPalette, setColorblindPalette } from "./classificationColors";
 
 // Decided here, before anything below writes to localStorage: the board
@@ -820,6 +821,10 @@ app.innerHTML = `
           <input type="file" id="import-data-input" accept="application/json" style="display:none" />
         </div>
         <p id="data-io-log" class="status-line"></p>
+        <div id="storage-quota" class="storage-quota" hidden>
+          <div class="progress-track" aria-hidden="true"><div id="storage-quota-fill" class="progress-fill"></div></div>
+          <p id="storage-quota-text" class="status-line" role="status"></p>
+        </div>
       </section>
     </details>
 
@@ -2977,6 +2982,27 @@ demoClearBtn.addEventListener("click", async () => {
 const exportDataBtn = document.querySelector<HTMLButtonElement>("#export-data-btn")!;
 const importDataInput = document.querySelector<HTMLInputElement>("#import-data-input")!;
 const dataIoLog = document.querySelector<HTMLParagraphElement>("#data-io-log")!;
+const storageQuotaBox = document.querySelector<HTMLElement>("#storage-quota")!;
+const storageQuotaFill = document.querySelector<HTMLElement>("#storage-quota-fill")!;
+const storageQuotaText = document.querySelector<HTMLParagraphElement>("#storage-quota-text")!;
+
+/** Shows how full this site's browser storage is. Hidden when the browser
+ * cannot say. Read-only: it never deletes anything. */
+async function refreshStorageQuota(): Promise<void> {
+  const summary = await readStorageSummary();
+  if (!summary) {
+    storageQuotaBox.hidden = true;
+    return;
+  }
+  storageQuotaBox.hidden = false;
+  storageQuotaFill.style.width = `${summary.percent}%`;
+  const advice =
+    summary.level === "ok"
+      ? ""
+      : " Export a backup, then clear space: the browser may remove this data when storage runs out.";
+  setStatus(storageQuotaText, `Browser storage for this site: ${summary.text}.${advice}`, summary.level === "ok" ? "" : "error");
+}
+void refreshStorageQuota();
 
 exportDataBtn.addEventListener("click", async () => {
   exportDataBtn.disabled = true;
@@ -2993,6 +3019,7 @@ exportDataBtn.addEventListener("click", async () => {
     a.click();
     URL.revokeObjectURL(url);
     setStatus(dataIoLog, `Exported ${data.games.length} games, ${data.moveAnalysis.length} analyzed moves.`, "ok");
+    void refreshStorageQuota();
   } catch (err: any) {
     setStatus(dataIoLog, `Export failed: ${err.message ?? err}`, "error");
   } finally {
@@ -3017,6 +3044,7 @@ importDataInput.addEventListener("change", async () => {
         "ok",
       );
       await refreshProfile();
+      void refreshStorageQuota();
     } finally {
       db.close();
     }

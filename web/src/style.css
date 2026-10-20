@@ -1952,6 +1952,15 @@ input[type="range"] {
 .progress-label {
   margin-top: 6px;
 }
+.storage-quota {
+  margin-top: 14px;
+}
+.storage-quota[hidden] {
+  display: none;
+}
+.storage-quota .status-line {
+  margin-top: 6px;
+}
 
 /* ================= Today / Redemption / Achievements (spine additions) ================= */
 
