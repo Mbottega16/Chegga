@@ -145,6 +145,10 @@ export interface GameRecord {
   userColor: "white" | "black";
   userResult: "win" | "loss" | "draw";
   analyzed: boolean;
+  /** unix ms, set each time the game is opened for review. Absent on older
+   * records and on games never opened; gameEviction.ts then uses `endTime`.
+   * An optional field needs no schema bump. */
+  lastAccessedAt?: number;
 }
 
 export interface MoveAnalysisRecord {
@@ -307,6 +311,66 @@ export function getGame(db: IDBDatabase, chessComUuid: string): Promise<GameReco
 
 export function markGameAnalyzed(db: IDBDatabase, game: GameRecord): Promise<void> {
   return putGame(db, { ...game, analyzed: true });
+}
+
+/** Stamps "opened just now" on a stored game, for the LRU order. Re-reads the
+ * record in the same transaction so it never writes back stale data. */
+export function touchGame(db: IDBDatabase, chessComUuid: string, now = Date.now()): Promise<void> {
+  const tx = db.transaction("games", "readwrite");
+  const store = tx.objectStore("games");
+  const read = store.get(chessComUuid);
+  read.onsuccess = () => {
+    const game = read.result as GameRecord | undefined;
+    if (game) store.put({ ...game, lastAccessedAt: now });
+  };
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
+/** Every stored game as id + the two times the LRU order needs. Walks a
+ * cursor and keeps nothing else, so a large history does not sit in memory. */
+export function listEvictionCandidates(db: IDBDatabase): Promise<Array<{ id: string; endTime: number; lastAccessedAt?: number }>> {
+  return new Promise((resolve, reject) => {
+    const out: Array<{ id: string; endTime: number; lastAccessedAt?: number }> = [];
+    const cursorReq = db.transaction("games", "readonly").objectStore("games").openCursor();
+    cursorReq.onsuccess = () => {
+      const cursor = cursorReq.result;
+      if (!cursor) {
+        resolve(out);
+        return;
+      }
+      const g = cursor.value as GameRecord;
+      out.push({ id: g.chessComUuid, endTime: g.endTime, lastAccessedAt: g.lastAccessedAt });
+      cursor.continue();
+    };
+    cursorReq.onerror = () => reject(cursorReq.error);
+  });
+}
+
+/** Deletes the given games and all their move analysis in one transaction:
+ * all or nothing. Touches no other store (saved positions stay). Returns how
+ * many games were removed. */
+export function deleteGamesWithAnalysis(db: IDBDatabase, ids: readonly string[]): Promise<number> {
+  if (ids.length === 0) return Promise.resolve(0);
+  const tx = db.transaction(["games", "moveAnalysis"], "readwrite");
+  const games = tx.objectStore("games");
+  const byGame = tx.objectStore("moveAnalysis").index("byGameId");
+  for (const id of ids) {
+    games.delete(id);
+    const keys = byGame.getAllKeys(IDBKeyRange.only(id));
+    keys.onsuccess = () => {
+      const moves = tx.objectStore("moveAnalysis");
+      for (const key of keys.result) moves.delete(key);
+    };
+  }
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve(ids.length);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
 }
 
 // --- Store helpers (Phase 2: engine analysis) ---

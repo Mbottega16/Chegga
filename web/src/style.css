@@ -1961,6 +1961,19 @@ input[type="range"] {
 .storage-quota .status-line {
   margin-top: 6px;
 }
+.storage-evict-confirm {
+  margin-top: 10px;
+}
+.storage-evict-confirm[hidden] {
+  display: none;
+}
+.storage-evict-auto {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  cursor: pointer;
+}
 
 /* ================= Today / Redemption / Achievements (spine additions) ================= */
 

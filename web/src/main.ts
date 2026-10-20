@@ -35,6 +35,9 @@ import {
   putSavedPuzzles,
   getSavedPuzzles,
   deleteSavedPuzzle,
+  touchGame,
+  listEvictionCandidates,
+  deleteGamesWithAnalysis,
 } from "./db";
 import type { GameRecord, MoveAnalysisRecord, ExportedData, SavedPuzzleRecord } from "./db";
 import { Engine } from "./engine";
@@ -201,7 +204,8 @@ import {
 } from "./soundEffects";
 import { saveBotGame, loadSavedBotGame, clearSavedBotGame } from "./botGameStorage";
 import { createProgressBar } from "./progressBar";
-import { readStorageSummary } from "./storageQuota";
+import { readStorageSummary, type StorageSummary } from "./storageQuota";
+import { AUTO_EVICT_MAX_SHARE, EVICT_BATCH, isAutoEvictOn, planEviction, setAutoEvict } from "./gameEviction";
 import { isColorblindPalette, setColorblindPalette } from "./classificationColors";
 
 // Decided here, before anything below writes to localStorage: the board
@@ -824,6 +828,26 @@ app.innerHTML = `
         <div id="storage-quota" class="storage-quota" hidden>
           <div class="progress-track" aria-hidden="true"><div id="storage-quota-fill" class="progress-fill"></div></div>
           <p id="storage-quota-text" class="status-line" role="status"></p>
+        </div>
+        <div class="storage-evict">
+          <p class="tagline" style="margin:14px 0 8px">
+            Short on space? Remove the games you opened longest ago. Their analysis goes too. Saved positions stay.
+          </p>
+          <div class="play-controls">
+            <button type="button" id="evict-btn">Free up space…</button>
+          </div>
+          <div id="evict-confirm" class="storage-evict-confirm" hidden>
+            <p id="evict-confirm-text" class="status-line"></p>
+            <div class="play-controls">
+              <button type="button" id="evict-yes-btn"></button>
+              <button type="button" id="evict-cancel-btn">Cancel</button>
+            </div>
+          </div>
+          <label class="storage-evict-auto">
+            <input type="checkbox" id="auto-evict" />
+            Free up space for me when storage is nearly full
+          </label>
+          <p id="evict-log" class="status-line" role="status"></p>
         </div>
       </section>
     </details>
@@ -2245,6 +2269,10 @@ async function openPickedGame(id: string, targetPly?: number) {
         setStatus(pickerStatus, "That game isn't in your synced data.", "error");
         return;
       }
+      // Remember when it was opened (the LRU order for freeing space). Set on
+      // the in-memory copy too, so a later markGameAnalyzed keeps the stamp.
+      game.lastAccessedAt = Date.now();
+      void touchGame(db, id, game.lastAccessedAt).catch(() => undefined);
       let moves = game.analyzed ? await getMoveAnalysesForGame(db, id) : [];
       if (moves.length === 0) {
         pickerBusyId = id;
@@ -2988,11 +3016,11 @@ const storageQuotaText = document.querySelector<HTMLParagraphElement>("#storage-
 
 /** Shows how full this site's browser storage is. Hidden when the browser
  * cannot say. Read-only: it never deletes anything. */
-async function refreshStorageQuota(): Promise<void> {
+async function refreshStorageQuota(): Promise<StorageSummary | null> {
   const summary = await readStorageSummary();
   if (!summary) {
     storageQuotaBox.hidden = true;
-    return;
+    return null;
   }
   storageQuotaBox.hidden = false;
   storageQuotaFill.style.width = `${summary.percent}%`;
@@ -3001,8 +3029,110 @@ async function refreshStorageQuota(): Promise<void> {
       ? ""
       : " Export a backup, then clear space: the browser may remove this data when storage runs out.";
   setStatus(storageQuotaText, `Browser storage for this site: ${summary.text}.${advice}`, summary.level === "ok" ? "" : "error");
+  return summary;
 }
-void refreshStorageQuota();
+
+// --- Freeing space: remove the least recently opened games (LRU) ---
+// Manual: the visitor sees the count and confirms. Automatic: opt-in, one
+// batch per page load, never more than a quarter of the games.
+
+const evictBtn = document.querySelector<HTMLButtonElement>("#evict-btn")!;
+const evictConfirmBox = document.querySelector<HTMLElement>("#evict-confirm")!;
+const evictConfirmText = document.querySelector<HTMLParagraphElement>("#evict-confirm-text")!;
+const evictYesBtn = document.querySelector<HTMLButtonElement>("#evict-yes-btn")!;
+const evictCancelBtn = document.querySelector<HTMLButtonElement>("#evict-cancel-btn")!;
+const autoEvictBox = document.querySelector<HTMLInputElement>("#auto-evict")!;
+const evictLog = document.querySelector<HTMLParagraphElement>("#evict-log")!;
+let pendingEviction: string[] = [];
+
+autoEvictBox.checked = isAutoEvictOn();
+autoEvictBox.addEventListener("change", () => setAutoEvict(autoEvictBox.checked));
+
+/** Removes the games, then redraws what depends on them. */
+async function runEviction(ids: string[]): Promise<number> {
+  const db = await openDb();
+  try {
+    return await deleteGamesWithAnalysis(db, ids);
+  } finally {
+    db.close();
+    await refreshProfile();
+    void refreshStorageQuota();
+  }
+}
+
+async function planEvictionFromDb(opts: { maxShare?: number }): Promise<string[]> {
+  const db = await openDb();
+  try {
+    return planEviction(await listEvictionCandidates(db), { count: EVICT_BATCH, ...opts });
+  } finally {
+    db.close();
+  }
+}
+
+function closeEvictConfirm() {
+  pendingEviction = [];
+  evictConfirmBox.hidden = true;
+  evictBtn.disabled = false;
+}
+
+evictBtn.addEventListener("click", async () => {
+  evictBtn.disabled = true;
+  setStatus(evictLog, "");
+  try {
+    pendingEviction = await planEvictionFromDb({});
+  } catch (err: any) {
+    setStatus(evictLog, `Could not read your games: ${err.message ?? err}`, "error");
+    evictBtn.disabled = false;
+    return;
+  }
+  if (pendingEviction.length === 0) {
+    setStatus(evictLog, "There are no synced games to remove.");
+    evictBtn.disabled = false;
+    return;
+  }
+  const n = pendingEviction.length;
+  evictConfirmText.textContent =
+    `Remove the ${n} game${n === 1 ? "" : "s"} you opened longest ago, with their analysis? ` +
+    `Saved positions stay. Export a backup first if you want to keep them: ` +
+    `a removed game only comes back from a backup file or a full sync.`;
+  evictYesBtn.textContent = `Remove ${n} game${n === 1 ? "" : "s"}`;
+  evictConfirmBox.hidden = false;
+  evictYesBtn.focus();
+});
+
+evictCancelBtn.addEventListener("click", closeEvictConfirm);
+
+evictYesBtn.addEventListener("click", async () => {
+  const ids = pendingEviction;
+  closeEvictConfirm();
+  evictBtn.disabled = true;
+  setStatus(evictLog, "Removing…");
+  try {
+    const removed = await runEviction(ids);
+    setStatus(evictLog, `Removed ${removed} game${removed === 1 ? "" : "s"} and their analysis.`, "ok");
+  } catch (err: any) {
+    setStatus(evictLog, `Could not remove games: ${err.message ?? err}`, "error");
+  } finally {
+    evictBtn.disabled = false;
+  }
+});
+
+void (async () => {
+  const summary = await refreshStorageQuota();
+  if (!summary || summary.level === "ok" || !isAutoEvictOn()) return;
+  try {
+    const ids = await planEvictionFromDb({ maxShare: AUTO_EVICT_MAX_SHARE });
+    if (ids.length === 0) return;
+    const removed = await runEviction(ids);
+    setStatus(
+      evictLog,
+      `Storage was nearly full, so ${removed} game${removed === 1 ? "" : "s"} you opened longest ago ${removed === 1 ? "was" : "were"} removed.`,
+      "ok",
+    );
+  } catch {
+    // best-effort: the manual button is still there
+  }
+})();
 
 exportDataBtn.addEventListener("click", async () => {
   exportDataBtn.disabled = true;
