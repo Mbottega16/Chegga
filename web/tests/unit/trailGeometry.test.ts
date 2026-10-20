@@ -1,5 +1,33 @@
 import { describe, it, expect } from "vitest";
-import { trailPath } from "../../src/trailGeometry";
+import { trailFadeStops, trailPath } from "../../src/trailGeometry";
+
+describe("trailFadeStops", () => {
+  it("runs from the floor at the origin to full opacity at the destination", () => {
+    const stops = trailFadeStops(5, 0.12);
+    expect(stops).toHaveLength(5);
+    expect(stops[0]).toEqual({ offset: 0, opacity: 0.12 });
+    expect(stops.at(-1)).toEqual({ offset: 1, opacity: 1 });
+  });
+
+  it("never gets dimmer toward the destination", () => {
+    const stops = trailFadeStops(9);
+    for (let i = 1; i < stops.length; i++) {
+      expect(stops[i].offset).toBeGreaterThan(stops[i - 1].offset);
+      expect(stops[i].opacity).toBeGreaterThanOrEqual(stops[i - 1].opacity);
+    }
+  });
+
+  it("eases: the middle sits at the halfway value and the first step is gentler than a straight ramp", () => {
+    const stops = trailFadeStops(5, 0);
+    expect(stops[2].opacity).toBe(0.5);
+    expect(stops[1].opacity).toBeLessThan(0.25);
+  });
+
+  it("always returns at least two stops", () => {
+    expect(trailFadeStops(0)).toHaveLength(2);
+    expect(trailFadeStops(1)).toHaveLength(2);
+  });
+});
 
 const nums = (d: string) => (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
 

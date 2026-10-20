@@ -17,6 +17,25 @@ export const TRAIL_BEND = 0.2;
 
 const round = (n: number) => Math.round(n * 100) / 100;
 
+export interface FadeStop {
+  offset: number; // 0 = origin square, 1 = destination square
+  opacity: number; // share of the trail's own opacity, floor..1
+}
+
+/** Opacity along a trail: faint at the origin, full at the destination, with
+ * a smoothstep ease so the tail dissolves instead of fading in a straight
+ * ramp. `floor` keeps the origin end faintly visible. */
+export function trailFadeStops(count = 5, floor = 0.35): FadeStop[] {
+  const n = Math.max(2, Math.floor(count));
+  const stops: FadeStop[] = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const eased = t * t * (3 - 2 * t);
+    stops.push({ offset: round(t), opacity: round(floor + (1 - floor) * eased) });
+  }
+  return stops;
+}
+
 /** An SVG path `d` string: one cubic Bezier from `from` to `to`, bowed to the
  * left of the direction of travel (on screen, y grows downward). Both control
  * points sit on the same side, so the curve is a smooth arc with no kink. A

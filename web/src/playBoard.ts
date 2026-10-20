@@ -21,7 +21,7 @@
 import { Chess, type Square } from "chess.js";
 import { playPieceHtml, pieceImgUrl, PIECE_GLYPH } from "./pieceSet";
 import { effectsEnabled, flash, confetti } from "./juice";
-import { trailPath } from "./trailGeometry";
+import { trailFadeStops, trailPath } from "./trailGeometry";
 
 const SELECTED_COLOR = "#3a4a2e";
 const LAST_MOVE_COLOR = "rgba(227, 168, 87, 0.18)";
@@ -1118,6 +1118,7 @@ export class PlayBoard {
     const sorted = [...this.candidateTrails].sort(
       (a, b) => (TRAIL_TIER_ORDER[a.tier] ?? 0) - (TRAIL_TIER_ORDER[b.tier] ?? 0),
     );
+    const gradients: string[] = [];
     const lines = sorted.map((t, i) => {
       const from = center(t.from);
       const to = center(t.to);
@@ -1128,16 +1129,27 @@ export class PlayBoard {
       // or crossing trails don't all pulse in obviously locked step.
       const dasharray = t.tier === "brilliant" ? "3,2.2" : "2.6,3";
       const delay = (i % 5) * 0.15;
+      // The trail dissolves toward its origin: faint tail, full opacity at
+      // the destination. The gradient follows the straight line between the
+      // two squares, which the curve stays close to.
+      const gradientId = `play-trail-fade-${this.uid}-${i}`;
+      const stops = trailFadeStops()
+        .map((s) => `<stop offset="${s.offset}" stop-color="${t.color}" stop-opacity="${s.opacity}"/>`)
+        .join("");
+      gradients.push(
+        `<linearGradient id="${gradientId}" gradientUnits="userSpaceOnUse" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}">${stops}</linearGradient>`,
+      );
       return `
         <path d="${trailPath(from, to)}" fill="none"
               class="play-trail-line${t.tier === "brilliant" ? " play-trail-brilliant" : ""}"
-              stroke="${t.color}" stroke-width="${width}" stroke-opacity="${opacity}"
+              stroke="url(#${gradientId})" stroke-width="${width}" stroke-opacity="${opacity}"
               stroke-dasharray="${dasharray}" stroke-linecap="round"
               style="animation-delay:-${delay}s"
               vector-effect="non-scaling-stroke"/>`;
     });
     return `
       <svg class="play-trail-layer${this.animateTrailsOnce ? " play-trail-layer-in" : ""}" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <defs>${gradients.join("")}</defs>
         ${lines.join("")}
       </svg>`;
   }
