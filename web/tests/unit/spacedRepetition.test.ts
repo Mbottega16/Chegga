@@ -1,12 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { advanceSpacedRepetition, describeSpacedBox, isDueForReview, SPACED_INTERVAL_MS } from "../../src/savedPuzzles";
+import { advanceSpacedRepetition, describeSpacedBox, isDueForReview } from "../../src/savedPuzzles";
+import { LEITNER_DAYS, leitnerDelayMs, nextLeitnerBox } from "../../src/leitner";
 import { getProgress, isDue, isSolved, recordAttempt } from "../../src/puzzleProgress";
 import type { SavedPuzzleRecord } from "../../src/db";
 
-// Two spaced-repetition systems live in the app, with different ladders:
-//   savedPuzzles.ts    saved positions: boxes 1-5, 1/3/7/14/30 days
-//   puzzleProgress.ts  trainer puzzles: boxes 1-5, 1/3/7/21/60 days, kept in localStorage
-// These fixtures pin each one's math. They do not claim the two should match.
+// Two spaced-repetition systems share one ladder (leitner.ts):
+//   boxes 1-5 wait 1, 3, 7, 14 and 30 days; a wrong answer goes back to box 1.
+//   savedPuzzles.ts    saved positions, stored in IndexedDB. A new record counts as box 1.
+//   puzzleProgress.ts  trainer puzzles, stored in localStorage. A new puzzle counts as box 0.
 
 const DAY = 86_400_000;
 const NOW = 1_800_000_000_000;
@@ -62,9 +63,23 @@ describe("saved positions: the box ladder", () => {
     expect(after).not.toBe(before);
   });
 
-  it("keeps the interval table in whole days, rising with the box", () => {
-    const days = [1, 2, 3, 4, 5].map((box) => SPACED_INTERVAL_MS[box] / DAY);
-    expect(days).toEqual([1, 3, 7, 14, 30]);
+});
+
+describe("the shared ladder", () => {
+  it("waits 1, 3, 7, 14 and 30 days for boxes 1-5", () => {
+    expect([1, 2, 3, 4, 5].map((box) => leitnerDelayMs(box) / DAY)).toEqual([1, 3, 7, 14, 30]);
+    expect(LEITNER_DAYS).toEqual({ 1: 1, 2: 3, 3: 7, 4: 14, 5: 30 });
+  });
+
+  it("uses the nearest box for a box outside 1-5", () => {
+    expect(leitnerDelayMs(0)).toBe(1 * DAY);
+    expect(leitnerDelayMs(-3)).toBe(1 * DAY);
+    expect(leitnerDelayMs(9)).toBe(30 * DAY);
+  });
+
+  it("moves up one box on a right answer, to box 5 at most, and to box 1 on a wrong one", () => {
+    expect([0, 1, 2, 3, 4, 5].map((b) => nextLeitnerBox(b, true))).toEqual([1, 2, 3, 4, 5, 5]);
+    expect([0, 1, 3, 5].map((b) => nextLeitnerBox(b, false))).toEqual([1, 1, 1, 1]);
   });
 });
 
@@ -127,7 +142,7 @@ describe("trainer puzzles: progress and due times", () => {
 
   const entry = (id = "p1") => getProgress("tester")[id];
 
-  it("climbs boxes 1-5 with waits of 1, 3, 7, 21 and 60 days, then stays at 60", () => {
+  it("climbs boxes 1-5 with waits of 1, 3, 7, 14 and 30 days, then stays at 30", () => {
     const seen: Array<[number | undefined, number]> = [];
     for (let i = 0; i < 6; i++) {
       recordAttempt("tester", "p1", true);
@@ -137,9 +152,9 @@ describe("trainer puzzles: progress and due times", () => {
       [1, 1 * DAY],
       [2, 3 * DAY],
       [3, 7 * DAY],
-      [4, 21 * DAY],
-      [5, 60 * DAY],
-      [5, 60 * DAY],
+      [4, 14 * DAY],
+      [5, 30 * DAY],
+      [5, 30 * DAY],
     ]);
   });
 
@@ -149,6 +164,15 @@ describe("trainer puzzles: progress and due times", () => {
     recordAttempt("tester", "p1", false);
     expect(entry().box).toBe(1);
     expect((entry().nextDueAt ?? 0) - NOW).toBe(1 * DAY);
+  });
+
+  it("waits as long as a saved position in the same box", () => {
+    recordAttempt("tester", "p1", true);
+    recordAttempt("tester", "p1", true); // box 2
+    const trainer = (entry().nextDueAt ?? 0) - NOW;
+    const position = advanceSpacedRepetition(saved({ box: 1 }), true, NOW); // also box 2
+    expect(entry().box).toBe(position.box);
+    expect(trainer).toBe((position.nextDueAt ?? 0) - NOW);
   });
 
   it("counts attempts and stamps the time", () => {

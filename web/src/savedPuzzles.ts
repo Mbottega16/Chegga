@@ -13,14 +13,8 @@ import type { ReviewGame, ReviewStep } from "./gameReview";
 import { canPracticeStep } from "./gameReview";
 import { difficultyFor, type Puzzle } from "./puzzleTrainer";
 import type { SavedPuzzleRecord } from "./db";
+import { leitnerDelayMs, nextLeitnerBox } from "./leitner";
 
-export const SPACED_INTERVAL_MS: Record<number, number> = {
-  1: 1 * 24 * 60 * 60 * 1000, // 1 day
-  2: 3 * 24 * 60 * 60 * 1000, // 3 days
-  3: 7 * 24 * 60 * 60 * 1000, // 7 days
-  4: 14 * 24 * 60 * 60 * 1000, // 14 days
-  5: 30 * 24 * 60 * 60 * 1000, // 30 days (mastered)
-};
 
 export function isDueForReview(record: SavedPuzzleRecord, now = Date.now()): boolean {
   if (!record.nextDueAt) return true;
@@ -34,25 +28,14 @@ export function advanceSpacedRepetition(
 ): SavedPuzzleRecord {
   const currentBox = record.box ?? 1;
   const reviewCount = (record.reviewCount ?? 0) + 1;
-  if (correct) {
-    const nextBox = Math.min(5, currentBox + 1);
-    const interval = SPACED_INTERVAL_MS[nextBox] ?? SPACED_INTERVAL_MS[1];
-    return {
-      ...record,
-      box: nextBox,
-      nextDueAt: now + interval,
-      reviewCount,
-      lastReviewedAt: now,
-    };
-  } else {
-    return {
-      ...record,
-      box: 1,
-      nextDueAt: now + SPACED_INTERVAL_MS[1],
-      reviewCount,
-      lastReviewedAt: now,
-    };
-  }
+  const box = nextLeitnerBox(currentBox, correct);
+  return {
+    ...record,
+    box,
+    nextDueAt: now + leitnerDelayMs(box),
+    reviewCount,
+    lastReviewedAt: now,
+  };
 }
 
 export function describeSpacedBox(box = 1): string {

@@ -6,6 +6,8 @@
 // habit loop. Wrapped in try/catch throughout: private browsing or
 // blocked storage should degrade to "no memory," never throw.
 
+import { leitnerDelayMs, nextLeitnerBox } from "./leitner";
+
 const PROGRESS_KEY_PREFIX = "chegga-web:puzzle-progress:";
 const STREAK_KEY_PREFIX = "chegga-web:puzzle-streak:";
 
@@ -20,15 +22,6 @@ interface PuzzleProgressEntry {
   // before this field existed are treated as box 0 / due now.
   box?: number;
   nextDueAt?: number;
-}
-
-// Days until a puzzle in each Leitner box comes due again.
-const BOX_INTERVAL_DAYS = [1, 1, 3, 7, 21, 60];
-const DAY_MS = 86_400_000;
-
-function dueDelayForBox(box: number): number {
-  const clamped = Math.max(1, Math.min(box, BOX_INTERVAL_DAYS.length - 1));
-  return BOX_INTERVAL_DAYS[clamped] * DAY_MS;
 }
 
 type ProgressMap = Record<string, PuzzleProgressEntry>;
@@ -85,13 +78,13 @@ export function recordAttempt(username: string, puzzleId: string, correct: boole
   const now = Date.now();
   // Right answer: advance a box (longer until it's due again). Wrong:
   // drop back to box 1 (due again in a day).
-  const box = correct ? Math.min((existing.box ?? 0) + 1, BOX_INTERVAL_DAYS.length - 1) : 1;
+  const box = nextLeitnerBox(existing.box ?? 0, correct);
   progress[puzzleId] = {
     solved: existing.solved || correct,
     attempts: existing.attempts + 1,
     lastAttemptAt: now,
     box,
-    nextDueAt: now + dueDelayForBox(box),
+    nextDueAt: now + leitnerDelayMs(box),
   };
   saveJson(PROGRESS_KEY_PREFIX + username, progress);
   if (correct) bumpStreak(username);
