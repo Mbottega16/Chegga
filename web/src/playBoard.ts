@@ -21,6 +21,7 @@
 import { Chess, type Square } from "chess.js";
 import { playPieceHtml, pieceImgUrl, PIECE_GLYPH } from "./pieceSet";
 import { effectsEnabled, flash, confetti } from "./juice";
+import { trailPath } from "./trailGeometry";
 
 const SELECTED_COLOR = "#3a4a2e";
 const LAST_MOVE_COLOR = "rgba(227, 168, 87, 0.18)";
@@ -1128,7 +1129,7 @@ export class PlayBoard {
       const dasharray = t.tier === "brilliant" ? "3,2.2" : "2.6,3";
       const delay = (i % 5) * 0.15;
       return `
-        <line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"
+        <path d="${trailPath(from, to)}" fill="none"
               class="play-trail-line${t.tier === "brilliant" ? " play-trail-brilliant" : ""}"
               stroke="${t.color}" stroke-width="${width}" stroke-opacity="${opacity}"
               stroke-dasharray="${dasharray}" stroke-linecap="round"
