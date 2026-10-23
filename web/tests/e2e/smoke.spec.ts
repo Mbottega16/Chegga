@@ -108,8 +108,6 @@ test.describe("landing page smoke", () => {
       "#review-before",
       "#review-candidates",
       "#review-try",
-      "#review-save",
-      "#review-save-key",
       "#try-panel",
     ]) {
       await expect(page.locator(id)).toBeAttached();

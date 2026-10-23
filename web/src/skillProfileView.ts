@@ -80,28 +80,40 @@ function renderSinceLastVisit(snapshots: SkillSnapshotRecord[]): string {
   return `<p class="since-last-visit" style="margin-bottom:12px"><strong>Since ${days}d ago:</strong> ${parts.join(" · ")}</p>`;
 }
 
-export function renderSkillProfile(assessment: SkillAssessment, snapshots: SkillSnapshotRecord[]): string {
+const BAND_WORDS: [number, string][] = [
+  [80, "strong"],
+  [60, "solid"],
+  [40, "shaky"],
+  [0, "weak"],
+];
+
+function bandWord(score: number): string {
+  return BAND_WORDS.find(([min]) => score >= min)![1];
+}
+
+/** `coverage` says how much of the synced history the scores are based on. */
+export function renderSkillProfile(
+  assessment: SkillAssessment,
+  snapshots: SkillSnapshotRecord[],
+  coverage: { analyzed: number; synced: number },
+): string {
   const sinceLastVisit = renderSinceLastVisit(snapshots);
-  const bars = assessment.scores
+  const coverageLine = `<p class="skill-coverage">Based on <strong>${coverage.analyzed}</strong> analyzed of <strong>${coverage.synced}</strong> synced games.</p>`;
+  const rows = assessment.scores
     .map((s) => {
+      const label = esc(SKILL_CATEGORY_LABELS[s.category]);
       if (s.score === undefined) {
-        return `
-          <div class="skill-bar-row">
-            <div class="skill-bar-label">${esc(SKILL_CATEGORY_LABELS[s.category])}</div>
-            <div class="skill-bar-track"><div class="skill-bar-empty">not enough data yet (${s.moveCount}/20 moves)</div></div>
-          </div>`;
+        return `<li class="skill-row"><span class="skill-row-name">${label}</span><span class="skill-row-read">Not enough yet: ${s.moveCount} of 20 moves</span></li>`;
       }
       const isWeakest = assessment.weakest?.category === s.category;
-      return `
-        <div class="skill-bar-row${isWeakest ? " skill-bar-weakest" : ""}">
-          <div class="skill-bar-label">${esc(SKILL_CATEGORY_LABELS[s.category])}${isWeakest ? " — focus" : ""}</div>
-          <div class="skill-bar-track">
-            <div class="skill-bar-fill" style="width:${s.score}%;background:${scoreColor(s.score)}"></div>
-            <span class="skill-bar-value">${Math.round(s.score)}/100</span>
-          </div>
-        </div>`;
+      return `<li class="skill-row${isWeakest ? " skill-row-weakest" : ""}">
+          <span class="skill-row-name">${label}${isWeakest ? " (focus)" : ""}</span>
+          <span class="skill-row-score" style="color:${scoreColor(s.score)}">${Math.round(s.score)}/100</span>
+          <span class="skill-row-read">${bandWord(s.score)} · ${s.moveCount} moves</span>
+        </li>`;
     })
     .join("");
+  const bars = `${coverageLine}<ul class="skill-rows">${rows}</ul>`;
 
   if (!assessment.weakest) {
     return `

@@ -104,65 +104,67 @@ export function renderProfile(
     const hi = mid + halfWidth;
     strengthCard = statCard(`${lo}–${hi}`, `rough rating range (n=${strength.sampleSize})`);
     if (strength.cvR2 !== undefined) {
-      strengthCaveat = `<p class="tagline" style="margin-top:-8px;margin-bottom:16px">
-           A range, not a rating: this model explains only about ${Math.round(strength.cvR2 * 100)}% of
-           rating variance in its training games, so the true number lands somewhere in this band at best. Loose
-           direction only.
-         </p>`;
+      strengthCaveat = `<p class="profile-note">A range, not a rating. Loose direction only.</p>`;
     }
   } else if (strength) {
-    strengthCaveat = `<p class="tagline" style="margin-top:-8px;margin-bottom:16px">
-         Analyze at least ${STRENGTH_MIN_GAMES} games (you have ${strength.sampleSize}) for a rating range —
-         fewer than that is too small a sample to estimate from.
-       </p>`;
+    strengthCaveat = `<p class="profile-note">Need ${STRENGTH_MIN_GAMES} analyzed games for a rating range (you have ${strength.sampleSize}).</p>`;
   }
 
   return `
     <div class="stat-grid">
+      ${statCard(`${((profile.classificationRate.blunder ?? 0) * 100).toFixed(1)}%`, "blunder rate")}
+      ${statCard(`${profile.avgCentipawnLoss} cp`, "avg centipawn loss")}
       ${statCard(String(profile.gamesAnalyzed), "games analyzed")}
       ${statCard(String(profile.totalMoves), "own moves analyzed")}
-      ${statCard(`${profile.avgCentipawnLoss} cp`, "avg centipawn loss")}
-      ${statCard(`${((profile.classificationRate.blunder ?? 0) * 100).toFixed(1)}%`, "blunder rate")}
       ${strengthCard}
     </div>
     ${strengthCaveat}
-    <p class="tagline" style="margin-bottom:16px">
-      Analyzed with a lightweight in-browser chess engine (not full desktop-strength Stockfish), so cp-loss and
-      move-quality calls can differ slightly from other analyzers, especially on razor-close positions.
-    </p>
 
-    <h3>Move quality</h3>
-    <div class="classification-bar">${classificationBar}</div>
+    <div class="profile-grid">
+      <div class="profile-block">
+        <h3>Move quality</h3>
+        <div class="classification-bar">${classificationBar}</div>
+      </div>
 
-    <h3>By game phase</h3>
-    <table><tbody>${phaseRows || '<tr><td colspan="2" class="status-line">no data yet</td></tr>'}</tbody></table>
+      <div class="profile-block">
+        <h3>By game phase</h3>
+        <table><tbody>${phaseRows || '<tr><td colspan="2" class="status-line">no data yet</td></tr>'}</tbody></table>
+        <h3>By color</h3>
+        <table><tbody>${colorRows || '<tr><td colspan="2" class="status-line">no data yet</td></tr>'}</tbody></table>
+      </div>
 
-    <h3>By color</h3>
-    <table><tbody>${colorRows || '<tr><td colspan="2" class="status-line">no data yet</td></tr>'}</tbody></table>
+      <div class="profile-block profile-wide">
+        <h3>Opening repertoire & leaks</h3>
+        <table>
+          <thead><tr><th>Opening</th><th>Games</th><th>Record</th><th>Win rate</th><th>Avg loss</th><th>Action</th></tr></thead>
+          <tbody>${openingRows || '<tr><td colspan="6" class="status-line">no data yet</td></tr>'}</tbody>
+        </table>
+      </div>
 
-    <h3>Opening repertoire & leak diagnostic</h3>
-    <table>
-      <thead><tr><th>Opening</th><th>Games</th><th>Record</th><th>Win rate</th><th>Avg loss</th><th>Action</th></tr></thead>
-      <tbody>${openingRows || '<tr><td colspan="6" class="status-line">no data yet</td></tr>'}</tbody>
-    </table>
+      <div class="profile-block">
+        <h3>Blunder patterns</h3>
+        <table>
+          <thead><tr><th>Tag</th><th>Count</th></tr></thead>
+          <tbody>${blunderTagRows || '<tr><td colspan="2" class="status-line">no data yet</td></tr>'}</tbody>
+        </table>
+      </div>
 
-    <h3>Blunder patterns (why, not just how costly)</h3>
-    <table>
-      <thead><tr><th>Tag</th><th>Count</th></tr></thead>
-      <tbody>${blunderTagRows || '<tr><td colspan="2" class="status-line">no data yet</td></tr>'}</tbody>
-    </table>
+      <div class="profile-block">
+        <h3>Time pressure</h3>
+        <table>
+          <thead><tr><th>Band</th><th>Moves</th><th>Avg CP loss</th><th>Blunder rate</th></tr></thead>
+          <tbody>${timePressureRows || '<tr><td colspan="4" class="status-line">no data yet</td></tr>'}</tbody>
+        </table>
+      </div>
 
-    <h3>Monthly trend</h3>
-    <table>
-      <thead><tr><th>Month</th><th>Games</th><th>Avg CP loss</th><th>Blunder rate</th></tr></thead>
-      <tbody>${monthlyRows || '<tr><td colspan="4" class="status-line">no data yet</td></tr>'}</tbody>
-    </table>
-
-    <h3>Time pressure</h3>
-    <table>
-      <thead><tr><th>Band</th><th>Moves</th><th>Avg CP loss</th><th>Blunder rate</th></tr></thead>
-      <tbody>${timePressureRows || '<tr><td colspan="4" class="status-line">no data yet</td></tr>'}</tbody>
-    </table>
+      <div class="profile-block profile-wide">
+        <h3>Monthly trend</h3>
+        <table>
+          <thead><tr><th>Month</th><th>Games</th><th>Avg CP loss</th><th>Blunder rate</th></tr></thead>
+          <tbody>${monthlyRows || '<tr><td colspan="4" class="status-line">no data yet</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
   `;
 }
 

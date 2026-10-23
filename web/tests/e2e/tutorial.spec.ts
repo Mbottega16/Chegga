@@ -149,7 +149,6 @@ test.describe("first-run tutorial", () => {
     await expect(page.locator("#main-content")).toBeVisible();
     await expect(page.locator("#username")).toHaveValue("tester");
     await expect(page.locator("#picker-section .picker-card")).toHaveCount(1, { timeout: 15_000 });
-    await expect(page.locator("#saved-positions .saved-row")).toHaveCount(1); // the tutorial's position was kept
     expect(await page.evaluate(() => localStorage.getItem("chegga-web:tutorial"))).toBe("done");
     expect(await page.evaluate(() => localStorage.getItem("chegga-web:last-username"))).toBe("tester");
     expect(problems, problems.join("\n")).toEqual([]);

@@ -1161,30 +1161,33 @@ export class PlayBoard {
       const rank = displayRanks.indexOf(parseInt(square[1], 10));
       return { x: file * squarePx + squarePx / 2, y: rank * squarePx + squarePx / 2 };
     };
-    const defs: string[] = [];
-    const lines: string[] = [];
-    this.arrows.forEach((arrow, i) => {
+    const shapes: string[] = [];
+    this.arrows.forEach((arrow) => {
       const color = arrow.color ?? DEFAULT_ARROW_COLOR;
-      const width = arrow.width ?? 1.4;
-      // The line is a fixed pixel width (non-scaling-stroke) while the head is
-      // in board units, so the head is sized directly rather than from the
-      // stroke width. 4.5 is what the original 1.4px arrow's head worked out to.
-      const head = width > 2 ? 5.4 : 4.5;
-      const markerId = `play-arrowhead-${this.uid}-${i}`;
+      // Shaft width is in screen pixels (non-scaling-stroke). The head is a
+      // solid triangle in board units, so it grows with the board. The shaft
+      // stops at the head's base, so the tip stays sharp.
+      const width = arrow.width ?? 10;
       const from = center(arrow.from);
       const to = center(arrow.to);
-      defs.push(`
-        <marker id="${markerId}" markerUnits="userSpaceOnUse" markerWidth="${head}" markerHeight="${head}" refX="${head / 2}" refY="${head / 2}" orient="auto">
-          <path d="M0,0 L${head},${head / 2} L0,${head} Z" fill="${color}"/>
-        </marker>`);
-      lines.push(`
-        <line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"
-              stroke="${color}" stroke-width="${width}" stroke-linecap="round"
-              marker-end="url(#${markerId})" vector-effect="non-scaling-stroke"/>`);
+      const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+      const ux = (to.x - from.x) / len;
+      const uy = (to.y - from.y) / len;
+      const headLen = 6.5;
+      const headHalf = 3.6;
+      const baseX = to.x - ux * headLen;
+      const baseY = to.y - uy * headLen;
+      const left = `${(baseX - uy * headHalf).toFixed(2)},${(baseY + ux * headHalf).toFixed(2)}`;
+      const right = `${(baseX + uy * headHalf).toFixed(2)},${(baseY - ux * headHalf).toFixed(2)}`;
+      shapes.push(`
+        <line x1="${from.x}" y1="${from.y}" x2="${baseX.toFixed(2)}" y2="${baseY.toFixed(2)}"
+              stroke="${color}" stroke-width="${width}" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+        <polygon points="${to.x.toFixed(2)},${to.y.toFixed(2)} ${left} ${right}" fill="${color}"
+                 stroke="${color}" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`);
     });
     return `
       <svg class="play-arrow-layer${this.animateArrowsOnce ? " play-arrow-layer-in" : ""}" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <defs>${defs.join("")}</defs>${lines.join("")}
+        ${shapes.join("")}
       </svg>`;
   }
 

@@ -34,7 +34,6 @@ import {
   countSyncStatesForUsername,
   putSavedPuzzles,
   getSavedPuzzles,
-  deleteSavedPuzzle,
   touchGame,
   listEvictionCandidates,
   deleteGamesWithAnalysis,
@@ -159,7 +158,6 @@ import {
   shouldShowBetterMove,
   betterMoveArrowFitsAfterBoard,
   canPracticeStep,
-  keyMoments,
   worstHumanStepIndex,
   REVIEW_QUALITY_LABELS,
   type ReviewGame,
@@ -178,8 +176,8 @@ import {
   type OverlayTrail,
 } from "./candidateMoves";
 import { analyzeCandidates, cachedCandidateLines } from "./candidateAnalysis";
-import { buildPickerCards, pickerCounts, PICKER_CARD_LIMIT, type PickerFilter } from "./gamePicker";
-import { renderGamePicker, renderSavedPositions } from "./gamePickerView";
+import { buildPickerCards, PICKER_CARD_LIMIT } from "./gamePicker";
+import { renderGamePicker } from "./gamePickerView";
 import { puzzleFromStep, advanceSpacedRepetition } from "./savedPuzzles";
 import { shouldShowTutorial } from "./firstRun";
 import { startTutorial, type TutorialResult } from "./tutorial";
@@ -265,13 +263,7 @@ app.innerHTML = `
       <button type="button" id="demo-clear-btn">Clear sample data</button>
     </p>
 
-    <section class="hero" aria-labelledby="hero-title">
-      <h2 id="hero-title">See how good each move was, the moment you make it.</h2>
-      <p>
-        Play a real Stockfish opponent right in your browser — every move gets graded and stands out
-        instantly, from a quiet good move to a real "best move" moment. No account needed. Want the deeper
-        view? Connect your Chess.com or Lichess username and every game you've played gets the same treatment.
-      </p>
+    <section class="hero" aria-label="Start here">
       <div class="hero-cta">
         <button type="button" id="hero-play-btn">Play a bot</button>
         <button type="button" id="hero-analyze-btn" class="btn-ghost">Analyze my games instead</button>
@@ -291,19 +283,11 @@ app.innerHTML = `
     <main id="main-content">
     <section class="card" id="today-section" data-tier="primary">
       <h2>Today</h2>
-      <p class="tagline" style="margin-bottom:16px">
-        One regimented set a day — aimed at your weakest area, with a clear finish line. Keep going past it if you
-        want; nothing here is locked.
-      </p>
       <div id="today-output"></div>
     </section>
 
     <section class="card" id="play-section" data-tier="primary">
       <h2>Play vs. bot</h2>
-      <p class="tagline" style="margin-bottom:16px">
-        A real Stockfish opponent, scaled anywhere from 100 to 3000 Elo — runs entirely in your browser, no account
-        needed.
-      </p>
       <div class="play-controls play-controls-primary">
         <label for="bot-elo">Bot strength</label>
         <input type="range" id="bot-elo" min="100" max="3000" step="10" value="800" />
@@ -366,8 +350,6 @@ app.innerHTML = `
             <div id="review-candidates"></div>
             <div class="review-buttons review-practice">
               <button type="button" id="review-try" class="btn-quiet" style="display:none">Try this position</button>
-              <button type="button" id="review-save" class="btn-quiet" style="display:none">Save this position</button>
-              <button type="button" id="review-save-key" class="btn-quiet" style="display:none">Save this game's key moments</button>
             </div>
             <div id="review-tally"></div>
             <div class="review-export-actions">
@@ -403,6 +385,12 @@ app.innerHTML = `
           </div>
         </div>
       </div>
+      <button type="button" id="settings-btn" class="btn-ghost settings-open-btn" aria-haspopup="dialog" aria-controls="settings-dialog">⚙ Settings</button>
+      <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-title">
+      <div class="settings-head">
+        <h3 id="settings-title">Settings</h3>
+        <button type="button" id="settings-close-btn" class="btn-ghost" aria-label="Close settings">✕</button>
+      </div>
       <div class="play-controls">
         <span class="control-pair"><label for="bot-odds">Handicap</label>
         <select id="bot-odds">
@@ -434,14 +422,11 @@ app.innerHTML = `
         </select></span>
         <label class="play-checkbox-label"><input type="checkbox" id="colorblind-palette" /> Colorblind-safe move colors</label>
       </div>
+      </dialog>
     </section>
 
     <section class="card" id="sync-section" data-tier="primary">
-      <h2>Get started — connect your Chess.com or Lichess username</h2>
-      <p class="tagline" style="margin-bottom:16px">
-        The first sync pulls just your recent games, so you see results in seconds; one click grabs the rest later.
-        No account? Jump to <strong>Play vs. bot</strong> below instead.
-      </p>
+      <h2>Get started</h2>
       <form id="sync-form" class="row">
         <label for="sync-site" class="sr-only">Where you play</label>
         <select id="sync-site">
@@ -453,9 +438,7 @@ app.innerHTML = `
         <button type="submit" id="sync-btn">Sync games</button>
       </form>
       <p class="demo-cta">
-        Not ready to connect an account?
         <button type="button" id="demo-load-btn" class="btn-ghost">See a demo</button>
-        <span class="tagline">Loads a made-up player's analyzed games so you can look around first.</span>
       </p>
       <p id="sync-log" class="status-line"></p>
       <div id="sync-progress"></div>
@@ -467,14 +450,15 @@ app.innerHTML = `
         <button type="button" id="lichess-history-cancel" style="display:none">Cancel</button>
       </p>
       <h3 style="margin-top:24px">Analyze more games</h3>
-      <p class="tagline" style="margin-bottom:16px">
-        A quick first batch analyzes automatically right after your first sync — use this to analyze more, any
-        time.
-      </p>
       <form id="analyze-recent-form" class="row">
-        <label for="analyze-count" class="sr-only">Number of recent games to analyze</label>
-        <input id="analyze-count" type="number" min="1" max="200" value="10" />
-        <button type="submit" id="analyze-recent-btn">Analyze most recent</button>
+        <label for="analyze-count" class="sr-only">How many games to analyze</label>
+        <select id="analyze-count">
+          <option value="10">10 games</option>
+          <option value="100">100 games</option>
+          <option value="1000">1,000 games</option>
+          <option value="all">All games</option>
+        </select>
+        <button type="submit" id="analyze-recent-btn">Analyze</button>
       </form>
       <p id="analyze-recent-log" class="status-line"></p>
       <div id="analyze-progress"></div>
@@ -484,22 +468,12 @@ app.innerHTML = `
 
     <section class="card" id="picker-section" data-tier="primary" style="display:none">
       <h2>Review a game</h2>
-      <p class="tagline" style="margin-bottom:16px">
-        Pick any of your synced games and step through it in 2D or 3D — the best move in each position, the move you
-        played, and a short reason it was better or worse.
-      </p>
       <div id="picker-output"></div>
       <p id="picker-status" class="status-line" role="status"></p>
-      <div id="saved-positions"></div>
     </section>
 
     <section class="card" id="focus-section" data-tier="primary" style="display:none">
       <h2>Your focus</h2>
-      <p class="tagline" style="margin-bottom:16px">
-        A rule-based read on exactly where your play is weakest right now, one specific thing to practice for it, and
-        whether that number is actually moving — not an AI opinion, just your own numbers measured the same way each
-        time.
-      </p>
       <div id="focus-output"></div>
     </section>
 
@@ -588,10 +562,6 @@ app.innerHTML = `
 
     <section class="card" id="redemption-section" data-tier="secondary" style="display:none">
       <h2>Redeem a loss</h2>
-      <p class="tagline" style="margin-bottom:16px">
-        Every blunder the engine found in your games, worst first. Pick one, play the position again from the
-        mistake — first move has to match the engine, then play it out against the bot at the opponent's strength.
-      </p>
       <div class="play-layout">
         <div class="play-board-wrap" id="redemption-board-wrap"></div>
         <div class="play-sidebar">
@@ -1366,8 +1336,6 @@ const reviewWhy = document.querySelector<HTMLParagraphElement>("#review-why")!;
 const reviewBeforeCheckbox = document.querySelector<HTMLInputElement>("#review-before")!;
 const reviewCandidatesHost = document.querySelector<HTMLDivElement>("#review-candidates")!;
 const reviewTryBtn = document.querySelector<HTMLButtonElement>("#review-try")!;
-const reviewSaveBtn = document.querySelector<HTMLButtonElement>("#review-save")!;
-const reviewSaveKeyBtn = document.querySelector<HTMLButtonElement>("#review-save-key")!;
 const reviewShareSummaryBtn = document.querySelector<HTMLButtonElement>("#review-share-summary-btn")!;
 const reviewCopyPgnBtn = document.querySelector<HTMLButtonElement>("#review-copy-pgn-btn")!;
 const reviewDownloadPgnBtn = document.querySelector<HTMLButtonElement>("#review-download-pgn-btn")!;
@@ -1423,7 +1391,7 @@ function toggleReviewAutoplay() {
 }
 
 /** Draws a candidate overlay on the 2D board and, when open, the 3D one. */
-const OVERLAY_ARROW_WIDTH: Record<OverlayArrow["kind"], number> = { best: 5, played: 4, preview: 3 };
+const OVERLAY_ARROW_WIDTH: Record<OverlayArrow["kind"], number> = { best: 14, played: 12, preview: 10 };
 // Kept so the 3D board, if it is opened after the overlay was drawn, can
 // pick it up instead of starting bare until the next step.
 let currentOverlay: { arrows: OverlayArrow[]; tints: OverlayTint[]; trails: OverlayTrail[] } | null = null;
@@ -1497,14 +1465,6 @@ async function loadCandidatesFor(step: ReviewStep) {
 function updateReviewActions(step: ReviewStep | null) {
   const canPractice = !!step && canPracticeStep(step);
   reviewTryBtn.style.display = canPractice ? "" : "none";
-  reviewSaveBtn.style.display = canPractice ? "" : "none";
-  if (canPractice && review) {
-    const p = puzzleFromStep(review, step!);
-    const saved = !!p && savedIds.has(p.id);
-    reviewSaveBtn.textContent = saved ? "Saved ✓" : "Save this position";
-    reviewSaveBtn.disabled = saved;
-  }
-  reviewSaveKeyBtn.style.display = review && keyMoments(review).length ? "" : "none";
 }
 
 function showReviewStep(index: number) {
@@ -1888,9 +1848,7 @@ reviewDownloadPgnBtn.addEventListener("click", () => {
 // same flow runs for a position saved earlier, with no game open.
 
 let savedRecords: SavedPuzzleRecord[] = [];
-let savedIds = new Set<string>();
 
-const savedPositionsHost = document.querySelector<HTMLDivElement>("#saved-positions")!;
 
 async function refreshSavedPositions() {
   try {
@@ -1903,74 +1861,8 @@ async function refreshSavedPositions() {
   } catch {
     return; // a storage failure must never break the review itself
   }
-  savedIds = new Set(savedRecords.map((p) => p.id));
-  const progress = getProgress(lcUser());
-  const solved = new Set(savedRecords.filter((p) => progress[p.id]?.solved).map((p) => p.id));
-  savedPositionsHost.innerHTML = renderSavedPositions(savedRecords, solved);
   updateReviewActions(currentReviewStep());
 }
-
-async function saveReviewPuzzles(puzzles: NonNullable<ReturnType<typeof puzzleFromStep>>[]) {
-  if (!puzzles.length) return;
-  try {
-    const db = await openDb();
-    try {
-      await putSavedPuzzles(
-        db,
-        puzzles.map((p) => ({ ...p, username: lcUser(), savedAt: Date.now() })),
-      );
-    } finally {
-      db.close();
-    }
-    await refreshSavedPositions();
-    showToast(
-      puzzles.length === 1
-        ? "Saved. Find it under “Review a game” → Saved positions."
-        : `Saved ${puzzles.length} positions under “Review a game” → Saved positions.`,
-    );
-  } catch (err: any) {
-    showToast(`Couldn't save: ${err.message ?? err}`);
-  }
-}
-
-reviewSaveBtn.addEventListener("click", () => {
-  const step = currentReviewStep();
-  const p = review && step ? puzzleFromStep(review, step, reviewOpening) : null;
-  if (p) void saveReviewPuzzles([p]);
-});
-
-reviewSaveKeyBtn.addEventListener("click", () => {
-  if (!review) return;
-  const puzzles = keyMoments(review)
-    .map((s) => puzzleFromStep(review!, s, reviewOpening))
-    .filter((p): p is NonNullable<typeof p> => p !== null);
-  void saveReviewPuzzles(puzzles);
-});
-
-savedPositionsHost.addEventListener("click", async (e) => {
-  const target = e.target as HTMLElement;
-  const tryBtn = target.closest<HTMLElement>("[data-saved-try]");
-  if (tryBtn) {
-    const record = savedRecords.find((p) => p.id === tryBtn.dataset.savedTry);
-    if (record) startTry(record);
-    return;
-  }
-  const removeBtn = target.closest<HTMLElement>("[data-saved-remove]");
-  if (removeBtn) {
-    try {
-      const db = await openDb();
-      try {
-        await deleteSavedPuzzle(db, lcUser(), removeBtn.dataset.savedRemove!);
-      } finally {
-        db.close();
-      }
-    } catch (err: any) {
-      showToast(`Couldn't remove: ${err.message ?? err}`);
-      return;
-    }
-    await refreshSavedPositions();
-  }
-});
 
 let tryTarget: Puzzle | null = null;
 let tryRewarded = false; // a position only counts toward Today once per visit to it
@@ -2100,7 +1992,6 @@ const pickerOutput = document.querySelector<HTMLDivElement>("#picker-output")!;
 const pickerStatus = document.querySelector<HTMLParagraphElement>("#picker-status")!;
 
 let pickerGames: GameRecord[] = [];
-let pickerFilter: PickerFilter = "all";
 let pickerBusyId: string | null = null;
 // Set by a weak-opening diagnostic's "See these games" jump -- narrows the
 // picker to one opening line on top of the result filter, until explicitly
@@ -2111,9 +2002,7 @@ function renderPicker() {
   const track = document.getElementById("picker-track");
   const scrollLeft = track?.scrollLeft ?? 0; // keep the viewer's place when a card flips to "Analyzing…"
   pickerOutput.innerHTML = renderGamePicker(
-    buildPickerCards(pickerGames, pickerFilter, PICKER_CARD_LIMIT, pickerOpeningFilter ?? undefined),
-    pickerCounts(pickerGames, pickerOpeningFilter ?? undefined),
-    pickerFilter,
+    buildPickerCards(pickerGames, PICKER_CARD_LIMIT, pickerOpeningFilter ?? undefined),
     pickerBusyId,
     pickerOpeningFilter ?? undefined,
   );
@@ -2234,7 +2123,6 @@ async function startOpeningPractice(openingName: string) {
  * #7): narrows the picker to that exact opening line and brings it into
  * view, same treatment as the other growth-card jump buttons. */
 function jumpToGamesInOpening(openingName: string) {
-  pickerFilter = "all";
   pickerOpeningFilter = openingName;
   expandCard("picker-section");
   renderPicker();
@@ -2303,12 +2191,6 @@ async function openPickedGame(id: string, targetPly?: number) {
 
 pickerSection.addEventListener("click", (e) => {
   const target = e.target as HTMLElement;
-  const filterBtn = target.closest<HTMLElement>("[data-picker-filter]");
-  if (filterBtn) {
-    pickerFilter = filterBtn.dataset.pickerFilter as PickerFilter;
-    renderPicker();
-    return;
-  }
   const clearOpeningBtn = target.closest<HTMLElement>("[data-picker-clear-opening]");
   if (clearOpeningBtn) {
     pickerOpeningFilter = null;
@@ -3188,7 +3070,16 @@ importDataInput.addEventListener("change", async () => {
 // --- Phase 2: analyze recent games ---
 
 const analyzeRecentForm = document.querySelector<HTMLFormElement>("#analyze-recent-form")!;
-const analyzeCountInput = document.querySelector<HTMLInputElement>("#analyze-count")!;
+const analyzeCountInput = document.querySelector<HTMLSelectElement>("#analyze-count")!;
+// Rough time per game, used only for the "about N min" estimate before the
+// first game finishes. Once a game is done, the estimate uses the real average.
+const ANALYZE_SECONDS_PER_GAME_GUESS = 10;
+
+function formatEta(seconds: number): string {
+  if (seconds < 90) return `about ${Math.max(1, Math.round(seconds))} sec`;
+  if (seconds < 90 * 60) return `about ${Math.round(seconds / 60)} min`;
+  return `about ${(seconds / 3600).toFixed(1)} hr`;
+}
 const analyzeRecentBtn = document.querySelector<HTMLButtonElement>("#analyze-recent-btn")!;
 const analyzeRecentLog = document.querySelector<HTMLParagraphElement>("#analyze-recent-log")!;
 const analyzeProgressBar = createProgressBar(document.querySelector<HTMLElement>("#analyze-progress")!);
@@ -3223,6 +3114,17 @@ async function runAnalyzeRecent(count: number) {
       return;
     }
 
+    const startedAt = Date.now();
+    const estimate = (remaining: number, done: number) => {
+      const perGame = done > 0 ? (Date.now() - startedAt) / 1000 / done : ANALYZE_SECONDS_PER_GAME_GUESS;
+      return formatEta(remaining * perGame);
+    };
+    setStatus(
+      analyzeRecentLog,
+      `${allGames.length} games synced, ${candidates.length} to analyze, ${estimate(candidates.length, 0)}.`,
+      "ok",
+    );
+
     // One bad game (a malformed PGN, a position the engine chokes on)
     // used to abort the whole batch here -- every game analyzed before it
     // was already saved (putMoveAnalyses/markGameAnalyzed per game), but
@@ -3240,6 +3142,7 @@ async function runAnalyzeRecent(count: number) {
       const game = candidates[i];
       const dateLabel = game.endTime ? new Date(game.endTime * 1000).toISOString().slice(0, 10) : game.chessComUuid;
       analyzeProgressBar.update(i + 1, candidates.length, `Analyzing ${dateLabel}`);
+      setStatus(analyzeRecentLog, `Analyzing ${i + 1} of ${candidates.length}, ${estimate(candidates.length - i, i)} left.`, "ok");
       try {
         const moves = await analyzeGame(engine, game, DEFAULT_ANALYSIS_OPTIONS);
         await putMoveAnalyses(db, moves);
@@ -3280,8 +3183,20 @@ async function runAnalyzeRecent(count: number) {
 
 analyzeRecentForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const count = Math.max(1, Math.min(200, parseInt(analyzeCountInput.value, 10) || 10));
+  const count = analyzeCountInput.value === "all" ? Number.POSITIVE_INFINITY : parseInt(analyzeCountInput.value, 10);
   await runAnalyzeRecent(count);
+});
+
+// --- Settings dialog: handicap, hang warnings, live analysis, sound, board look ---
+
+const settingsBtn = document.querySelector<HTMLButtonElement>("#settings-btn")!;
+const settingsDialog = document.querySelector<HTMLDialogElement>("#settings-dialog")!;
+const settingsCloseBtn = document.querySelector<HTMLButtonElement>("#settings-close-btn")!;
+settingsBtn.addEventListener("click", () => settingsDialog.showModal());
+settingsCloseBtn.addEventListener("click", () => settingsDialog.close());
+// A click on the dimmed backdrop lands on the dialog itself, outside its box.
+settingsDialog.addEventListener("click", (e) => {
+  if (e.target === settingsDialog) settingsDialog.close();
 });
 
 /** The automatic first-sync batch, split in two: analyze just the single
@@ -3810,7 +3725,10 @@ async function refreshProfile() {
   }
   clearEmptyFor("focus-section");
   focusSection.style.display = "";
-  focusOutput.innerHTML = renderSkillProfile(assessment, snapshots);
+  focusOutput.innerHTML = renderSkillProfile(assessment, snapshots, {
+    analyzed: profile.gamesAnalyzed,
+    synced: lastGamesSynced,
+  });
 
   clearEmptyFor("insights-section");
   renderInsights(profile, analyzedGames, ownMoves);
@@ -4438,6 +4356,20 @@ function loadRedemption(row: RedemptionRow) {
   renderRedemptionSection();
 }
 
+/** A rubber-stamp "REDEEMED" that slams down over the board, then fades.
+ * Skipped when effects are off, same as the other juice. */
+function stampRedeemed(origin: HTMLElement | null) {
+  if (!origin || !effectsEnabled()) return;
+  const r = origin.getBoundingClientRect();
+  const stamp = document.createElement("div");
+  stamp.className = "redeem-stamp";
+  stamp.textContent = "REDEEMED";
+  stamp.style.left = `${r.left + r.width / 2}px`;
+  stamp.style.top = `${r.top + r.height / 2}px`;
+  document.body.appendChild(stamp);
+  window.setTimeout(() => stamp.remove(), 1900);
+}
+
 async function onRedemptionMove(uci: string) {
   if (!activeRedemption || !redemptionBoard) return;
   const p = activeRedemption.puzzle;
@@ -4464,6 +4396,7 @@ async function onRedemptionMove(uci: string) {
     }
     if (wasNew) {
       celebrate(redemptionWrapEl);
+      stampRedeemed(redemptionWrapEl);
       playLevelUpSound();
       floatText(redemptionWrapEl, "Redeemed!", "gold");
     } else {

@@ -294,8 +294,9 @@ textarea:focus-visible,
 
 .tagline {
   color: var(--muted);
-  font-size: 0.95rem;
-  line-height: 1.6;
+  font-size: 1.9rem; /* 2x the old 0.95rem caption (2026-10-20) */
+  font-weight: 700;
+  line-height: 1.3;
   margin: 0 0 32px;
 }
 
@@ -548,6 +549,40 @@ pre.log {
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 12px;
   margin-bottom: 24px;
+}
+
+/* Your profile: two columns of blocks; "wide" blocks span both. */
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px 24px;
+}
+.profile-block {
+  min-width: 0;
+}
+.profile-block h3 {
+  margin-top: 0;
+}
+.profile-wide {
+  grid-column: 1 / -1;
+}
+.profile-block table {
+  width: 100%;
+}
+.profile-block .overflow-x,
+.profile-wide table {
+  display: block;
+  overflow-x: auto;
+}
+.profile-note {
+  margin: -8px 0 16px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+@media (max-width: 760px) {
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .stat-card {
@@ -1646,6 +1681,53 @@ input[type="range"] {
   flex-direction: column;
   gap: 10px;
   margin-bottom: 16px;
+}
+/* Focus card: one plain row per skill, e.g. "Openings  72/100  solid · 34 moves". */
+.skill-coverage {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.skill-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.skill-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.4fr) 84px 1fr;
+  gap: 12px;
+  align-items: baseline;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.98rem;
+}
+.skill-row-name {
+  font-weight: 600;
+}
+.skill-row-score {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+.skill-row-read {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.skill-row-weakest {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+}
+@media (max-width: 600px) {
+  .skill-row {
+    grid-template-columns: 1fr auto;
+  }
+  .skill-row-read {
+    grid-column: 1 / -1;
+  }
 }
 .skill-bar-row {
   display: flex;
@@ -2892,10 +2974,70 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
 .picker-card-ready .picker-status {
   color: var(--muted);
 }
-.picker-hint {
+/* Hover (or keyboard focus) on a game card reveals its first moves. */
+.picker-preview {
+  display: none;
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-strong);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.picker-card:hover .picker-preview,
+.picker-card:focus-visible .picker-preview {
+  display: block;
+}
+.picker-busy-label {
+  margin-top: auto;
   font-size: 0.76rem;
-  color: var(--muted);
-  margin: 0 0 6px;
+  color: var(--accent-strong);
+}
+
+/* "Redeem a loss": the stamp slams onto the board when a redemption lands. */
+.redeem-stamp {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  padding: 0.1em 0.45em;
+  border: 5px solid var(--win);
+  border-radius: 10px;
+  color: var(--win);
+  background: rgba(10, 12, 16, 0.55);
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 9vw, 4.2rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  transform: translate(-50%, -50%) rotate(-12deg);
+  animation: redeem-stamp-anim 1.9s ease-out forwards;
+}
+@keyframes redeem-stamp-anim {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-12deg) scale(2.4);
+  }
+  16% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(-12deg) scale(0.9);
+  }
+  24% {
+    transform: translate(-50%, -50%) rotate(-12deg) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .redeem-stamp {
+    animation: none;
+    opacity: 1;
+  }
 }
 .picker-subheading {
   margin: 22px 0 8px;

@@ -135,25 +135,6 @@ test.describe("game picker and review", () => {
     await expect(page.locator("#try-panel")).toBeHidden();
     await expect(page.locator("#review-caption")).toContainText("Position before");
 
-    // --- save it, and it shows up under Saved positions ---
-    await page.locator("#review-save").click();
-    await expect(page.locator("#saved-positions .saved-row")).toHaveCount(1);
-    await expect(page.locator("#review-save")).toHaveText("Saved ✓");
-
-    // --- and it survives a reload, practiceable with no game open ---
-    await page.reload();
-    await expect(page.locator("#saved-positions .saved-row")).toHaveCount(1);
-    await page.locator("[data-saved-try]").first().click();
-    await expect(page.locator("#try-panel")).toBeVisible();
-    await expect(page.locator("#review-panel")).toBeHidden();
-    await playMove(page, "a2", "a3");
-    await expect(page.locator("#try-status")).toContainText(/Not quite|✅/);
-    await page.locator("#try-done").click();
-    await expect(page.locator("#try-panel")).toBeHidden();
-
-    // --- remove it ---
-    await page.locator("[data-saved-remove]").first().click();
-    await expect(page.locator("#saved-positions .saved-row")).toHaveCount(0);
 
     expect(problems, problems.join("\n")).toEqual([]);
   });
