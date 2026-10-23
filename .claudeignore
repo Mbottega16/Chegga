@@ -1,0 +1,16 @@
+# Chegga — ignore pre-consolidation archive (265 MB DB), 16.2 MB puzzle JSON blob, node_modules, and build output
+.git/
+.agents/
+archive/
+**/node_modules/
+**/dist/
+**/playwright-report/
+**/test-results/
+web/public/curated-puzzles.json
+web/public/stockfish*
+web/videos/
+*.db
+*.sqlite
+*.wasm
+*.webm
+*.zip
