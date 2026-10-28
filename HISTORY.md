@@ -19,6 +19,14 @@ This repo is public, so private planning notes stay in the owner's vault, not he
 
 ---
 
+## 2026-10-28 — Broadcast Chess Studio front-end overhaul & declutter
+
+*PC · Antigravity · Broadcast Studio UI*
+- **Changed:** Overhauled the front end (`main.ts`, `style.css`, `gamePicker.ts`, `gamePickerView.ts`, `gameReviewView.ts`, `emptyStates.ts`, `todayView.ts`, `profileView.ts`) from a narrow `960px` single-column stack of 29 uniform grey panels into a `1360px` **Broadcast Chess Studio** split-stage workspace. Added `heroArt.ts` (animated SVG tactical board showcase with MultiPV Bezier trails and floating classification callouts) and `miniBoardSvg.ts` (8×8 vector mini-board previews with last-move highlights for Game Picker and Saved Positions cards, plus 5-pip Leitner mastery bars). Added reactive board stage aura lighting (`--stage-aura`), glowing SVG evaluation curve with time-trouble heat bands, circular SVG progress ring in `todayView.ts`, radial move-quality donut chart + 2×2 bento layout in `profileView.ts`, compact `⚙ Settings` board drawer, and stripped redundant `.tagline` text walls across all cards.
+- **Why:** Owner requested a complete graphic design and visual effects overhaul focused on decluttering the panel-heavy, text-block UI into an intuitive, visual website for both new and experienced players.
+- **Verified:** `npm run build` (`tsc && vite build`), `npm test` (27 test files, 332 unit tests passing including `studioVisuals.test.ts`), and Playwright E2E suite (`smoke.spec.ts` + `review-picker.spec.ts`, 28/28 Chromium desktop & mobile tests passing).
+- **Left open:** Real-device mobile validation, high-volume Safari/WebKit IndexedDB sync testing, and wiring `pre-push` git hook.
+
 ## 2026-10-24 — docs restructured to the uniform standard
 
 *Mac · Claude · docs only, no code touched*

@@ -43,12 +43,13 @@ Chegga was consolidated on 2026-08-28 so that `web/` is the entire product. On 2
 
 | File / Group | Responsibility |
 |---|---|
-| `main.ts` | App shell, card visibility, `data-coming-soon` folding, event wiring, jump nav. |
+| `main.ts`, `heroArt.ts` | Broadcast Studio `1360px` split-stage shell, SVG hero tactical showcase (`heroArt.ts`), reactive `--stage-aura` board lighting, `⚙ Settings` popover drawer, `data-coming-soon` folding, and sticky mode dock. |
 | `playBoard.ts` | 2D interactive chessboard, drag/tap move input, keyboard arrow/ARIA navigation (`9297dc9`), candidate move heatmaps & flowing trails (`9f20294`), stepped reticles & NAG glyph badges (`7846a03`). |
 | `board3d.ts` | Three.js 360° 3D board (`LatheGeometry` Staunton pieces, orbit/pinch zoom, full-screen overlay, shared CSS theme variables). |
 | `engine.ts`, `engineAnalysis.ts` | Web Worker Stockfish UCI bridge (depth 14, MultiPV 3 candidate lines, lazy WASM initialization). |
-| `gameReview.ts`, `gameReviewView.ts` | Turn-by-turn review timeline, interactive SVG evaluation curve with scrubbing (`8f5c65b`), clock usage & time-trouble panic visualizer (`c98ab4a`), PGN + NAG export & shareable summary cards (`f6042de`). |
-| `gamePicker.ts`, `gamePickerView.ts` | Visual card picker for selecting synced games to review, with instant demo dataset (`b540947`). |
+| `gameReview.ts`, `gameReviewView.ts` | Turn-by-turn review timeline, broadcast classification banner, glowing SVG evaluation curve with time-trouble heat bands & scrubbing (`8f5c65b`, `c98ab4a`), PGN + NAG export & shareable summary cards (`f6042de`). |
+| `gamePicker.ts`, `gamePickerView.ts`, `miniBoardSvg.ts` | Visual card picker with 8×8 SVG mini-board position previews (`miniBoardSvg.ts`), result/status badges, 5-pip Leitner mastery meters on Saved Positions, and instant demo dataset (`b540947`). |
+| `todayView.ts`, `profileView.ts`, `emptyStates.ts` | SVG circular daily training ring (`todayView.ts`), radial move-quality donut chart + 2×2 bento analytics (`profileView.ts`), and graphic SVG empty-state illustrations (`emptyStates.ts`). |
 | `moveExplanation.ts`, `classificationColors.ts` | Rule-based tactical explanations (forks, pins, hanging pieces — no LLM API cost) and colorblind-safe move classification palette (Brilliant, Great, Best, Excellent, Good, Book, Inaccuracy, Mistake, Miss, Blunder). |
 | `juice.ts`, `soundEffects.ts` | Particle bursts, celebration overlays, and synthesized Web Audio tactile clicks/chimes. |
 | `siteSync.ts`, `syncService.ts`, `lichessClient.ts` | Incremental, rate-limited game fetchers for Chess.com Published-Data API and Lichess API. |
@@ -64,7 +65,7 @@ Run from `web/` (or use root `npm test` / `npm run build` which proxy to `web/`)
 
 ```powershell
 cd web
-npm test               # Vitest unit suite (230+ tests) — MUST pass before any commit
+npm test               # Vitest unit suite (332 tests) — MUST pass before any commit
 npm run build          # TypeScript typecheck (tsc) + Vite production build
 npm run test:smoke     # Playwright E2E smoke suite (review picker, tutorial, sync, mobile)
 npm run dev            # Standard Vite dev server
@@ -97,12 +98,9 @@ To prevent multi-megabyte data blobs and archived legacy apps from slowing down 
 
 *Overwrite this at the end of every session; move the previous handoff into `HISTORY.md` first.*
 
-- **Last Worked On:** keyboard accessibility and 64-square ARIA navigation on the board
-  (`9297dc9`), the offline puzzle curation pipeline (`cf08692`), Leitner 5-box mastery, the
-  time-trouble visualizer, eval-curve scrubbing and PWA offline caching (`c98ab4a`). Docs
-  restructured 2026-10-24 (no code change).
-- **Current State (2026-10-17):**
-  - `main` is clean, 230+ unit tests passing, production bundle builds clean and auto-deploys to `https://chegga-web.vercel.app`.
+- **Last Worked On:** **Broadcast Chess Studio** front-end overhaul & declutter (2026-10-28): wide `1360px` split-stage workspace (`main.ts`, `style.css`), animated SVG hero tactical showcase (`heroArt.ts`), 8×8 SVG mini-board position previews on Game Picker and Saved Position cards (`miniBoardSvg.ts`, `gamePickerView.ts`), reactive `--stage-aura` board lighting, glowing SVG evaluation curve with time-trouble heat bands (`gameReviewView.ts`), circular daily progress ring (`todayView.ts`), radial move-quality donut chart + 2×2 bento layout (`profileView.ts`), compact `⚙ Settings` board popover drawer, and stripped redundant `.tagline` text blocks across the app.
+- **Current State (2026-10-28):**
+  - `main` builds cleanly (`tsc && vite build`), 332 unit tests across 27 files passing (`npm test`), and 28/28 Chromium E2E tests (`smoke.spec.ts` + `review-picker.spec.ts` across desktop & mobile viewports) passing.
 - **Next Up:**
   1. Real-device mobile validation (test touch swipe gestures, 3D board pinch-zoom, and eval-curve scrubbing on physical iOS/Android screens).
   2. High-volume account sync validation on Safari/WebKit IndexedDB (1,000+ game sync batches + background Stockfish queue).

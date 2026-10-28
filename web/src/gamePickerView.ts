@@ -10,6 +10,7 @@
 import type { PickerCard, PickerFilter } from "./gamePicker";
 import type { SavedPuzzleRecord } from "./db";
 import { describeSavedPuzzle, isDueForReview, describeSpacedBox } from "./savedPuzzles";
+import { extractPreviewFromPgn, renderMiniBoardSvg } from "./miniBoardSvg";
 
 function esc(text: string): string {
   return text.replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -27,7 +28,7 @@ const FILTERS: { id: PickerFilter; label: string }[] = [
 
 function formatDate(endTime: number): string {
   if (!endTime) return "";
-  return new Date(endTime * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" });
+  return new Date(endTime * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 function statusLine(card: PickerCard, busy: boolean): string {
@@ -46,12 +47,23 @@ function renderCard(card: PickerCard, busyId: string | null): string {
     .filter(Boolean)
     .join(" · ");
   const label = `${RESULT_LABEL[card.result]} against ${card.opponent}, ${meta}`;
+  const preview = extractPreviewFromPgn(card.pgn ?? "");
+  const miniBoard = renderMiniBoardSvg(preview.fen, card.color, preview.lastMove);
+  const statusIcon = card.analyzed ? "✦" : busy ? "◌" : "▶";
+
   return `<button type="button" class="${classes}" data-game-id="${esc(card.id)}" ${disabled ? "disabled" : ""} aria-label="${esc(label)}">
-    <span class="picker-result">${RESULT_LABEL[card.result]}</span>
-    <span class="picker-vs">vs <strong>${esc(card.opponent)}</strong> <span class="picker-rating">${card.opponentRating || ""}</span></span>
-    <span class="picker-meta">${esc(meta)}</span>
-    <span class="picker-opening">${card.opening ? esc(card.opening) : "&nbsp;"}</span>
-    <span class="picker-status">${statusLine(card, busy)}</span>
+    <div class="picker-card-top">
+      <div class="picker-mini-board-wrap">
+        ${miniBoard}
+        <span class="picker-result picker-result-badge">${RESULT_LABEL[card.result]}</span>
+      </div>
+      <div class="picker-card-info">
+        <span class="picker-vs">vs <strong>${esc(card.opponent)}</strong> <span class="picker-rating">${card.opponentRating || ""}</span></span>
+        <span class="picker-meta">${esc(meta)}</span>
+        <span class="picker-opening">${card.opening ? esc(card.opening) : "Standard Game"}</span>
+        <span class="picker-status"><span class="picker-status-dot" aria-hidden="true">${statusIcon}</span> ${statusLine(card, busy)}</span>
+      </div>
+    </div>
   </button>`;
 }
 
@@ -66,9 +78,6 @@ export function renderGamePicker(
     (f) =>
       `<button type="button" class="picker-filter${f.id === filter ? " picker-filter-active" : ""}" data-picker-filter="${f.id}" aria-pressed="${f.id === filter}">${f.label} <span class="picker-count">${counts[f.id]}</span></button>`,
   ).join("");
-  // Set from a weak-opening diagnostic's "see these games" jump -- an
-  // extra narrowing on top of the win/loss/draw/analyzed chips above, with
-  // its own way back to the unfiltered picker (critique #7).
   const openingBanner = openingName
     ? `<p class="picker-opening-focus">Showing games in <strong>${esc(openingName)}</strong> — <button type="button" class="btn-quiet" data-picker-clear-opening>Clear filter</button></p>`
     : "";
@@ -77,8 +86,7 @@ export function renderGamePicker(
         <button type="button" class="picker-nav" data-picker-nav="-1" aria-label="Scroll to newer games">◀</button>
         <div class="picker-track" id="picker-track" tabindex="0" role="group" aria-label="Your games, newest first">${cards.map((c) => renderCard(c, busyId)).join("")}</div>
         <button type="button" class="picker-nav" data-picker-nav="1" aria-label="Scroll to older games">▶</button>
-      </div>
-      <p class="picker-hint">Swipe or scroll for older games. Games that aren't analyzed yet are analyzed when you open them (about half a minute).</p>`
+      </div>`
     : `<p class="status-line">No games match this filter${openingName ? ` in "${esc(openingName)}"` : ""}.</p>`;
   return `${openingBanner}<div class="picker-filters" role="group" aria-label="Filter your games">${chips}</div>${body}`;
 }
@@ -86,7 +94,7 @@ export function renderGamePicker(
 export function renderSavedPositions(saved: SavedPuzzleRecord[], solvedIds: Set<string>): string {
   if (!saved.length) return "";
   const dueCount = saved.filter((p) => isDueForReview(p)).length;
-  const dueSummary = dueCount > 0 ? `<span class="saved-due-summary">🔥 ${dueCount} due for review</span>` : "";
+  const dueSummary = dueCount > 0 ? `<span class="saved-due-summary">🔥 ${dueCount} due</span>` : "";
 
   const rows = saved
     .map((p) => {
@@ -96,20 +104,29 @@ export function renderSavedPositions(saved: SavedPuzzleRecord[], solvedIds: Set<
       const boxLabel = describeSpacedBox(box);
       const dueTag = due ? `<span class="saved-due-tag">Due today</span>` : "";
       const boxBadge = `<span class="saved-box-badge box-${box}">${esc(boxLabel)}</span>`;
+      const pips = Array.from(
+        { length: 5 },
+        (_, i) => `<span class="leitner-pip${i < box ? " leitner-pip-filled" : ""}" aria-hidden="true"></span>`,
+      ).join("");
+      const miniBoard = renderMiniBoardSvg(p.fenBefore, p.sideToMove);
 
       return `<li class="saved-row${due ? " is-due" : ""}">
+        <div class="saved-mini-board">${miniBoard}</div>
         <div class="saved-text">
           <div class="saved-title-row">
             <span class="saved-title">${p.sideToMove === "white" ? "White" : "Black"} to move${solved ? ` <span class="saved-solved">solved</span>` : ""}</span>
             ${boxBadge}
+            <span class="leitner-pips" aria-hidden="true">${pips}</span>
             ${dueTag}
           </div>
           <span class="saved-meta">${esc(describeSavedPuzzle(p))}${p.openingName ? ` · ${esc(p.openingName)}` : ""}</span>
         </div>
-        <button type="button" class="btn-quiet" data-saved-try="${esc(p.id)}">Try it</button>
-        <button type="button" class="btn-quiet" data-saved-remove="${esc(p.id)}" aria-label="Remove this saved position">Remove</button>
+        <div class="saved-actions">
+          <button type="button" class="btn-quiet saved-try-btn" data-saved-try="${esc(p.id)}">Try it</button>
+          <button type="button" class="btn-quiet saved-remove-btn" data-saved-remove="${esc(p.id)}" aria-label="Remove this saved position">✕</button>
+        </div>
       </li>`;
     })
     .join("");
-  return `<h3 class="picker-subheading">Saved positions <span class="picker-count">${saved.length}</span> ${dueSummary}</h3><ul class="saved-list">${rows}</ul>`;
+  return `<div class="saved-vault-header"><h3 class="picker-subheading">Saved Tactical Vault <span class="picker-count">${saved.length}</span></h3>${dueSummary}</div><ul class="saved-list">${rows}</ul>`;
 }

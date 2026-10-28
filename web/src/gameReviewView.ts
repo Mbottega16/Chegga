@@ -18,7 +18,7 @@ function escapeAttr(text: string): string {
 
 /** An interactive evaluation advantage curve for the whole game.
  * Plots White advantage (+) vs Black advantage (-) with clickable points
- * colored by the move quality system. */
+ * colored by the move quality system and time-trouble heat zones. */
 export function renderEvalGraph(review: ReviewGame, currentIndex: number): string {
   if (!review.steps.length) return "";
   const n = review.steps.length;
@@ -38,8 +38,8 @@ export function renderEvalGraph(review: ReviewGame, currentIndex: number): strin
     return 3 + (i / (n - 1)) * 94;
   };
   const getY = (score: number) => {
-    // 0 is at y=18, +8 at y=4, -8 at y=32
-    return 18 - (score / 8) * 14;
+    // 0 is at y=20, +8 at y=4, -8 at y=36
+    return 20 - (score / 8) * 16;
   };
 
   const points = scores.map((s, i) => ({ x: getX(i), y: getY(s), score: s }));
@@ -47,18 +47,31 @@ export function renderEvalGraph(review: ReviewGame, currentIndex: number): strin
 
   // Fill polygon above midline (White advantage) and below midline (Black advantage)
   const whitePoly = [
-    `M ${getX(0).toFixed(1)} 18`,
-    ...points.map((p) => `L ${p.x.toFixed(1)} ${Math.min(18, p.y).toFixed(1)}`),
-    `L ${getX(n - 1).toFixed(1)} 18`,
+    `M ${getX(0).toFixed(1)} 20`,
+    ...points.map((p) => `L ${p.x.toFixed(1)} ${Math.min(20, p.y).toFixed(1)}`),
+    `L ${getX(n - 1).toFixed(1)} 20`,
     "Z",
   ].join(" ");
 
   const blackPoly = [
-    `M ${getX(0).toFixed(1)} 18`,
-    ...points.map((p) => `L ${p.x.toFixed(1)} ${Math.max(18, p.y).toFixed(1)}`),
-    `L ${getX(n - 1).toFixed(1)} 18`,
+    `M ${getX(0).toFixed(1)} 20`,
+    ...points.map((p) => `L ${p.x.toFixed(1)} ${Math.max(20, p.y).toFixed(1)}`),
+    `L ${getX(n - 1).toFixed(1)} 20`,
     "Z",
   ].join(" ");
+
+  // Time-trouble / clock-panic heat bands behind the curve
+  const stepWidth = n > 1 ? Math.max(1.8, 94 / (n - 1)) : 6;
+  const heatBands = review.steps
+    .map((step, i) => {
+      if (!step.clockAlert) return "";
+      const p = points[i];
+      if (!p) return "";
+      const bandColor = step.clockAlert === "panic" ? "#e53935" : "#ffb300";
+      const opacity = step.clockAlert === "panic" ? "0.22" : "0.14";
+      return `<rect x="${(p.x - stepWidth / 2).toFixed(1)}" y="2" width="${stepWidth.toFixed(1)}" height="36" fill="${bandColor}" fill-opacity="${opacity}" class="eval-heat-band eval-heat-${step.clockAlert}"/>`;
+    })
+    .join("");
 
   // Interactive dots for moves with move quality or annotations
   const dots = review.steps
@@ -71,12 +84,12 @@ export function renderEvalGraph(review: ReviewGame, currentIndex: number): strin
       const color = getClassColor(tier);
       const glyph = getClassGlyph(tier);
       const isMajor = tier === "brilliant" || tier === "blunder";
-      const radius = isMajor ? 2.4 : 1.6;
+      const radius = isMajor ? 2.5 : 1.55;
       const glyphTag = isMajor
-        ? `<text x="${p.x.toFixed(1)}" y="${p.y < 18 ? (p.y - 3.2).toFixed(1) : (p.y + 5.5).toFixed(1)}" font-family="monospace" font-size="3.2" font-weight="900" fill="${color}" text-anchor="middle" class="eval-graph-glyph">${glyph}</text>`
+        ? `<text x="${p.x.toFixed(1)}" y="${p.y < 20 ? (p.y - 3.3).toFixed(1) : (p.y + 5.8).toFixed(1)}" font-family="JetBrains Mono, monospace" font-size="3.4" font-weight="900" fill="${color}" text-anchor="middle" class="eval-graph-glyph">${glyph}</text>`
         : "";
       return `
-        <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${radius}" fill="${color}" stroke="#14170f" stroke-width="0.7"
+        <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${radius}" fill="${color}" stroke="#0b0f17" stroke-width="0.7"
                 class="eval-graph-node" data-review-index="${i}" data-tier="${tier}">
           <title>${escapeAttr(moveLabel(step))}: ${tier} (${p.score > 0 ? "+" : ""}${p.score.toFixed(1)})</title>
         </circle>
@@ -92,9 +105,9 @@ export function renderEvalGraph(review: ReviewGame, currentIndex: number): strin
       const curScore = curP.score;
       const curLabel = curScore > 0 ? `+${curScore.toFixed(1)}` : curScore.toFixed(1);
       cursorSvg = `
-        <line x1="${curP.x.toFixed(1)}" y1="2" x2="${curP.x.toFixed(1)}" y2="34" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="1.5,1.5" class="eval-graph-cursor"/>
-        <circle cx="${curP.x.toFixed(1)}" cy="${curP.y.toFixed(1)}" r="2.8" fill="var(--accent)" stroke="#fff" stroke-width="1" class="eval-graph-current-dot"/>
-        <text x="${curP.x < 85 ? (curP.x + 3).toFixed(1) : (curP.x - 3).toFixed(1)}" y="7" font-family="monospace" font-size="3.5" font-weight="800" fill="var(--accent-strong)" text-anchor="${curP.x < 85 ? "start" : "end"}">${curLabel}</text>`;
+        <line x1="${curP.x.toFixed(1)}" y1="2" x2="${curP.x.toFixed(1)}" y2="38" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="1.5,1.5" class="eval-graph-cursor"/>
+        <circle cx="${curP.x.toFixed(1)}" cy="${curP.y.toFixed(1)}" r="2.9" fill="var(--accent)" stroke="#fff" stroke-width="1" class="eval-graph-current-dot"/>
+        <text x="${curP.x < 84 ? (curP.x + 3.2).toFixed(1) : (curP.x - 3.2).toFixed(1)}" y="7.5" font-family="JetBrains Mono, monospace" font-size="3.6" font-weight="800" fill="var(--accent-strong)" text-anchor="${curP.x < 84 ? "start" : "end"}">${curLabel}</text>`;
     }
   }
 
@@ -104,24 +117,33 @@ export function renderEvalGraph(review: ReviewGame, currentIndex: number): strin
         <span class="eval-graph-label">Evaluation Flow</span>
         <span class="eval-graph-legend"><span class="legend-white">▲ White</span> <span class="legend-black">▼ Black</span></span>
       </div>
-      <svg class="eval-graph-svg" viewBox="0 0 100 36" preserveAspectRatio="none">
+      <svg class="eval-graph-svg" viewBox="0 0 100 40" preserveAspectRatio="none">
         <defs>
           <linearGradient id="white-eval-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.32"/>
-            <stop offset="100%" stop-color="#ffffff" stop-opacity="0.06"/>
+            <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.34"/>
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="0.04"/>
           </linearGradient>
           <linearGradient id="black-eval-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#14170f" stop-opacity="0.08"/>
-            <stop offset="100%" stop-color="#14170f" stop-opacity="0.45"/>
+            <stop offset="0%" stop-color="#0b0f17" stop-opacity="0.12"/>
+            <stop offset="100%" stop-color="#e53935" stop-opacity="0.28"/>
           </linearGradient>
+          <filter id="eval-line-glow" x="-10%" y="-20%" width="120%" height="140%">
+            <feGaussianBlur stdDeviation="0.9" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
         </defs>
+        <!-- Time-trouble heat bands -->
+        ${heatBands}
         <!-- Advantage fills -->
         <path d="${whitePoly}" fill="url(#white-eval-grad)"/>
         <path d="${blackPoly}" fill="url(#black-eval-grad)"/>
         <!-- Midline -->
-        <line x1="2" y1="18" x2="98" y2="18" stroke="var(--border-strong)" stroke-width="0.6" stroke-dasharray="1.5,1.5"/>
-        <!-- Eval curve -->
-        <path d="${pathD}" fill="none" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="2" y1="20" x2="98" y2="20" stroke="var(--border-strong)" stroke-width="0.6" stroke-dasharray="1.5,1.5"/>
+        <!-- Eval curve with broadcast glow -->
+        <path d="${pathD}" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" filter="url(#eval-line-glow)"/>
         <!-- Interactive node dots -->
         ${dots}
         <!-- Current cursor -->
@@ -148,10 +170,6 @@ export function renderReviewStrip(review: ReviewGame, currentIndex: number): str
       ]
         .filter(Boolean)
         .join(" ");
-      // An ungraded or opponent move gets a neutral chip. --muted-dim, not
-      // a border color: a 9px block in a border color disappears against
-      // the dark page, and the opponent's moves are still the beat of the
-      // game even when they aren't what the review is grading.
       const color = step.isHuman && tier ? getClassColor(tier) : "var(--muted-dim)";
       const glyph = step.isHuman && tier ? getClassGlyph(tier) : "";
       const clockTag = step.clockAlert
@@ -163,8 +181,6 @@ export function renderReviewStrip(review: ReviewGame, currentIndex: number): str
   return `<div class="review-strip" id="review-strip">${chips}</div>`;
 }
 
-// The board labels ("Best!", "Inaccuracy") don't read as counts, so the
-// tally has its own nouns: singular, pluralized where the word needs it.
 const TALLY_NOUN: Record<string, [singular: string, plural: string]> = {
   best: ["best", "best"],
   excellent: ["excellent", "excellent"],
@@ -212,8 +228,8 @@ export function renderCandidateList(
   const playedListed = opts.playedUci ? candidates.some((c) => c.uci === opts.playedUci) : true;
   const outside =
     !playedListed && opts.playedSan
-      ? `<p class="candidate-note">You played ${escapeAttr(opts.playedSan)}, which is outside the engine's top ${candidates.length}.</p>`
+      ? `<p class="candidate-note">Played <strong>${escapeAttr(opts.playedSan)}</strong> (outside top ${candidates.length})</p>`
       : "";
   const shaded = candidates.filter((c) => isShadedTier(c.tier)).length;
-  return `<div class="candidate-list" role="group" aria-label="The engine's best moves in this position">${chips}</div>${outside}<p class="candidate-legend">${shaded} strong move${shaded === 1 ? "" : "s"} shaded on the board. Tap one to see it.</p>`;
+  return `<div class="candidate-list" role="group" aria-label="The engine's best moves in this position">${chips}</div>${outside}<p class="candidate-legend">${shaded} top move${shaded === 1 ? "" : "s"} shaded — tap to preview</p>`;
 }

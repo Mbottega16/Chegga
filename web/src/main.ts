@@ -16,6 +16,7 @@ installErrorOverlay(); // first, before anything else can throw
 import "./style.css";
 import "./mobile.css"; // small-viewport pass — loaded after style.css so equal-specificity rules win
 import { showEmptyStates, emptyFor, clearEmptyFor, wireEmptyStateCtas } from "./emptyStates";
+import { renderHeroArt } from "./heroArt";
 import {
   openDb,
   putGame,
@@ -243,21 +244,33 @@ app.innerHTML = `
   <div class="wrap">
     <header class="header">
       <div class="brand">
-        <svg class="brand-mark" width="30" height="30" viewBox="0 0 64 64" aria-hidden="true">
-          <rect width="64" height="64" rx="14" fill="#12151b" />
-          <rect x="12" y="12" width="10" height="10" fill="#e3a857" />
-          <rect x="32" y="12" width="10" height="10" fill="#e3a857" />
-          <rect x="22" y="22" width="10" height="10" fill="#e3a857" />
-          <rect x="42" y="22" width="10" height="10" fill="#e3a857" />
-          <rect x="12" y="32" width="10" height="10" fill="#e3a857" />
-          <rect x="32" y="32" width="10" height="10" fill="#e3a857" />
-          <rect x="22" y="42" width="10" height="10" fill="#e3a857" />
-          <rect x="42" y="42" width="10" height="10" fill="#e3a857" />
-          <rect x="12" y="12" width="40" height="40" fill="none" stroke="#f0be73" stroke-width="2" />
+        <svg class="brand-mark" width="34" height="34" viewBox="0 0 64 64" aria-hidden="true">
+          <defs>
+            <linearGradient id="brand-grad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#22d3ee" />
+              <stop offset="100%" stop-color="#e3a857" />
+            </linearGradient>
+          </defs>
+          <rect width="64" height="64" rx="15" fill="#101520" stroke="#283347" stroke-width="2" />
+          <rect x="12" y="12" width="10" height="10" rx="2" fill="#22d3ee" />
+          <rect x="32" y="12" width="10" height="10" rx="2" fill="#e3a857" />
+          <rect x="22" y="22" width="10" height="10" rx="2" fill="#e3a857" />
+          <rect x="42" y="22" width="10" height="10" rx="2" fill="#22d3ee" />
+          <rect x="12" y="32" width="10" height="10" rx="2" fill="#e3a857" />
+          <rect x="32" y="32" width="10" height="10" rx="2" fill="#22d3ee" />
+          <rect x="22" y="42" width="10" height="10" rx="2" fill="#22d3ee" />
+          <rect x="42" y="42" width="10" height="10" rx="2" fill="#e3a857" />
+          <rect x="11" y="11" width="42" height="42" rx="4" fill="none" stroke="url(#brand-grad)" stroke-width="2" />
         </svg>
-        <h1><span class="text-accent">Chegga</span></h1>
+        <div class="brand-title-group">
+          <h1><span class="text-accent">Chegga</span></h1>
+          <span class="brand-badge">CHESS STUDIO</span>
+        </div>
       </div>
-      <button type="button" id="feedback-btn" class="feedback-btn" hidden>Feedback</button>
+      <div class="header-actions">
+        <span class="header-engine-pill"><span class="engine-dot"></span>Stockfish WASM Local</span>
+        <button type="button" id="feedback-btn" class="feedback-btn" hidden>Feedback</button>
+      </div>
     </header>
 
     <p id="demo-banner" class="demo-banner" role="status" style="display:none">
@@ -266,263 +279,243 @@ app.innerHTML = `
     </p>
 
     <section class="hero" aria-labelledby="hero-title">
-      <h2 id="hero-title">See how good each move was, the moment you make it.</h2>
-      <p>
-        Play a real Stockfish opponent right in your browser — every move gets graded and stands out
-        instantly, from a quiet good move to a real "best move" moment. No account needed. Want the deeper
-        view? Connect your Chess.com or Lichess username and every game you've played gets the same treatment.
-      </p>
-      <div class="hero-cta">
-        <button type="button" id="hero-play-btn">Play a bot</button>
-        <button type="button" id="hero-analyze-btn" class="btn-ghost">Analyze my games instead</button>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <div class="hero-kicker"><span class="hero-kicker-dot"></span>Instant In-Browser Game Review &amp; Tactical Trainer</div>
+          <h2 id="hero-title">See how good each move was, the moment you make it.</h2>
+          <p class="hero-sub">
+            Review your Chess.com or Lichess games with candidate move heatmaps, evaluation flow, and clear tactical reasons — or play a custom-rated Stockfish bot right now.
+          </p>
+          <div class="hero-cta">
+            <button type="button" id="hero-play-btn">Play a bot</button>
+            <button type="button" id="hero-analyze-btn" class="btn-ghost">Analyze my games instead</button>
+          </div>
+        </div>
+        ${renderHeroArt()}
       </div>
     </section>
 
     <nav class="section-nav" aria-label="Jump to section">
-      <a href="#today-section">Today</a>
-      <a href="#play-section">Play</a>
-      <a href="#sync-section">Get started</a>
-      <a href="#picker-section">Your games</a>
-      <a href="#profile-section">Profile</a>
-      <a href="#coming-soon-section">Coming soon</a>
-      <a href="#feedback-form-details">Feedback</a>
+      <a href="#play-section">♟ Stage</a>
+      <a href="#sync-section">⚡ Connect</a>
+      <a href="#picker-section">🗂 Your games</a>
+      <a href="#today-section">🔥 Today</a>
+      <a href="#profile-section">📊 Profile</a>
+      <a href="#coming-soon-section">🧪 Lab</a>
+      <a href="#feedback-form-details">💬 Feedback</a>
     </nav>
 
     <main id="main-content">
-    <section class="card" id="today-section" data-tier="primary">
-      <h2>Today</h2>
-      <p class="tagline" style="margin-bottom:16px">
-        One regimented set a day — aimed at your weakest area, with a clear finish line. Keep going past it if you
-        want; nothing here is locked.
-      </p>
-      <div id="today-output"></div>
-    </section>
-
-    <section class="card" id="play-section" data-tier="primary">
-      <h2>Play vs. bot</h2>
-      <p class="tagline" style="margin-bottom:16px">
-        A real Stockfish opponent, scaled anywhere from 100 to 3000 Elo — runs entirely in your browser, no account
-        needed.
-      </p>
-      <div class="play-controls play-controls-primary">
-        <label for="bot-elo">Bot strength</label>
-        <input type="range" id="bot-elo" min="100" max="3000" step="10" value="800" />
-        <span id="bot-elo-value" class="play-elo-value">800 Elo</span>
-        <label for="bot-color">Play as</label>
-        <select id="bot-color">
-          <option value="white">White</option>
-          <option value="black">Black</option>
-        </select>
-        <button type="button" id="bot-new-game-btn">New game</button>
-        <button type="button" id="bot-undo-btn">Undo</button>
-      </div>
-      <div id="resume-banner" class="status-line status-ok" style="display:none">
-        You have a game in progress.
-        <button type="button" id="resume-btn">Resume it</button>
-        <button type="button" id="discard-resume-btn">Discard</button>
-      </div>
-      <div class="play-layout">
-        <div class="play-board-wrap" id="play-board-wrap"></div>
-        <div class="play-sidebar">
-          <!-- The review sits at the top of the sidebar so it lands beside
-               the board on a wide screen and directly under it on a narrow
-               one -- never several hundred pixels below the position it is
-               describing. Hidden until a game is reviewed. -->
-          <div id="review-panel" style="display:none">
-            <h3 class="review-heading">Game review</h3>
-            <div id="review-strip-host"></div>
-            <p id="review-caption" class="review-caption"></p>
-            <p id="review-why" class="review-why" style="display:none"></p>
-            <div class="review-buttons">
-              <button type="button" id="review-first" aria-label="Jump to the starting position">⏮</button>
-              <button type="button" id="review-prev" aria-label="Previous move">◀</button>
-              <button type="button" id="review-next" aria-label="Next move">▶</button>
-              <button type="button" id="review-last" aria-label="Jump to the last move">⏭</button>
-              <button type="button" id="review-autoplay" class="btn-ghost">▶ Play it back</button>
-              <button type="button" id="review-worst" class="btn-ghost">Your worst move</button>
-            </div>
-            <p class="tagline review-hint">
-              <span class="review-kbd-hint">Shortcuts: <kbd>←</kbd><kbd>→</kbd> step · <kbd>Space</kbd> play · <kbd>B</kbd> before · <kbd>W</kbd> worst · <kbd>S</kbd> share · <button type="button" class="kbd-help-btn" id="review-kbd-help-btn" title="View keyboard shortcuts">?</button></span>
-            </p>
-            <div id="review-shortcuts-help" class="review-shortcuts-help" style="display:none">
-              <div class="shortcuts-header">
-                <strong>Review Keyboard Shortcuts</strong>
-                <button type="button" id="review-shortcuts-close" class="btn-ghost" aria-label="Close shortcuts help">✕</button>
+    <div class="studio-workspace-grid">
+      <section class="card studio-stage-card" id="play-section" data-tier="primary">
+        <h2>Play vs. bot &amp; Game Review</h2>
+        <div class="play-controls play-controls-primary">
+          <label for="bot-elo">Bot</label>
+          <input type="range" id="bot-elo" min="100" max="3000" step="10" value="800" />
+          <span id="bot-elo-value" class="play-elo-value">800 Elo</span>
+          <label for="bot-color">Side</label>
+          <select id="bot-color">
+            <option value="white">White</option>
+            <option value="black">Black</option>
+          </select>
+          <button type="button" id="bot-new-game-btn">New game</button>
+          <button type="button" id="bot-undo-btn">Undo</button>
+          <details class="studio-settings-drawer">
+            <summary class="btn-quiet studio-settings-btn">⚙ Settings</summary>
+            <div class="studio-settings-popover">
+              <div class="play-controls">
+                <span class="control-pair"><label for="bot-odds">Handicap</label>
+                <select id="bot-odds">
+                  ${ODDS_OPTIONS.map((o) => `<option value="${o.value}">${o.label}</option>`).join("")}
+                </select></span>
+                <label class="play-checkbox-label"><input type="checkbox" id="bot-hang-warning" /> Warn about hanging pieces</label>
+                <span class="control-pair"><label for="hang-sensitivity">Sensitivity</label>
+                <select id="hang-sensitivity">
+                  <option value="5">Beginner (Q/R)</option>
+                  <option value="3">Intermediate (+ B/N)</option>
+                  <option value="1" selected>Advanced (+ pawns)</option>
+                </select></span>
               </div>
-              <div class="shortcuts-grid">
-                <div><kbd>←</kbd> / <kbd>→</kbd></div><div>Previous / Next move</div>
-                <div><kbd>Home</kbd> / <kbd>End</kbd></div><div>First / Last move</div>
-                <div><kbd>Space</kbd></div><div>Play back game (autoplay)</div>
-                <div><kbd>B</kbd></div><div>Toggle "Before" view & candidates</div>
-                <div><kbd>W</kbd></div><div>Jump to your worst move</div>
-                <div><kbd>T</kbd></div><div>Try this position</div>
-                <div><kbd>S</kbd></div><div>Copy shareable summary card</div>
-                <div><kbd>C</kbd></div><div>Copy annotated PGN</div>
-                <div><kbd>D</kbd></div><div>Download .pgn file</div>
-                <div><kbd>?</kbd></div><div>Toggle this shortcuts cheat-sheet</div>
+              <div class="play-controls">
+                <label class="play-checkbox-label"><input type="checkbox" id="bot-show-analysis" checked /> Live analysis &amp; move juice</label>
+                <label class="play-checkbox-label"><input type="checkbox" id="bot-show-heatmap" /> Square control</label>
+                <label class="play-checkbox-label"><input type="checkbox" id="bot-show-3d" /> 🎲 3D board</label>
+                <label class="play-checkbox-label"><input type="checkbox" id="bot-sound-enabled" checked /> Sound</label>
+                <label class="play-checkbox-label"><input type="checkbox" id="fx-enabled" checked /> Effects</label>
+              </div>
+              <div class="play-controls">
+                <span class="control-pair"><label for="board-theme">Theme</label>
+                <select id="board-theme">
+                  ${BOARD_THEMES.map((t) => `<option value="${t.id}">${t.label}</option>`).join("")}
+                </select></span>
+                <span class="control-pair"><label for="piece-set">Pieces</label>
+                <select id="piece-set">
+                  ${PIECE_SET_OPTIONS.map((o) => `<option value="${o.id}">${o.label}</option>`).join("")}
+                </select></span>
+                <label class="play-checkbox-label"><input type="checkbox" id="colorblind-palette" /> Colorblind-safe</label>
               </div>
             </div>
-            <label class="play-checkbox-label review-before-label"><input type="checkbox" id="review-before" /> Show the position before the move, with the best moves</label>
-            <div id="review-candidates"></div>
-            <div class="review-buttons review-practice">
-              <button type="button" id="review-try" class="btn-quiet" style="display:none">Try this position</button>
-              <button type="button" id="review-save" class="btn-quiet" style="display:none">Save this position</button>
-              <button type="button" id="review-save-key" class="btn-quiet" style="display:none">Save this game's key moments</button>
+          </details>
+        </div>
+        <div id="resume-banner" class="status-line status-ok" style="display:none">
+          You have a game in progress.
+          <button type="button" id="resume-btn">Resume it</button>
+          <button type="button" id="discard-resume-btn">Discard</button>
+        </div>
+        <div class="play-layout">
+          <div class="play-board-wrap" id="play-board-wrap"></div>
+          <div class="play-sidebar">
+            <div id="review-panel" style="display:none">
+              <div class="review-header-bar">
+                <h3 class="review-heading">Broadcast Review</h3>
+                <button type="button" class="kbd-help-btn" id="review-kbd-help-btn" title="View keyboard shortcuts">⌨ Shortcuts</button>
+              </div>
+              <div id="review-strip-host"></div>
+              <div class="review-broadcast-banner">
+                <p id="review-caption" class="review-caption"></p>
+                <p id="review-why" class="review-why" style="display:none"></p>
+              </div>
+              <div class="review-buttons">
+                <button type="button" id="review-first" aria-label="Jump to the starting position">⏮</button>
+                <button type="button" id="review-prev" aria-label="Previous move">◀</button>
+                <button type="button" id="review-next" aria-label="Next move">▶</button>
+                <button type="button" id="review-last" aria-label="Jump to the last move">⏭</button>
+                <button type="button" id="review-autoplay" class="btn-ghost">▶ Play it back</button>
+                <button type="button" id="review-worst" class="btn-ghost">Your worst move</button>
+              </div>
+              <div id="review-shortcuts-help" class="review-shortcuts-help" style="display:none">
+                <div class="shortcuts-header">
+                  <strong>Review Keyboard Shortcuts</strong>
+                  <button type="button" id="review-shortcuts-close" class="btn-ghost" aria-label="Close shortcuts help">✕</button>
+                </div>
+                <div class="shortcuts-grid">
+                  <div><kbd>←</kbd> / <kbd>→</kbd></div><div>Previous / Next move</div>
+                  <div><kbd>Home</kbd> / <kbd>End</kbd></div><div>First / Last move</div>
+                  <div><kbd>Space</kbd></div><div>Play back game (autoplay)</div>
+                  <div><kbd>B</kbd></div><div>Toggle "Before" view &amp; candidates</div>
+                  <div><kbd>W</kbd></div><div>Jump to your worst move</div>
+                  <div><kbd>T</kbd></div><div>Try this position</div>
+                  <div><kbd>S</kbd></div><div>Copy shareable summary card</div>
+                  <div><kbd>C</kbd></div><div>Copy annotated PGN</div>
+                  <div><kbd>D</kbd></div><div>Download .pgn file</div>
+                  <div><kbd>?</kbd></div><div>Toggle this shortcuts cheat-sheet</div>
+                </div>
+              </div>
+              <label class="play-checkbox-label review-before-label"><input type="checkbox" id="review-before" /> Show position before move + best candidates</label>
+              <div id="review-candidates"></div>
+              <div class="review-buttons review-practice">
+                <button type="button" id="review-try" class="btn-quiet" style="display:none">Try this position</button>
+                <button type="button" id="review-save" class="btn-quiet" style="display:none">Save this position</button>
+                <button type="button" id="review-save-key" class="btn-quiet" style="display:none">Save key moments</button>
+              </div>
+              <div id="review-tally"></div>
+              <div class="review-export-actions">
+                <button type="button" id="review-share-summary-btn" class="btn-quiet" title="Copy shareable summary card">✨ Share summary</button>
+                <button type="button" id="review-copy-pgn-btn" class="btn-quiet" title="Copy annotated PGN to clipboard">📋 Copy PGN</button>
+                <button type="button" id="review-download-pgn-btn" class="btn-quiet" title="Download annotated .pgn file">💾 Download .pgn</button>
+              </div>
+              <p id="review-export-status" class="status-line status-ok" style="display:none"></p>
             </div>
-            <div id="review-tally"></div>
-            <div class="review-export-actions">
-              <button type="button" id="review-share-summary-btn" class="btn-quiet" title="Copy shareable summary card">✨ Share summary</button>
-              <button type="button" id="review-copy-pgn-btn" class="btn-quiet" title="Copy annotated PGN to clipboard">📋 Copy PGN</button>
-              <button type="button" id="review-download-pgn-btn" class="btn-quiet" title="Download annotated .pgn file">💾 Download .pgn</button>
+            <div id="try-panel" style="display:none">
+              <h3 class="review-heading">Try this position</h3>
+              <p id="try-status" class="review-caption" role="status"></p>
+              <div class="review-buttons">
+                <button type="button" id="try-again" class="btn-quiet" style="display:none">Try again</button>
+                <button type="button" id="try-show" class="btn-quiet" style="display:none">Show the best move</button>
+                <button type="button" id="try-done">Done</button>
+              </div>
             </div>
-            <p id="review-export-status" class="status-line status-ok" style="display:none"></p>
-            <p class="tagline review-hint">Reasons come from the engine's numbers and simple board checks, not from a human coach.</p>
-          </div>
-          <div id="try-panel" style="display:none">
-            <h3 class="review-heading">Try this position</h3>
-            <p id="try-status" class="review-caption" role="status"></p>
-            <div class="review-buttons">
-              <button type="button" id="try-again" class="btn-quiet" style="display:none">Try again</button>
-              <button type="button" id="try-show" class="btn-quiet" style="display:none">Show the best move</button>
-              <button type="button" id="try-done">Done</button>
+            <p id="play-status" class="status-line">Click "New game" to start.</p>
+            <p id="play-hang-warning" class="status-line status-error" style="display:none"></p>
+            <div id="analysis-output"></div>
+            <div id="play-move-list" class="play-move-list"></div>
+            <div id="post-game-report" style="display:none">
+              <h3>Game report</h3>
+              <div id="post-game-report-output"></div>
+              <div class="post-game-actions">
+                <button type="button" id="post-game-share-btn" class="btn-quiet" title="Copy shareable summary card">✨ Share summary</button>
+                <button type="button" id="post-game-copy-pgn-btn" class="btn-quiet" title="Copy annotated PGN to clipboard">📋 Copy PGN</button>
+                <button type="button" id="download-pgn-btn" class="btn-quiet" title="Download annotated .pgn file">💾 Download .pgn</button>
+              </div>
+              <p id="post-game-export-status" class="status-line status-ok" style="display:none"></p>
             </div>
-          </div>
-          <p id="play-status" class="status-line">Click "New game" to start.</p>
-          <p id="play-hang-warning" class="status-line status-error" style="display:none"></p>
-          <div id="analysis-output"></div>
-          <div id="play-move-list" class="play-move-list"></div>
-          <div id="post-game-report" style="display:none">
-            <h3>Game report</h3>
-            <div id="post-game-report-output"></div>
-            <div class="post-game-actions">
-              <button type="button" id="post-game-share-btn" class="btn-quiet" title="Copy shareable summary card">✨ Share summary</button>
-              <button type="button" id="post-game-copy-pgn-btn" class="btn-quiet" title="Copy annotated PGN to clipboard">📋 Copy PGN</button>
-              <button type="button" id="download-pgn-btn" class="btn-quiet" title="Download annotated .pgn file">💾 Download .pgn</button>
-            </div>
-            <p id="post-game-export-status" class="status-line status-ok" style="display:none"></p>
           </div>
         </div>
-      </div>
-      <div class="play-controls">
-        <span class="control-pair"><label for="bot-odds">Handicap</label>
-        <select id="bot-odds">
-          ${ODDS_OPTIONS.map((o) => `<option value="${o.value}">${o.label}</option>`).join("")}
-        </select></span>
-        <label class="play-checkbox-label"><input type="checkbox" id="bot-hang-warning" /> Warn me about hanging pieces</label>
-        <span class="control-pair"><label for="hang-sensitivity">Hang-detection sensitivity</label>
-        <select id="hang-sensitivity">
-          <option value="5">Beginner (queen/rook only)</option>
-          <option value="3">Intermediate (+ bishop/knight)</option>
-          <option value="1" selected>Advanced (+ pawns)</option>
-        </select></span>
-      </div>
-      <div class="play-controls">
-        <label class="play-checkbox-label"><input type="checkbox" id="bot-show-analysis" checked /> Show live analysis (eval bar + best move + move-quality juice)</label>
-        <label class="play-checkbox-label"><input type="checkbox" id="bot-show-heatmap" /> Show square control</label>
-        <label class="play-checkbox-label"><input type="checkbox" id="bot-show-3d" /> 🎲 3D board (full-screen)</label>
-        <label class="play-checkbox-label"><input type="checkbox" id="bot-sound-enabled" checked /> Sound</label>
-        <label class="play-checkbox-label"><input type="checkbox" id="fx-enabled" checked /> Effects (confetti, animations)</label>
-      </div>
-      <div class="play-controls">
-        <span class="control-pair"><label for="board-theme">Board theme</label>
-        <select id="board-theme">
-          ${BOARD_THEMES.map((t) => `<option value="${t.id}">${t.label}</option>`).join("")}
-        </select></span>
-        <span class="control-pair"><label for="piece-set">Pieces</label>
-        <select id="piece-set">
-          ${PIECE_SET_OPTIONS.map((o) => `<option value="${o.id}">${o.label}</option>`).join("")}
-        </select></span>
-        <label class="play-checkbox-label"><input type="checkbox" id="colorblind-palette" /> Colorblind-safe move colors</label>
-      </div>
-    </section>
+      </section>
 
-    <section class="card" id="sync-section" data-tier="primary">
-      <h2>Get started — connect your Chess.com or Lichess username</h2>
-      <p class="tagline" style="margin-bottom:16px">
-        The first sync pulls just your recent games, so you see results in seconds; one click grabs the rest later.
-        No account? Jump to <strong>Play vs. bot</strong> below instead.
-      </p>
-      <form id="sync-form" class="row">
-        <label for="sync-site" class="sr-only">Where you play</label>
-        <select id="sync-site">
-          <option value="chesscom">Chess.com</option>
-          <option value="lichess">Lichess</option>
-        </select>
-        <label for="username" class="sr-only">Chess.com or Lichess username</label>
-        <input id="username" type="text" placeholder="e.g. MichaelBottega" autocomplete="off" required />
-        <button type="submit" id="sync-btn">Sync games</button>
-      </form>
-      <p class="demo-cta">
-        Not ready to connect an account?
-        <button type="button" id="demo-load-btn" class="btn-ghost">See a demo</button>
-        <span class="tagline">Loads a made-up player's analyzed games so you can look around first.</span>
-      </p>
-      <p id="sync-log" class="status-line"></p>
-      <div id="sync-progress"></div>
-      <p id="full-sync-prompt" class="status-line status-ok" style="display:none">
-        <span id="full-sync-prompt-text"></span> <button type="button" id="full-sync-btn">Get my full history</button>
-      </p>
-      <p id="lichess-history" class="status-line status-ok" style="display:none">
-        <span id="lichess-history-text"></span> <button type="button" id="lichess-history-btn">Get my full history</button>
-        <button type="button" id="lichess-history-cancel" style="display:none">Cancel</button>
-      </p>
-      <h3 style="margin-top:24px">Analyze more games</h3>
-      <p class="tagline" style="margin-bottom:16px">
-        A quick first batch analyzes automatically right after your first sync — use this to analyze more, any
-        time.
-      </p>
-      <form id="analyze-recent-form" class="row">
-        <label for="analyze-count" class="sr-only">Number of recent games to analyze</label>
-        <input id="analyze-count" type="number" min="1" max="200" value="10" />
-        <button type="submit" id="analyze-recent-btn">Analyze most recent</button>
-      </form>
-      <p id="analyze-recent-log" class="status-line"></p>
-      <div id="analyze-progress"></div>
-      <p id="background-analyze-log" class="status-line status-ok" style="display:none"></p>
-      <div id="background-analyze-progress"></div>
-    </section>
+      <div class="studio-command-column">
+        <section class="card studio-sync-card" id="sync-section" data-tier="primary">
+          <h2>Connect &amp; Sync Games</h2>
+          <form id="sync-form" class="row">
+            <label for="sync-site" class="sr-only">Where you play</label>
+            <select id="sync-site">
+              <option value="chesscom">Chess.com</option>
+              <option value="lichess">Lichess</option>
+            </select>
+            <label for="username" class="sr-only">Chess.com or Lichess username</label>
+            <input id="username" type="text" placeholder="Username (e.g. MichaelBottega)" autocomplete="off" required />
+            <button type="submit" id="sync-btn">Sync games</button>
+          </form>
+          <div class="demo-cta">
+            <span>No account handy?</span>
+            <button type="button" id="demo-load-btn" class="btn-ghost">See a demo</button>
+          </div>
+          <p id="sync-log" class="status-line"></p>
+          <div id="sync-progress"></div>
+          <p id="full-sync-prompt" class="status-line status-ok" style="display:none">
+            <span id="full-sync-prompt-text"></span> <button type="button" id="full-sync-btn">Get my full history</button>
+          </p>
+          <p id="lichess-history" class="status-line status-ok" style="display:none">
+            <span id="lichess-history-text"></span> <button type="button" id="lichess-history-btn">Get my full history</button>
+            <button type="button" id="lichess-history-cancel" style="display:none">Cancel</button>
+          </p>
+          <details class="studio-batch-drawer">
+            <summary class="btn-quiet">Batch analyze more games</summary>
+            <form id="analyze-recent-form" class="row" style="margin-top:10px">
+              <label for="analyze-count" class="sr-only">Number of recent games to analyze</label>
+              <input id="analyze-count" type="number" min="1" max="200" value="10" />
+              <button type="submit" id="analyze-recent-btn">Analyze most recent</button>
+            </form>
+          </details>
+          <p id="analyze-recent-log" class="status-line"></p>
+          <div id="analyze-progress"></div>
+          <p id="background-analyze-log" class="status-line status-ok" style="display:none"></p>
+          <div id="background-analyze-progress"></div>
+        </section>
 
-    <section class="card" id="picker-section" data-tier="primary" style="display:none">
-      <h2>Review a game</h2>
-      <p class="tagline" style="margin-bottom:16px">
-        Pick any of your synced games and step through it in 2D or 3D — the best move in each position, the move you
-        played, and a short reason it was better or worse.
-      </p>
-      <div id="picker-output"></div>
-      <p id="picker-status" class="status-line" role="status"></p>
-      <div id="saved-positions"></div>
-    </section>
+        <section class="card studio-picker-card" id="picker-section" data-tier="primary" style="display:none">
+          <h2>Review a Game</h2>
+          <div id="picker-output"></div>
+          <p id="picker-status" class="status-line" role="status"></p>
+          <div id="saved-positions"></div>
+        </section>
+      </div>
+    </div>
 
-    <section class="card" id="focus-section" data-tier="primary" style="display:none">
-      <h2>Your focus</h2>
-      <p class="tagline" style="margin-bottom:16px">
-        A rule-based read on exactly where your play is weakest right now, one specific thing to practice for it, and
-        whether that number is actually moving — not an AI opinion, just your own numbers measured the same way each
-        time.
-      </p>
-      <div id="focus-output"></div>
-    </section>
+    <div class="studio-bento-row">
+      <section class="card studio-today-card" id="today-section" data-tier="primary">
+        <h2>Daily Training Set</h2>
+        <div id="today-output"></div>
+      </section>
+
+      <section class="card studio-focus-card" id="focus-section" data-tier="primary" style="display:none">
+        <h2>Your Focus</h2>
+        <div id="focus-output"></div>
+      </section>
+    </div>
 
     <section class="card" id="road-section" data-tier="primary" data-coming-soon="true" style="display:none">
       <h2>Road to a target rating</h2>
-      <p class="tagline" style="margin-bottom:16px">
-        The strength model, run backwards: pick a target and see which parts of your play it thinks are costing you
-        the most rating points — and what to do about each. A rough linear model, not a promise.
-      </p>
       <div id="road-output"></div>
     </section>
 
     <section class="card" id="weekly-plan-section" data-tier="primary" data-coming-soon="true" style="display:none">
       <h2>This week's plan</h2>
-      <p class="tagline" style="margin-bottom:16px">
-        A seven-day training structure, weighted toward your weakest area, with the numbers filled in from your
-        puzzle rating and worst opening. Tick things off; it resets every Monday.
-      </p>
       <div id="weekly-plan-output"></div>
     </section>
 
-    <section class="card" id="profile-section" data-tier="primary" style="display:none">
-      <h2>Your profile</h2>
+    <section class="card studio-profile-card" id="profile-section" data-tier="primary" style="display:none">
+      <h2>Scouting Profile</h2>
       <div id="profile-output"></div>
     </section>
 
@@ -747,139 +740,117 @@ app.innerHTML = `
       <p id="drill-objective" class="status-line"></p>
     </section>
 
-    <section class="card" id="coming-soon-section">
-      <h2>Coming soon</h2>
-      <p class="card-teaser" data-card-teaser>
-        15 already-built features are parked here for now — puzzle trainer, rival tracking, 22 achievements,
-        and more.
-      </p>
-      <p class="tagline" style="margin-bottom:16px">
-        The front page is narrowing to one thing: making game review look and feel better than Chess.com's or
-        Lichess's. Everything below still works in full — it's just parked while that ships.
-      </p>
-      <div class="coming-soon-groups">
-        <div class="coming-soon-group">
-          <h3>Growth &amp; tracking</h3>
-          <ul class="coming-soon-list">
-            <li><strong>Road to a target rating</strong> — the strength model run backwards, by weak area.</li>
-            <li><strong>This week's plan</strong> — a 7-day study checklist, weighted to your weakest skill.</li>
-            <li><strong>Blunder rate over time</strong> — one-move oversights per 100 moves, trending.</li>
-            <li><strong>Consistency &amp; tilt</strong> — win rate after a loss or deep into a session.</li>
-            <li><strong>Games you didn't convert</strong> — winning positions you drew or lost, and where.</li>
-            <li><strong>Insights</strong> — patterns pulled from your analyzed games.</li>
-            <li><strong>Game patterns</strong> — how your games end, rating over time, opponent strength.</li>
-            <li><strong>Rivals</strong> — your real record against opponents you've faced more than once.</li>
-            <li><strong>Achievements</strong> — 22 unlockable badges from real play.</li>
-          </ul>
-        </div>
-        <div class="coming-soon-group">
-          <h3>Training tools</h3>
-          <ul class="coming-soon-list">
-            <li><strong>Puzzle trainer</strong> — real positions from your own blunders.</li>
-            <li><strong>Themed puzzles</strong> — ~99,000 tagged puzzles from the Lichess open database.</li>
-            <li><strong>Vision trainer</strong> — quick yes/no: is anything hanging?</li>
-            <li><strong>Practice positions</strong> — classical endgame technique drills.</li>
-          </ul>
-        </div>
-        <div class="coming-soon-group">
-          <h3>Explore</h3>
-          <ul class="coming-soon-list">
-            <li><strong>Move explorer</strong> — your repertoire, weighted by how often and how well each line goes.</li>
-            <li><strong>Move-by-move heatmap</strong> — every game stacked by move number.</li>
-          </ul>
-        </div>
-      </div>
-    </section>
+    <div class="studio-utilities-header">
+      <p class="section-divider">Studio Lab, Reference &amp; Data Tools</p>
+    </div>
 
-    <p class="section-divider">Reference &amp; tools</p>
-
-    <details class="collapsible" id="feedback-form-details">
-      <summary>Send feedback — bugs, ideas, anything that felt off</summary>
-      <section class="card">
-        <p class="tagline" style="margin-bottom:16px">
-          Goes straight to a short form. For feature requests you can also use the
-          <strong>Feedback</strong> button at the top of the page.
+    <div class="studio-utilities-dock">
+      <section class="card studio-lab-card" id="coming-soon-section">
+        <h2>Coming soon · 15 Lab Tools</h2>
+        <p class="card-teaser" data-card-teaser>
+          15 extra training &amp; analytics tools parked while core review ships.
         </p>
-        <div id="tally-embed"></div>
-      </section>
-    </details>
-
-    <details class="collapsible">
-      <summary>New to chess? A full rules cheat sheet — setup, how pieces move, castling, tactics, and more</summary>
-      <section class="card">
-        ${renderCheatSheet()}
-      </section>
-    </details>
-
-    <details class="collapsible">
-      <summary>Back up or move your data (export / import)</summary>
-      <section class="card">
-        <p class="tagline" style="margin-bottom:16px">
-          Everything synced and analyzed lives only in this browser's local storage — clearing site data, switching
-          browsers, or moving to another device loses it with no warning. Export a backup file here, and import it
-          again (in this browser or a different one) to bring it back.
-        </p>
-        <div class="play-controls">
-          <button type="button" id="export-data-btn">Export my data</button>
-          <label for="import-data-input" class="button-like">Import a backup file</label>
-          <input type="file" id="import-data-input" accept="application/json" style="display:none" />
+        <div class="coming-soon-groups">
+          <div class="coming-soon-group">
+            <h3>Growth &amp; tracking</h3>
+            <ul class="coming-soon-list">
+              <li><strong>Road to target rating</strong></li>
+              <li><strong>This week's plan</strong></li>
+              <li><strong>Blunder rate trend</strong></li>
+              <li><strong>Consistency &amp; tilt</strong></li>
+              <li><strong>Unconverted wins</strong></li>
+              <li><strong>Insights &amp; leaks</strong></li>
+              <li><strong>Game patterns</strong></li>
+              <li><strong>Rivals tracker</strong></li>
+              <li><strong>22 Achievements</strong></li>
+            </ul>
+          </div>
+          <div class="coming-soon-group">
+            <h3>Training &amp; Explore</h3>
+            <ul class="coming-soon-list">
+              <li><strong>Own-blunder puzzles</strong></li>
+              <li><strong>99k Lichess tactics</strong></li>
+              <li><strong>Vision trainer</strong></li>
+              <li><strong>Endgame drills</strong></li>
+              <li><strong>Move explorer</strong></li>
+              <li><strong>Depth heatmap</strong></li>
+            </ul>
+          </div>
         </div>
-        <p id="data-io-log" class="status-line"></p>
-        <div id="storage-quota" class="storage-quota" hidden>
-          <div class="progress-track" aria-hidden="true"><div id="storage-quota-fill" class="progress-fill"></div></div>
-          <p id="storage-quota-text" class="status-line" role="status"></p>
-        </div>
-        <div class="storage-evict">
-          <p class="tagline" style="margin:14px 0 8px">
-            Short on space? Remove the games you opened longest ago. Their analysis goes too. Saved positions stay.
-          </p>
+      </section>
+
+      <details class="collapsible" id="feedback-form-details">
+        <summary>💬 Send Feedback &amp; Bug Reports</summary>
+        <section class="card">
+          <div id="tally-embed"></div>
+        </section>
+      </details>
+
+      <details class="collapsible">
+        <summary>📖 Chess Rules &amp; Tactics Guide</summary>
+        <section class="card">
+          ${renderCheatSheet()}
+        </section>
+      </details>
+
+      <details class="collapsible">
+        <summary>💾 Data Backup &amp; Storage Quota</summary>
+        <section class="card">
           <div class="play-controls">
-            <button type="button" id="evict-btn">Free up space…</button>
+            <button type="button" id="export-data-btn">Export my data</button>
+            <label for="import-data-input" class="button-like">Import a backup file</label>
+            <input type="file" id="import-data-input" accept="application/json" style="display:none" />
           </div>
-          <div id="evict-confirm" class="storage-evict-confirm" hidden>
-            <p id="evict-confirm-text" class="status-line"></p>
+          <p id="data-io-log" class="status-line"></p>
+          <div id="storage-quota" class="storage-quota" hidden>
+            <div class="progress-track" aria-hidden="true"><div id="storage-quota-fill" class="progress-fill"></div></div>
+            <p id="storage-quota-text" class="status-line" role="status"></p>
+          </div>
+          <div class="storage-evict">
             <div class="play-controls">
-              <button type="button" id="evict-yes-btn"></button>
-              <button type="button" id="evict-cancel-btn">Cancel</button>
+              <button type="button" id="evict-btn">Free up space…</button>
             </div>
+            <div id="evict-confirm" class="storage-evict-confirm" hidden>
+              <p id="evict-confirm-text" class="status-line"></p>
+              <div class="play-controls">
+                <button type="button" id="evict-yes-btn"></button>
+                <button type="button" id="evict-cancel-btn">Cancel</button>
+              </div>
+            </div>
+            <label class="storage-evict-auto">
+              <input type="checkbox" id="auto-evict" />
+              Auto-clean oldest games when storage is nearly full
+            </label>
+            <p id="evict-log" class="status-line" role="status"></p>
           </div>
-          <label class="storage-evict-auto">
-            <input type="checkbox" id="auto-evict" />
-            Free up space for me when storage is nearly full
-          </label>
-          <p id="evict-log" class="status-line" role="status"></p>
-        </div>
-      </section>
-    </details>
+        </section>
+      </details>
 
-    <details class="collapsible">
-      <summary>PK Mastery taxonomy — the full skill map behind Chegga's curriculum (draft)</summary>
-      <section class="card">
-        <p class="tagline" style="margin-bottom:16px">
-          74 draft concept nodes across 5 domains and 5 rating tiers, each with its prerequisites — the design behind
-          a coming prescriptive curriculum layer. Browse-only for now: puzzle content isn't wired to these nodes yet.
-        </p>
-        <div id="pk-taxonomy-root">${renderTaxonomyBrowser()}</div>
-      </section>
-    </details>
+      <details class="collapsible">
+        <summary>🧭 PK Mastery Curriculum Map (74 Nodes)</summary>
+        <section class="card">
+          <div id="pk-taxonomy-root">${renderTaxonomyBrowser()}</div>
+        </section>
+      </details>
 
-    <details class="collapsible">
-      <summary>Developer tools (engine handshake check, raw PGN analysis, IndexedDB status)</summary>
-      <section class="card">
-        <h3>Analyze a single pasted PGN</h3>
-        <form id="analyze-form">
-          <label for="pgn-input" class="sr-only">PGN to analyze</label>
-          <textarea id="pgn-input" rows="5" placeholder="Paste a PGN here (must include [TimeControl])"></textarea>
-          <button type="submit" id="analyze-btn">Analyze</button>
-        </form>
-        <pre id="analyze-log" class="log">paste a PGN and click Analyze.</pre>
-      </section>
-      <section class="card">
-        <h3>Phase 0 status</h3>
-        <pre id="engine-log" class="log">starting…</pre>
-        <pre id="db-log" class="log">opening…</pre>
-      </section>
-    </details>
+      <details class="collapsible">
+        <summary>🛠 Developer &amp; Raw PGN Tools</summary>
+        <section class="card">
+          <h3>Analyze a single pasted PGN</h3>
+          <form id="analyze-form">
+            <label for="pgn-input" class="sr-only">PGN to analyze</label>
+            <textarea id="pgn-input" rows="4" placeholder="Paste a PGN here (must include [TimeControl])"></textarea>
+            <button type="submit" id="analyze-btn">Analyze</button>
+          </form>
+          <pre id="analyze-log" class="log">paste a PGN and click Analyze.</pre>
+        </section>
+        <section class="card">
+          <h3>Engine &amp; IndexedDB status</h3>
+          <pre id="engine-log" class="log">starting…</pre>
+          <pre id="db-log" class="log">opening…</pre>
+        </section>
+      </details>
+    </div>
     </main>
     <footer class="site-footer">
       <p>
@@ -1156,6 +1127,18 @@ function celebrateBrilliantSquare(square: Square) {
  * same display-time refinement the candidate heatmap applies to the
  * engine's top line, never a stored classification. Only called for the
  * human's own move -- see updateAnalysisPanel's caller. */
+function setStageAura(tier?: string | null, color?: string | null) {
+  const stageEl = document.getElementById("play-section");
+  if (!stageEl) return;
+  if (tier && color) {
+    stageEl.dataset.stageAura = tier;
+    stageEl.style.setProperty("--stage-aura", color);
+  } else {
+    delete stageEl.dataset.stageAura;
+    stageEl.style.removeProperty("--stage-aura");
+  }
+}
+
 function applyMoveQualityJuice(
   board: PlayBoard,
   toSquare: Square,
@@ -1174,6 +1157,7 @@ function applyMoveQualityJuice(
   const color = getClassColor(classification);
   const glyph = getClassGlyph(classification);
   const fromSquare = playedUci ? (playedUci.slice(0, 2) as Square) : undefined;
+  setStageAura(classification, color);
   board.showMoveQuality(toSquare, color, MOVE_QUALITY_LABELS[classification], 1100, {
     glyph,
     tier: classification,
@@ -1573,13 +1557,21 @@ function showReviewStep(index: number) {
   reviewCaption.textContent = beforeView ? describeBefore(review, clamped) : describeStep(review, clamped);
   const why = step && step.isHuman ? explainMove(explainInputFromStep(step)) : [];
   if (step && step.isHuman && step.classification) {
-    const glyph = getClassGlyph(step.classification);
-    const color = getClassColor(step.classification);
-    const label = REVIEW_QUALITY_LABELS[step.classification] ?? step.classification;
+    const effectiveTier =
+      step.classification === "best" && isSacrifice(step.fenBefore, step.uci) ? "brilliant" : step.classification;
+    const glyph = getClassGlyph(effectiveTier);
+    const color = getClassColor(effectiveTier);
+    const label = REVIEW_QUALITY_LABELS[effectiveTier] ?? effectiveTier;
     const badgeHtml = `<span class="quality-pixel-badge" style="--badge-color:${color}"><span class="pixel-glyph">${glyph}</span> ${label}</span> `;
     reviewWhy.innerHTML = badgeHtml + why.join(" ");
+    reviewPanel.dataset.moveTier = effectiveTier;
+    reviewPanel.style.setProperty("--review-tier-color", color);
+    setStageAura(effectiveTier, color);
   } else {
     reviewWhy.textContent = why.join(" ");
+    delete reviewPanel.dataset.moveTier;
+    reviewPanel.style.removeProperty("--review-tier-color");
+    setStageAura(null, null);
   }
   reviewWhy.style.display = why.length ? "" : "none";
   updateReviewActions(step);
@@ -1636,6 +1628,9 @@ function exitReview() {
   reviewOpening = undefined;
   reviewCandidates = [];
   reviewPanel.style.display = "none";
+  delete reviewPanel.dataset.moveTier;
+  reviewPanel.style.removeProperty("--review-tier-color");
+  setStageAura(null, null);
   reviewShortcutsHelp.style.display = "none";
   reviewStripHost.innerHTML = "";
   reviewTally.innerHTML = "";

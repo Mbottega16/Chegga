@@ -1,0 +1,3 @@
+@echo off
+echo Opening Chegga...
+start "" "https://chegga-web.vercel.app"

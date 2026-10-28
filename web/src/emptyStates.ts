@@ -141,27 +141,49 @@ function emptyStateHtml(cfg: EmptyStateConfig): string {
 }
 
 /**
- * Show one data-dependent card in its waiting state instead of hiding it.
- * A no-op (returns false) for an unknown id, so callers can drop it in
- * next to the existing `section.style.display = "none"` lines safely.
+ * Show #picker-section in its compact graphic waiting state so the right-hand
+ * Studio Command Deck invites the visitor to connect, while keeping secondary
+ * data-dependent panels hidden until games are actually synced (no wall of
+ * empty skeleton panels).
  */
 export function emptyFor(sectionId: string): boolean {
   const cfg = byId.get(sectionId);
   if (!cfg) return false;
   const section = document.getElementById(cfg.sectionId);
   let output = document.getElementById(cfg.outputId);
-  // A couple of cards keep their board/controls markup directly in the
-  // section with no single replaceable output div -- give those a
-  // dedicated empty-state host so the real controls are never clobbered.
   if (!output && section) {
     output = document.createElement("div");
     output.id = cfg.outputId;
     section.appendChild(output);
   }
   if (!section || !output) return false;
-  section.style.display = "";
-  output.innerHTML = emptyStateHtml(cfg);
-  output.dataset.emptyState = "1";
+  if (sectionId === "picker-section" || sectionId === "focus-section" || sectionId === "profile-section") {
+    section.style.display = "";
+    const shortLine =
+      sectionId === "picker-section"
+        ? "Sync your username above or try the sample dataset to step through your games."
+        : sectionId === "focus-section"
+          ? "Connect your games to unlock your personalized weakness prescription."
+          : "Connect your games to unlock move-quality rings, phase metrics, and opening diagnostics.";
+    output.innerHTML = `<div class="empty-state">
+      <div class="empty-state-graphic" aria-hidden="true">
+        <svg viewBox="0 0 120 48" width="110" height="44" fill="none">
+          <rect x="4" y="4" width="40" height="40" rx="6" fill="#141b27" stroke="#2a3548" stroke-width="1.4"/>
+          <circle cx="24" cy="24" r="12" stroke="#22d3ee" stroke-width="3" stroke-dasharray="48 28" stroke-linecap="round"/>
+          <rect x="54" y="10" width="56" height="7" rx="3.5" fill="#232c3d"/>
+          <rect x="54" y="22" width="40" height="6" rx="3" fill="#1b2230"/>
+          <rect x="54" y="33" width="48" height="6" rx="3" fill="#1b2230"/>
+        </svg>
+      </div>
+      <p class="empty-state-line">${shortLine}</p>
+      <button type="button" class="empty-state-cta" data-empty-cta>${cfg.ctaLabel}</button>
+    </div>`;
+    output.dataset.emptyState = "1";
+  } else {
+    section.style.display = "none";
+    output.innerHTML = emptyStateHtml(cfg);
+    output.dataset.emptyState = "1";
+  }
   return true;
 }
 
@@ -176,7 +198,7 @@ export function clearEmptyFor(sectionId: string): void {
   }
 }
 
-/** Seed every data-dependent card for a visitor with no synced account. */
+/** Seed waiting state for a visitor with no synced account. */
 export function showEmptyStates(): void {
   for (const cfg of EMPTY_STATES) emptyFor(cfg.sectionId);
 }

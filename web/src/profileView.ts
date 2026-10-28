@@ -102,67 +102,88 @@ export function renderProfile(
     const halfWidth = strength.cvMae ? Math.round(strength.cvMae / 25) * 25 : 150;
     const lo = Math.max(100, mid - halfWidth);
     const hi = mid + halfWidth;
-    strengthCard = statCard(`${lo}–${hi}`, `rough rating range (n=${strength.sampleSize})`);
-    if (strength.cvR2 !== undefined) {
-      strengthCaveat = `<p class="tagline" style="margin-top:-8px;margin-bottom:16px">
-           A range, not a rating: this model explains only about ${Math.round(strength.cvR2 * 100)}% of
-           rating variance in its training games, so the true number lands somewhere in this band at best. Loose
-           direction only.
-         </p>`;
-    }
+    strengthCard = statCard(`${lo}–${hi}`, `est. rating band (n=${strength.sampleSize})`);
   } else if (strength) {
-    strengthCaveat = `<p class="tagline" style="margin-top:-8px;margin-bottom:16px">
-         Analyze at least ${STRENGTH_MIN_GAMES} games (you have ${strength.sampleSize}) for a rating range —
-         fewer than that is too small a sample to estimate from.
-       </p>`;
+    strengthCaveat = `<p class="status-line" style="margin-bottom:12px">Analyze ${STRENGTH_MIN_GAMES}+ games (${strength.sampleSize} so far) to unlock rating band estimate.</p>`;
   }
+
+  // Build SVG radial donut for move quality distribution
+  const radius = 30;
+  const circum = 2 * Math.PI * radius;
+  let accumPct = 0;
+  const donutSegments = CLASSIFICATION_ORDER.filter((label) => profile.classificationCounts[label] > 0)
+    .map((label) => {
+      const rate = profile.classificationRate[label] ?? 0;
+      const len = rate * circum;
+      const offset = -accumPct * circum;
+      accumPct += rate;
+      return `<circle cx="40" cy="40" r="${radius}" fill="none" stroke="${getClassColor(label)}" stroke-width="10" stroke-dasharray="${len.toFixed(2)} ${circum.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}" transform="rotate(-90 40 40)"/>`;
+    })
+    .join("");
+  const goodRate = Math.round(
+    ((profile.classificationRate.best ?? 0) +
+      (profile.classificationRate.excellent ?? 0) +
+      (profile.classificationRate.good ?? 0)) *
+      100,
+  );
 
   return `
     <div class="stat-grid">
       ${statCard(String(profile.gamesAnalyzed), "games analyzed")}
-      ${statCard(String(profile.totalMoves), "own moves analyzed")}
-      ${statCard(`${profile.avgCentipawnLoss} cp`, "avg centipawn loss")}
+      ${statCard(String(profile.totalMoves), "moves graded")}
+      ${statCard(`${profile.avgCentipawnLoss} cp`, "avg cp loss")}
       ${statCard(`${((profile.classificationRate.blunder ?? 0) * 100).toFixed(1)}%`, "blunder rate")}
       ${strengthCard}
     </div>
     ${strengthCaveat}
-    <p class="tagline" style="margin-bottom:16px">
-      Analyzed with a lightweight in-browser chess engine (not full desktop-strength Stockfish), so cp-loss and
-      move-quality calls can differ slightly from other analyzers, especially on razor-close positions.
-    </p>
 
-    <h3>Move quality</h3>
-    <div class="classification-bar">${classificationBar}</div>
+    <div class="profile-quality-showcase">
+      <div class="profile-donut-wrap" aria-hidden="true">
+        <svg viewBox="0 0 80 80" width="84" height="84" class="profile-donut-svg">
+          <circle cx="40" cy="40" r="${radius}" fill="none" stroke="#1b2230" stroke-width="10"/>
+          ${donutSegments}
+          <text x="40" y="39" text-anchor="middle" fill="#edeff3" font-family="JetBrains Mono, monospace" font-size="13" font-weight="800">${goodRate}%</text>
+          <text x="40" y="50" text-anchor="middle" fill="#9aa4b6" font-family="Inter, sans-serif" font-size="7.5" font-weight="600">SOLID+</text>
+        </svg>
+      </div>
+      <div class="profile-quality-bar-col">
+        <h3>Move quality distribution</h3>
+        <div class="classification-bar">${classificationBar}</div>
+      </div>
+    </div>
 
-    <h3>By game phase</h3>
-    <table><tbody>${phaseRows || '<tr><td colspan="2" class="status-line">no data yet</td></tr>'}</tbody></table>
+    <div class="profile-bento-grid">
+      <div class="profile-bento-tile">
+        <h3>By game phase</h3>
+        <table><tbody>${phaseRows || '<tr><td colspan="2" class="status-line">no data yet</td></tr>'}</tbody></table>
+      </div>
+      <div class="profile-bento-tile">
+        <h3>By color</h3>
+        <table><tbody>${colorRows || '<tr><td colspan="2" class="status-line">no data yet</td></tr>'}</tbody></table>
+      </div>
+      <div class="profile-bento-tile">
+        <h3>Blunder motifs</h3>
+        <table>
+          <thead><tr><th>Motif</th><th>Count</th></tr></thead>
+          <tbody>${blunderTagRows || '<tr><td colspan="2" class="status-line">no data yet</td></tr>'}</tbody>
+        </table>
+      </div>
+      <div class="profile-bento-tile">
+        <h3>Time pressure</h3>
+        <table>
+          <thead><tr><th>Band</th><th>Moves</th><th>Avg loss</th><th>Blunders</th></tr></thead>
+          <tbody>${timePressureRows || '<tr><td colspan="4" class="status-line">no data yet</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
 
-    <h3>By color</h3>
-    <table><tbody>${colorRows || '<tr><td colspan="2" class="status-line">no data yet</td></tr>'}</tbody></table>
-
-    <h3>Opening repertoire & leak diagnostic</h3>
+    <h3>Opening repertoire &amp; leak diagnostic</h3>
     <table>
       <thead><tr><th>Opening</th><th>Games</th><th>Record</th><th>Win rate</th><th>Avg loss</th><th>Action</th></tr></thead>
       <tbody>${openingRows || '<tr><td colspan="6" class="status-line">no data yet</td></tr>'}</tbody>
     </table>
 
-    <h3>Blunder patterns (why, not just how costly)</h3>
-    <table>
-      <thead><tr><th>Tag</th><th>Count</th></tr></thead>
-      <tbody>${blunderTagRows || '<tr><td colspan="2" class="status-line">no data yet</td></tr>'}</tbody>
-    </table>
-
-    <h3>Monthly trend</h3>
-    <table>
-      <thead><tr><th>Month</th><th>Games</th><th>Avg CP loss</th><th>Blunder rate</th></tr></thead>
-      <tbody>${monthlyRows || '<tr><td colspan="4" class="status-line">no data yet</td></tr>'}</tbody>
-    </table>
-
-    <h3>Time pressure</h3>
-    <table>
-      <thead><tr><th>Band</th><th>Moves</th><th>Avg CP loss</th><th>Blunder rate</th></tr></thead>
-      <tbody>${timePressureRows || '<tr><td colspan="4" class="status-line">no data yet</td></tr>'}</tbody>
-    </table>
+    ${monthlyRows ? `<h3>Monthly trend</h3><table><thead><tr><th>Month</th><th>Games</th><th>Avg CP loss</th><th>Blunder rate</th></tr></thead><tbody>${monthlyRows}</tbody></table>` : ""}
   `;
 }
 

@@ -22,6 +22,7 @@ export interface PickerCard {
   analyzed: boolean;
   /** Only standard chess can be graded; a variant game is listed but not openable. */
   supported: boolean;
+  pgn?: string;
 }
 
 // A carousel of hundreds of cards is a wall, not a picker. The newest games
@@ -43,6 +44,7 @@ export function toPickerCard(g: GameRecord): PickerCard {
     opening: g.openingName,
     analyzed: g.analyzed,
     supported: g.rules === "chess" && g.pgn.length > 0,
+    pgn: g.pgn,
   };
 }
 
