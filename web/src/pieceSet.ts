@@ -7,23 +7,20 @@
 // license -- and a third, "Modern", drawn from scratch for this project
 // (flat geometric primitives, no external source -- see COPYING.md) so
 // there's a set with zero licensing question by construction. Plus the
-// original Unicode glyphs as "Classic". Default is Modern, not Cburnett
-// -- Cburnett is the exact default Lichess ships, so a fresh visitor's
-// pieces looked identical to every other site's (2026-08-29 critique
-// #7); Modern is the one set built specifically to give Chegga its own
-// look. Per-viewer localStorage, same tier as board theme / sound.
+// original Unicode glyphs as "Classic". Default is Cburnett (timeless Staunton).
+// Per-viewer localStorage, same tier as board theme / sound.
 
 export type PieceSetId = "cburnett" | "merida" | "modern" | "pixel" | "unicode";
 
 const KEY = "chegga-web:piece-set";
-const DEFAULT: PieceSetId = "modern";
+const DEFAULT: PieceSetId = "cburnett";
 
 export const PIECE_SET_OPTIONS: { id: PieceSetId; label: string }[] = [
-  { id: "modern", label: "Modern (default)" },
+  { id: "cburnett", label: "Staunton (Timeless Classic)" },
+  { id: "merida", label: "Merida (Master)" },
+  { id: "modern", label: "Modern (Geometric)" },
   { id: "pixel", label: "Pixel (Retro)" },
-  { id: "cburnett", label: "Cburnett" },
-  { id: "merida", label: "Merida" },
-  { id: "unicode", label: "Classic (text)" },
+  { id: "unicode", label: "Classic (Text)" },
 ];
 
 export const PIECE_GLYPH: Record<string, string> = {
@@ -34,7 +31,9 @@ export const PIECE_GLYPH: Record<string, string> = {
 export function getPieceSet(): PieceSetId {
   try {
     const v = localStorage.getItem(KEY);
-    if (v === "cburnett" || v === "merida" || v === "modern" || v === "pixel" || v === "unicode") return v;
+    // If user had the basic modern placeholder or no selection, default to timeless Staunton
+    if (v === "modern") return DEFAULT;
+    if (v === "cburnett" || v === "merida" || v === "pixel" || v === "unicode") return v;
   } catch {
     /* ignore */
   }

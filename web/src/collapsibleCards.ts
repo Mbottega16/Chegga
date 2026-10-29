@@ -94,6 +94,7 @@ export function setupCollapsibleCards(): void {
 
   cards.forEach((card, index) => {
     if (card.dataset.collapsibleReady) return;
+    if (card.dataset.nonCollapsible === "true") return;
     card.dataset.collapsibleReady = "1";
 
     const heading = card.querySelector("h2");

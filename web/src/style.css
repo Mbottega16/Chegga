@@ -505,11 +505,21 @@ details.collapsible {
 }
 
 section.card {
-  background: var(--panel);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 20px;
-  margin-bottom: 20px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+
+/* De-box cards nested inside drawers, accordions, and utilities */
+details.collapsible section.card,
+.studio-utilities-dock section.card {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 6px 0 !important;
+  margin-bottom: 0 !important;
 }
 
 /* ---- Card tiers: visual weight follows how often an average player
@@ -519,13 +529,14 @@ section.card {
    dominate the viewport; the trimmed secondary cards collapse to a thin
    strip so the stuff you rarely touch takes up proportionally little. */
 section.card[data-tier="primary"] {
-  padding: 32px;
-  border-color: var(--border-strong, var(--border));
-  box-shadow: inset 3px 0 0 0 var(--accent-strong);
+  padding: 20px 24px;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 section.card[data-tier="primary"] > h2 {
-  font-size: 1.5rem;
-  margin-bottom: 18px;
+  font-size: 1.32rem;
+  margin-bottom: 14px;
+  letter-spacing: -0.01em;
 }
 section.card[data-tier="secondary"] {
   padding: 12px 18px;
@@ -2578,21 +2589,26 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
 
 /* ================= Real piece sets (pieceSet.ts) ================= */
 .piece-img {
-  width: 88%;
-  height: 88%;
+  width: 90%;
+  height: 90%;
   object-fit: contain;
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.35));
+  transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1);
+}
+.play-square:hover .piece-img {
+  transform: scale(1.03);
 }
 .piece-img-ghost {
-  width: 82px;
-  height: 82px;
+  width: 84px;
+  height: 84px;
   object-fit: contain;
   pointer-events: none;
+  user-select: none;
   -webkit-user-drag: none;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.6));
 }
 @media (max-width: 600px) {
   .piece-img-ghost { width: min(11vw, 82px); height: min(11vw, 82px); }
@@ -3748,58 +3764,58 @@ body {
 /* ---- Split-Column Broadcast Hero ---- */
 .hero {
   position: relative;
-  padding: 26px 28px;
-  margin-bottom: 18px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(18, 25, 38, 0.92) 0%, rgba(11, 15, 24, 0.95) 100%);
-  border: 1px solid rgba(56, 72, 102, 0.65);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  padding: 18px 24px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(18, 25, 38, 0.88) 0%, rgba(11, 15, 24, 0.92) 100%);
+  border: 1px solid rgba(56, 72, 102, 0.45);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   overflow: hidden;
 }
 
 .hero-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
-  gap: 28px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+  gap: 20px;
   align-items: center;
 }
 
 .hero-kicker {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-family: var(--font-mono);
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   font-weight: 600;
   color: #22d3ee;
-  background: rgba(34, 211, 238, 0.1);
-  border: 1px solid rgba(34, 211, 238, 0.28);
-  padding: 4px 11px;
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  padding: 3px 9px;
   border-radius: 999px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .hero-kicker-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: #22d3ee;
-  box-shadow: 0 0 8px #22d3ee;
+  box-shadow: 0 0 6px #22d3ee;
 }
 
 .hero h2 {
-  font-size: clamp(1.65rem, 2.6vw, 2.35rem);
-  line-height: 1.12;
-  max-width: 24ch;
-  margin: 0 0 12px;
+  font-size: clamp(1.3rem, 2.2vw, 1.75rem);
+  line-height: 1.15;
+  max-width: 28ch;
+  margin: 0 0 6px;
 }
 
 .hero p.hero-sub {
-  font-size: 0.98rem;
-  line-height: 1.55;
+  font-size: 0.88rem;
+  line-height: 1.45;
   color: var(--muted);
-  max-width: 50ch;
-  margin: 0 0 20px;
+  max-width: 55ch;
+  margin: 0 0 12px;
 }
 
 .hero-stage-art {
@@ -4365,29 +4381,71 @@ section.card {
 
 /* ---- Compact Studio Utilities & Reference Grid ---- */
 .studio-utilities-header .section-divider {
-  margin: 28px 0 12px;
+  margin: 32px 0 14px;
 }
 
 .studio-utilities-dock {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
   align-items: start;
+  margin-bottom: 24px;
 }
 
-.studio-utilities-dock > section.card,
 .studio-utilities-dock > details.collapsible {
   margin-bottom: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.studio-utilities-dock > details.collapsible[open] {
+  grid-column: 1 / -1;
+  border-color: var(--accent);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
 .studio-utilities-dock > details.collapsible > summary {
-  padding: 12px 16px;
-  border-radius: 12px;
-  background: var(--panel);
-  border: 1px solid var(--border);
+  padding: 10px 14px;
+  border-radius: 0;
+  background: transparent;
+  border: none;
   font-family: var(--font-display);
-  font-size: 0.92rem;
+  font-size: 0.86rem;
   font-weight: 600;
+  cursor: pointer;
+  color: var(--text);
+  user-select: none;
+  transition: color 0.12s ease;
+}
+
+.studio-utilities-dock > details.collapsible > summary:hover {
+  color: var(--accent-strong);
+}
+
+.studio-tool-body {
+  padding: 16px 18px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.studio-tool-body .cs-section {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.studio-tool-body h3 {
+  font-size: 1rem;
+  margin: 0 0 8px;
+}
+
+.studio-tool-body .log {
+  margin-top: 6px;
+  max-height: 160px;
 }
 
 /* ---- Tactical Blunder DNA & Refutation Engine ---- */

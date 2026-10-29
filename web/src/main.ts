@@ -300,10 +300,10 @@ app.innerHTML = `
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-grid">
         <div class="hero-copy">
-          <div class="hero-kicker"><span class="hero-kicker-dot"></span>Instant In-Browser Game Review &amp; Tactical Trainer</div>
+          <div class="hero-kicker"><span class="hero-kicker-dot"></span>Instant Game Review &amp; Tactical Engine</div>
           <h2 id="hero-title">See how good each move was, the moment you make it.</h2>
           <p class="hero-sub">
-            Review your Chess.com or Lichess games with candidate move heatmaps, evaluation flow, and clear tactical reasons — or play a custom-rated Stockfish bot right now.
+            Real-time move grading vs. bot, or sync your games for deep local tactical analysis.
           </p>
           <div class="hero-cta">
             <button type="button" id="hero-play-btn">Play a bot</button>
@@ -317,16 +317,15 @@ app.innerHTML = `
     <nav class="section-nav" aria-label="Jump to section">
       <a href="#play-section">♟ Stage</a>
       <a href="#sync-section">⚡ Connect</a>
-      <a href="#picker-section">🗂 Your games</a>
       <a href="#today-section">🔥 Today</a>
       <a href="#profile-section">📊 Profile</a>
       <a href="#coming-soon-section">🧪 Lab</a>
-      <a href="#feedback-form-details">💬 Feedback</a>
+      <a href="#studio-tools-dock">🛠 Tools</a>
     </nav>
 
     <main id="main-content">
     <div class="studio-workspace-grid">
-      <section class="card studio-stage-card" id="play-section" data-tier="primary">
+      <section class="card studio-stage-card" id="play-section" data-tier="primary" data-non-collapsible="true">
         <h2>Play vs. bot &amp; Game Review</h2>
         <div class="play-controls play-controls-primary">
           <label for="bot-elo">Bot</label>
@@ -822,77 +821,80 @@ app.innerHTML = `
         </div>
       </section>
 
-      <details class="collapsible" id="feedback-form-details">
-        <summary>💬 Send Feedback &amp; Bug Reports</summary>
-        <section class="card">
-          <div id="tally-embed"></div>
-        </section>
-      </details>
-
-      <details class="collapsible">
-        <summary>📖 Chess Rules &amp; Tactics Guide</summary>
-        <section class="card">
-          ${renderCheatSheet()}
-        </section>
-      </details>
-
-      <details class="collapsible">
-        <summary>💾 Data Backup &amp; Storage Quota</summary>
-        <section class="card">
-          <div class="play-controls">
-            <button type="button" id="export-data-btn">Export my data</button>
-            <label for="import-data-input" class="button-like">Import a backup file</label>
-            <input type="file" id="import-data-input" accept="application/json" style="display:none" />
+      <div class="studio-utilities-header">
+        <div class="section-divider">Studio Tools &amp; Reference</div>
+      </div>
+      <div class="studio-utilities-dock" id="studio-tools-dock">
+        <details class="collapsible studio-tool-details" id="feedback-form-details">
+          <summary>💬 Feedback</summary>
+          <div class="studio-tool-body">
+            <div id="tally-embed"></div>
           </div>
-          <p id="data-io-log" class="status-line"></p>
-          <div id="storage-quota" class="storage-quota" hidden>
-            <div class="progress-track" aria-hidden="true"><div id="storage-quota-fill" class="progress-fill"></div></div>
-            <p id="storage-quota-text" class="status-line" role="status"></p>
+        </details>
+
+        <details class="collapsible studio-tool-details" id="rules-guide-details">
+          <summary>📖 Rules &amp; Tactics</summary>
+          <div class="studio-tool-body">
+            ${renderCheatSheet()}
           </div>
-          <div class="storage-evict">
+        </details>
+
+        <details class="collapsible studio-tool-details" id="backup-details">
+          <summary>💾 Data &amp; Storage</summary>
+          <div class="studio-tool-body">
             <div class="play-controls">
-              <button type="button" id="evict-btn">Free up space…</button>
+              <button type="button" id="export-data-btn">Export data</button>
+              <label for="import-data-input" class="button-like">Import backup</label>
+              <input type="file" id="import-data-input" accept="application/json" style="display:none" />
             </div>
-            <div id="evict-confirm" class="storage-evict-confirm" hidden>
-              <p id="evict-confirm-text" class="status-line"></p>
+            <p id="data-io-log" class="status-line"></p>
+            <div id="storage-quota" class="storage-quota" hidden>
+              <div class="progress-track" aria-hidden="true"><div id="storage-quota-fill" class="progress-fill"></div></div>
+              <p id="storage-quota-text" class="status-line" role="status"></p>
+            </div>
+            <div class="storage-evict">
               <div class="play-controls">
-                <button type="button" id="evict-yes-btn"></button>
-                <button type="button" id="evict-cancel-btn">Cancel</button>
+                <button type="button" id="evict-btn">Free up space…</button>
               </div>
+              <div id="evict-confirm" class="storage-evict-confirm" hidden>
+                <p id="evict-confirm-text" class="status-line"></p>
+                <div class="play-controls">
+                  <button type="button" id="evict-yes-btn"></button>
+                  <button type="button" id="evict-cancel-btn">Cancel</button>
+                </div>
+              </div>
+              <label class="storage-evict-auto">
+                <input type="checkbox" id="auto-evict" />
+                Auto-clean oldest games when storage is nearly full
+              </label>
+              <p id="evict-log" class="status-line" role="status"></p>
             </div>
-            <label class="storage-evict-auto">
-              <input type="checkbox" id="auto-evict" />
-              Auto-clean oldest games when storage is nearly full
-            </label>
-            <p id="evict-log" class="status-line" role="status"></p>
           </div>
-        </section>
-      </details>
+        </details>
 
-      <details class="collapsible">
-        <summary>🧭 PK Mastery Curriculum Map (74 Nodes)</summary>
-        <section class="card">
-          <div id="pk-taxonomy-root">${renderTaxonomyBrowser()}</div>
-        </section>
-      </details>
+        <details class="collapsible studio-tool-details" id="curriculum-details">
+          <summary>🧭 Curriculum Map</summary>
+          <div class="studio-tool-body">
+            <div id="pk-taxonomy-root">${renderTaxonomyBrowser()}</div>
+          </div>
+        </details>
 
-      <details class="collapsible">
-        <summary>🛠 Developer &amp; Raw PGN Tools</summary>
-        <section class="card">
-          <h3>Analyze a single pasted PGN</h3>
-          <form id="analyze-form">
-            <label for="pgn-input" class="sr-only">PGN to analyze</label>
-            <textarea id="pgn-input" rows="4" placeholder="Paste a PGN here (must include [TimeControl])"></textarea>
-            <button type="submit" id="analyze-btn">Analyze</button>
-          </form>
-          <pre id="analyze-log" class="log">paste a PGN and click Analyze.</pre>
-        </section>
-        <section class="card">
-          <h3>Engine &amp; IndexedDB status</h3>
-          <pre id="engine-log" class="log">starting…</pre>
-          <pre id="db-log" class="log">opening…</pre>
-        </section>
-      </details>
+        <details class="collapsible studio-tool-details" id="dev-details">
+          <summary>🛠 Raw PGN &amp; Engine</summary>
+          <div class="studio-tool-body">
+            <h3>Analyze Pasted PGN</h3>
+            <form id="analyze-form">
+              <label for="pgn-input" class="sr-only">PGN to analyze</label>
+              <textarea id="pgn-input" rows="3" placeholder="Paste PGN here (include [TimeControl])"></textarea>
+              <button type="submit" id="analyze-btn">Analyze</button>
+            </form>
+            <pre id="analyze-log" class="log">paste a PGN and click Analyze.</pre>
+            <h3 style="margin-top:14px">Engine &amp; Storage Logs</h3>
+            <pre id="engine-log" class="log">starting…</pre>
+            <pre id="db-log" class="log">opening…</pre>
+          </div>
+        </details>
+      </div>
     </div>
     </main>
     <footer class="site-footer">
@@ -5153,7 +5155,13 @@ async function onTutorialDone(result: TutorialResult) {
   await runAnalyzeFirstThenBackground(QUICK_SYNC_ANALYZE_COUNT);
 }
 
-if (showTutorialThisLoad) startTutorial((result) => void onTutorialDone(result));
+if (showTutorialThisLoad) {
+  startTutorial((result) => void onTutorialDone(result));
+} else if (!playBoard) {
+  const initBoard = ensurePlayBoard();
+  initBoard.reset("white");
+  setStatus(playStatus, "Ready — Play vs. Bot or pick a game to review");
+}
 document.querySelector("#replay-tutorial")?.addEventListener("click", (e) => {
   e.preventDefault();
   startTutorial((result) => void onTutorialDone(result));
