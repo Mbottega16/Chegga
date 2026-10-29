@@ -51,10 +51,12 @@ function renderCard(card: PickerCard, busyId: string | null): string {
   const miniBoard = renderMiniBoardSvg(preview.fen, card.color, preview.lastMove);
   const statusIcon = card.analyzed ? "✦" : busy ? "◌" : "▶";
 
-  return `<button type="button" class="${classes}" data-game-id="${esc(card.id)}" ${disabled ? "disabled" : ""} aria-label="${esc(label)}">
+  return `<button type="button" class="${classes}" data-game-id="${esc(card.id)}" data-pgn="${esc(card.pgn ?? "")}" data-orientation="${card.color}" ${disabled ? "disabled" : ""} aria-label="${esc(label)}">
     <div class="picker-card-top">
       <div class="picker-mini-board-wrap">
-        ${miniBoard}
+        <div class="picker-mini-board-svg-wrap">
+          ${miniBoard}
+        </div>
         <span class="picker-result picker-result-badge">${RESULT_LABEL[card.result]}</span>
       </div>
       <div class="picker-card-info">

@@ -4,6 +4,8 @@
 // visitor syncs an account so panels are filled and balanced rather than
 // hollow or 1/4-filled.
 
+import { extractPreviewFromPgn, renderMiniBoardSvg } from "./miniBoardSvg";
+
 export type SkeletonKind = "report" | "bars" | "board" | "chart" | "rows" | "lines";
 
 export interface EmptyStateConfig {
@@ -133,6 +135,59 @@ function emptyStateHtml(cfg: EmptyStateConfig): string {
  * Show #picker-section and primary cards in purposeful, filled waiting states
  * that draw the eye to the heading, provide clear captions, and invite interaction.
  */
+interface SampleGameItem {
+  opening: string;
+  opponent: string;
+  resultBadge: string;
+  resultClass: "win" | "loss" | "draw";
+  movesText: string;
+  orientation: "white" | "black";
+  pgn: string;
+}
+
+const SAMPLE_GAMES: SampleGameItem[] = [
+  {
+    opening: "Italian Game",
+    opponent: "RookAndRoll (1551)",
+    resultBadge: "Win 1-0",
+    resultClass: "win",
+    movesText: "27 moves · Tactical king hunt",
+    orientation: "white",
+    pgn: `[Event "Italian Game"]
+1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. d3 d6 6. O-O O-O 7. Nbd2 Qd7 8. g3 Qe7 9. Qe1 Bd7 10. Bb3 Rfd8 11. Qd1 g6 12. g4 Nxg4 13. Qc2 Bxf2+ 14. Kg2 Bc5 15. a3 Na5 16. Bd5 Ne3+ 17. Kf2 Nxd5+ 18. d4 Bxd4+ 19. cxd4 Nf4 20. Qxc7 Nh3+ 21. Ke2 exd4 22. Qxa5 Bb5+ 23. Qxb5 Nf4+ 24. Ke1 Nd3+ 25. Ke2 Nxc1+ 26. Raxc1 h6 27. Nxd4 1-0`,
+  },
+  {
+    opening: "Sicilian Defense: Najdorf",
+    opponent: "PawnStorm88 (1569)",
+    resultBadge: "Loss 0-1",
+    resultClass: "loss",
+    movesText: "29 moves · Sharp counterplay",
+    orientation: "black",
+    pgn: `[Event "Sicilian Defense"]
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be3 e5 7. Nde2 Nbd7 8. Nb1 Be7 9. Na3 Nxe4 10. g4 Qa5+ 11. b4 Qxa3 12. Rb1 O-O 13. h3 b6 14. h4 Qxa2 15. Rc1 Bxh4 16. Rxh4 b5 17. Rh2 Qb2 18. Rh1 Qxb4+ 19. Nc3 Nxc3 20. Qd3 Nd5+ 21. Bd2 Qxg4 22. Qxd5 Rb8 23. Qxd6 Rb7 24. f3 Qg3+ 25. Kd1 Re8 26. Rh5 Qf2 27. Be2 f5 28. Qxa6 Rc7 29. Qa2+ 1-0`,
+  },
+  {
+    opening: "London System",
+    opponent: "KnightOwl_ (1487)",
+    resultBadge: "Win 1-0",
+    resultClass: "win",
+    movesText: "44 moves · Mating attack",
+    orientation: "white",
+    pgn: `[Event "London System"]
+1. d4 Nf6 2. Nf3 e6 3. Bf4 d5 4. e3 c5 5. c3 Nc6 6. Nbd2 Bd6 7. Bg5 cxd4 8. exd4 O-O 9. Bd3 Bxh2 10. Nxh2 Nxd4 11. Bxf6 Qxf6 12. O-O Nc6 13. b3 Rd8 14. Bc2 g5 15. a3 h5 16. Ra2 Qxc3 17. Qxh5 Qc5 18. Qxg5+ Kf8 19. Qh6+ Ke7 20. Qh4+ Kd7 21. Rd1 Rg8 22. b4 Qd6 23. Nb3 a6 24. Qf6 Rf8 25. g3 Na7 26. Qf3 Nc6 27. Nc5+ Kc7 28. Ng4 f5 29. Nh2 Qe5 30. Nxe6+ Qxe6 31. Rxd5 Qxd5 32. Qf4+ Kb6 33. Qe3+ Nd4 34. Qh6+ Kc7 35. Qxf8 Nxc2 36. Rxc2+ Kb8 37. Rxc8+ Ka7 38. Qf6 Qd1+ 39. Nf1 Qb3 40. Rc1 Rg8 41. Qxf5 b6 42. Qh7+ Rg7 43. Qxg7+ Ka8 44. Rc8# 1-0`,
+  },
+  {
+    opening: "French Defense: Tarrasch",
+    opponent: "BishopTakes (1467)",
+    resultBadge: "Draw ½-½",
+    resultClass: "draw",
+    movesText: "41 moves · Balanced endgame",
+    orientation: "black",
+    pgn: `[Event "French Defense"]
+1. e4 e6 2. d4 d5 3. Nd2 Nf6 4. e5 Nfd7 5. Bd3 c5 6. c3 Nc6 7. dxc5 Ncxe5 8. Be2 Nxc5 9. Nh3 Be7 10. O-O O-O 11. g4 Ncd7 12. a4 Nc5 13. f4 Nc6 14. Re1 Qd7 15. Rf1 Nxa4 16. Rxa4 Bc5+ 17. Kg2 a5 18. Qe1 g6 19. Qg3 Rb8 20. Bf3 Be7 21. Qe1 Qd6 22. Nb3 f6 23. Qg3 Re8 24. Nf2 h6 25. Qh4 Rd8 26. Qxh6 Bd7 27. Qxg6+ Kf8 28. Qh6+ Kf7 29. Qh5+ Kg7 30. Qh3 b5 31. Ra1 Kg8 32. Nxa5 Nxa5 33. Kg3 Nb3 34. Rb1 Ra8 35. Bxd5 Nxc1 36. Bxa8 Rxa8 37. Rbxc1 Kf8 38. Qh6+ Kg8 39. Ne4 Qd5 40. Nxf6+ Kf7 41. Nxd7 Qd3+ 1/2-1/2`,
+  },
+];
+
 export function emptyFor(sectionId: string): boolean {
   const cfg = byId.get(sectionId);
   if (!cfg) return false;
@@ -147,28 +202,41 @@ export function emptyFor(sectionId: string): boolean {
 
   if (sectionId === "picker-section") {
     section.style.display = "";
+    const cardsHtml = SAMPLE_GAMES.map((g) => {
+      const preview = extractPreviewFromPgn(g.pgn);
+      const safePgn = g.pgn.replace(/"/g, "&quot;");
+      return `
+        <div class="game-slider-card" data-pgn="${safePgn}" data-orientation="${g.orientation}" tabindex="0" role="button" aria-label="Review ${g.opening} against ${g.opponent}">
+          <div class="game-slider-board-wrapper">
+            <div class="game-slider-board-slot">
+              ${renderMiniBoardSvg(preview.fen, g.orientation, preview.lastMove)}
+            </div>
+            <span class="game-slider-move-tag">Hover to play</span>
+          </div>
+          <div class="game-slider-info">
+            <div class="game-slider-header">
+              <strong class="game-slider-opening">${g.opening}</strong>
+              <span class="game-slider-badge game-slider-badge-${g.resultClass}">${g.resultBadge}</span>
+            </div>
+            <div class="game-slider-vs">vs <span>${g.opponent}</span></div>
+            <div class="game-slider-meta">${g.movesText}</div>
+            <button type="button" class="btn btn-primary game-slider-cta" id="picker-demo-cta-btn" title="Open this game in review">
+              Review game
+            </button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
     output.innerHTML = `
       <div class="empty-state empty-state-picker-featured">
-        <div class="sample-game-card">
-          <div class="sample-game-badge">SAMPLE GAME SPOTLIGHT</div>
-          <div class="sample-game-header">
-            <div class="sample-game-title">Chegga Bot vs. Player</div>
-            <span class="sample-game-score">1 - 0</span>
+        <div class="game-slider-wrap">
+          <button type="button" class="game-slider-nav game-slider-prev" data-game-slider-nav="-1" aria-label="Previous games">◀</button>
+          <div class="game-slider-track" id="game-slider-track" tabindex="0" role="region" aria-label="Sample games slider">
+            ${cardsHtml}
           </div>
-          <div class="sample-game-meta">32 moves · 89.4% Accuracy · Sicilian Defense</div>
-          <div class="sample-quality-bar" title="1 Brilliant · 4 Great · 18 Best · 3 Inaccuracies · 1 Blunder">
-            <span class="sq-chip sq-brilliant" style="flex: 1"></span>
-            <span class="sq-chip sq-great" style="flex: 4"></span>
-            <span class="sq-chip sq-best" style="flex: 18"></span>
-            <span class="sq-chip sq-inacc" style="flex: 3"></span>
-            <span class="sq-chip sq-blunder" style="flex: 1"></span>
-          </div>
-          <button type="button" class="btn btn-primary sample-game-btn" id="picker-demo-cta-btn">
-            ▶ Step Through Sample Game
-          </button>
+          <button type="button" class="game-slider-nav game-slider-next" data-game-slider-nav="1" aria-label="Next games">▶</button>
         </div>
-        <p class="empty-state-line">Or enter your Chess.com / Lichess username above to analyze your real games.</p>
-        <button type="button" class="empty-state-cta" data-empty-cta>Sync your games</button>
       </div>
     `;
     output.dataset.emptyState = "1";
@@ -216,10 +284,20 @@ export function showEmptyStates(): void {
   for (const cfg of EMPTY_STATES) emptyFor(cfg.sectionId);
 }
 
-/** Wire the CTA buttons once: jump to the sync form and focus the input, or load the sample game. */
+/** Wire the CTA buttons once: slider arrows, sample game review, jump to sync form. */
 export function wireEmptyStateCtas(): void {
   document.addEventListener("click", (e) => {
-    const sampleBtn = (e.target as HTMLElement).closest("#picker-demo-cta-btn");
+    const navBtn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-game-slider-nav]");
+    if (navBtn) {
+      const dir = Number(navBtn.dataset.gameSliderNav) || 1;
+      const track = document.getElementById("game-slider-track");
+      if (track) {
+        track.scrollBy({ left: dir * 280, behavior: "smooth" });
+      }
+      return;
+    }
+
+    const sampleBtn = (e.target as HTMLElement).closest("#picker-demo-cta-btn, .game-slider-card");
     if (sampleBtn) {
       const demoBtn = document.getElementById("demo-load-btn") as HTMLButtonElement | null;
       if (demoBtn) demoBtn.click();

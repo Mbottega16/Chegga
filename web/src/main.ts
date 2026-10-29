@@ -16,6 +16,7 @@ installErrorOverlay(); // first, before anything else can throw
 import "./style.css";
 import "./mobile.css"; // small-viewport pass — loaded after style.css so equal-specificity rules win
 import { showEmptyStates, emptyFor, clearEmptyFor, wireEmptyStateCtas } from "./emptyStates";
+import { wireMiniBoardReplay } from "./miniBoardSvg";
 import { renderLabBentoGrid } from "./labBento";
 import {
   iconStage,
@@ -331,6 +332,64 @@ app.innerHTML = `
 
     <main id="main-content">
     <div class="studio-workspace-grid">
+      <div class="studio-command-column">
+        <section class="card studio-sync-card" id="sync-section" data-tier="primary">
+          <h2>Get started</h2>
+          <p class="card-teaser" data-card-teaser>Enter your Chess.com or Lichess username to load your recent games and track your progress.</p>
+          <form id="sync-form" class="sync-form-grid">
+            <div class="sync-inputs-row">
+              <label for="sync-site" class="sr-only">Where you play</label>
+              <select id="sync-site">
+                <option value="chesscom">Chess.com</option>
+                <option value="lichess">Lichess</option>
+              </select>
+              <label for="username" class="sr-only">Chess.com or Lichess username</label>
+              <input id="username" type="text" placeholder="Username (e.g. MichaelBottega)" autocomplete="off" required />
+            </div>
+            <div class="sync-actions-row">
+              <button type="submit" id="sync-btn">${iconConnect} Sync games</button>
+              <div class="demo-square-wrap">
+                <button type="button" id="demo-load-btn" class="demo-square-btn" title="Try demo" aria-label="Try demo">
+                  ${iconPlay}
+                </button>
+                <div class="demo-popover-panel" role="tooltip">
+                  <strong class="demo-popover-title">Try demo</strong>
+                  <span class="demo-popover-desc">Instant sample game review without an account</span>
+                </div>
+              </div>
+            </div>
+          </form>
+          <p id="sync-log" class="status-line"></p>
+          <div id="sync-progress"></div>
+          <p id="full-sync-prompt" class="status-line status-ok" style="display:none">
+            <span id="full-sync-prompt-text"></span> <button type="button" id="full-sync-btn">Get my full history</button>
+          </p>
+          <p id="lichess-history" class="status-line status-ok" style="display:none">
+            <span id="lichess-history-text"></span> <button type="button" id="lichess-history-btn">Get my full history</button>
+            <button type="button" id="lichess-history-cancel" style="display:none">Cancel</button>
+          </p>
+          <details class="studio-batch-drawer">
+            <summary class="btn-quiet">Batch analyze more games</summary>
+            <form id="analyze-recent-form" class="row" style="margin-top:10px">
+              <label for="analyze-count" class="sr-only">Number of recent games to analyze</label>
+              <input id="analyze-count" type="number" min="1" max="200" value="10" />
+              <button type="submit" id="analyze-recent-btn">Analyze most recent</button>
+            </form>
+          </details>
+          <p id="analyze-recent-log" class="status-line"></p>
+          <div id="analyze-progress"></div>
+          <p id="background-analyze-log" class="status-line status-ok" style="display:none"></p>
+          <div id="background-analyze-progress"></div>
+        </section>
+
+        <section class="card studio-picker-card" id="picker-section" data-tier="primary" style="display:none">
+          <h2>Review a Game</h2>
+          <div id="picker-output"></div>
+          <p id="picker-status" class="status-line" role="status"></p>
+          <div id="saved-positions"></div>
+        </section>
+      </div>
+
       <section class="card studio-stage-card" id="play-section" data-tier="primary" data-non-collapsible="true">
         <h2>Play vs. bot &amp; Game Review</h2>
         <p class="card-teaser" data-card-teaser>Test your tactics against Stockfish with live quality grading, blunder alerts, and move playback.</p>
@@ -491,56 +550,6 @@ app.innerHTML = `
           </div>
         </div>
       </section>
-
-      <div class="studio-command-column">
-        <section class="card studio-sync-card" id="sync-section" data-tier="primary">
-          <h2>Get started</h2>
-          <p class="card-teaser" data-card-teaser>Enter your Chess.com or Lichess username to load your recent games and track your progress.</p>
-          <form id="sync-form" class="row">
-            <label for="sync-site" class="sr-only">Where you play</label>
-            <select id="sync-site">
-              <option value="chesscom">Chess.com</option>
-              <option value="lichess">Lichess</option>
-            </select>
-            <label for="username" class="sr-only">Chess.com or Lichess username</label>
-            <input id="username" type="text" placeholder="Username (e.g. MichaelBottega)" autocomplete="off" required />
-            <button type="submit" id="sync-btn">${iconConnect} Sync games</button>
-          </form>
-          <div class="demo-cta">
-            <span>No account handy?</span>
-            <button type="button" id="demo-load-btn" class="btn-ghost">${iconPlay} See a demo</button>
-          </div>
-          <p id="sync-log" class="status-line"></p>
-          <div id="sync-progress"></div>
-          <p id="full-sync-prompt" class="status-line status-ok" style="display:none">
-            <span id="full-sync-prompt-text"></span> <button type="button" id="full-sync-btn">Get my full history</button>
-          </p>
-          <p id="lichess-history" class="status-line status-ok" style="display:none">
-            <span id="lichess-history-text"></span> <button type="button" id="lichess-history-btn">Get my full history</button>
-            <button type="button" id="lichess-history-cancel" style="display:none">Cancel</button>
-          </p>
-          <details class="studio-batch-drawer">
-            <summary class="btn-quiet">Batch analyze more games</summary>
-            <form id="analyze-recent-form" class="row" style="margin-top:10px">
-              <label for="analyze-count" class="sr-only">Number of recent games to analyze</label>
-              <input id="analyze-count" type="number" min="1" max="200" value="10" />
-              <button type="submit" id="analyze-recent-btn">Analyze most recent</button>
-            </form>
-          </details>
-          <p id="analyze-recent-log" class="status-line"></p>
-          <div id="analyze-progress"></div>
-          <p id="background-analyze-log" class="status-line status-ok" style="display:none"></p>
-          <div id="background-analyze-progress"></div>
-        </section>
-
-        <section class="card studio-picker-card" id="picker-section" data-tier="primary" style="display:none">
-          <h2>Review a Game</h2>
-          <p class="card-teaser" data-card-teaser>Evaluate moves, explore best lines, and replay key blunder moments.</p>
-          <div id="picker-output"></div>
-          <p id="picker-status" class="status-line" role="status"></p>
-          <div id="saved-positions"></div>
-        </section>
-      </div>
     </div>
 
     <div class="studio-bento-row">
@@ -901,6 +910,7 @@ app.innerHTML = `
 setupCollapsibleCards();
 setupMobileTaglines();
 wireEmptyStateCtas();
+wireMiniBoardReplay(document);
 showEmptyStates(); // seed data-dependent cards for a visitor with no synced account (redesign #5)
 
 // Wire Lab Bento Grid tiles to expand their corresponding tools and update the hover caption panel

@@ -13,7 +13,52 @@ export interface BoardPreview {
   moveCount: number;
 }
 
+export interface MoveFrame {
+  fen: string;
+  lastMove?: [string, string];
+  san?: string;
+  ply: number;
+}
+
 const pgnPreviewCache = new Map<string, BoardPreview>();
+const pgnFramesCache = new Map<string, MoveFrame[]>();
+
+/** Extracts all move frames from ply 0 (starting position) to end.
+ * Cached in-memory so hover replays begin instantly with zero lag. */
+export function extractAllMoveFrames(pgn: string): MoveFrame[] {
+  if (!pgn || !pgn.trim()) {
+    return [{ fen: STANDARD_START_FEN, ply: 0 }];
+  }
+  const cached = pgnFramesCache.get(pgn);
+  if (cached) return cached;
+
+  const frames: MoveFrame[] = [{ fen: STANDARD_START_FEN, ply: 0 }];
+  try {
+    const full = new Chess();
+    full.loadPgn(pgn, { strict: false });
+    const moves = full.history({ verbose: true });
+    const sim = new Chess();
+    for (let i = 0; i < moves.length; i++) {
+      const m = moves[i]!;
+      sim.move({ from: m.from, to: m.to, promotion: m.promotion });
+      frames.push({
+        fen: sim.fen(),
+        lastMove: [m.from, m.to],
+        san: m.san,
+        ply: i + 1,
+      });
+    }
+  } catch {
+    // Malformed PGN falls back cleanly to starting position
+  }
+
+  if (pgnFramesCache.size > 250) {
+    const firstKey = pgnFramesCache.keys().next().value;
+    if (firstKey !== undefined) pgnFramesCache.delete(firstKey);
+  }
+  pgnFramesCache.set(pgn, frames);
+  return frames;
+}
 
 /** Extracts the final (or late-middlegame) FEN and last move from a PGN string.
  * Cached in-memory so re-filtering the game picker is O(1) instant. */
@@ -143,4 +188,103 @@ export function renderMiniBoardSvg(
   }
 
   return `<svg class="mini-board-svg" viewBox="0 0 80 80" aria-hidden="true" focusable="false">${squaresSvg}${piecesSvg}</svg>`;
+}
+
+interface ActiveReplay {
+  card: HTMLElement;
+  timer: number;
+  boardHost: HTMLElement;
+  originalSvg: string;
+  badgeEl: HTMLElement | null;
+  originalBadgeText: string;
+}
+
+let activeReplay: ActiveReplay | null = null;
+
+export function stopMiniBoardReplay(): void {
+  if (!activeReplay) return;
+  window.clearInterval(activeReplay.timer);
+  activeReplay.boardHost.innerHTML = activeReplay.originalSvg;
+  if (activeReplay.badgeEl) {
+    activeReplay.badgeEl.textContent = activeReplay.originalBadgeText;
+  }
+  activeReplay = null;
+}
+
+/**
+ * Wires mouse hover replay for any game card with `data-pgn`.
+ * On hover: starts at the beginning of the game and steps through all moves.
+ * On leave: stops replay and restores the final board state.
+ */
+export function wireMiniBoardReplay(root: Document | HTMLElement = document): void {
+  function wireAllCards(container: Document | HTMLElement): void {
+    const cards = container.querySelectorAll<HTMLElement>("[data-pgn]");
+    cards.forEach((card) => {
+      if (card.dataset.replayWired === "1") return;
+      card.dataset.replayWired = "1";
+
+      const pgn = card.dataset.pgn;
+      if (!pgn || !pgn.trim()) return;
+
+      const orientation = (card.dataset.orientation as "white" | "black") || "white";
+      const boardHost = card.querySelector<HTMLElement>(
+        ".game-slider-board-slot, .picker-mini-board-svg-wrap, .picker-mini-board-wrap",
+      );
+      if (!boardHost) return;
+
+      const badgeEl = card.querySelector<HTMLElement>(
+        ".game-slider-move-tag, .picker-result-badge, .picker-status-dot",
+      );
+      const originalSvg = boardHost.innerHTML;
+      const originalBadgeText = badgeEl?.textContent ?? "";
+      let timer: number | null = null;
+      let currentPly = 0;
+      let isReplaying = false;
+
+      card.addEventListener("mouseenter", () => {
+        if (isReplaying) return;
+        const frames = extractAllMoveFrames(pgn);
+        if (frames.length <= 1) return;
+        if (timer) window.clearInterval(timer);
+
+        isReplaying = true;
+        currentPly = 0;
+        boardHost.innerHTML = renderMiniBoardSvg(frames[0]!.fen, orientation);
+        if (badgeEl) badgeEl.textContent = "Start";
+
+        timer = window.setInterval(() => {
+          currentPly++;
+          if (currentPly >= frames.length) {
+            currentPly = 0;
+          }
+          const frame = frames[currentPly]!;
+          boardHost.innerHTML = renderMiniBoardSvg(frame.fen, orientation, frame.lastMove);
+          if (badgeEl) {
+            const moveNum = Math.ceil(frame.ply / 2);
+            const dots = frame.ply % 2 === 1 ? "." : "...";
+            badgeEl.textContent = frame.san ? `${moveNum}${dots} ${frame.san}` : `Move ${moveNum}`;
+          }
+        }, 220);
+      });
+
+      card.addEventListener("mouseleave", () => {
+        isReplaying = false;
+        if (timer) {
+          window.clearInterval(timer);
+          timer = null;
+        }
+        boardHost.innerHTML = originalSvg;
+        if (badgeEl) badgeEl.textContent = originalBadgeText;
+      });
+    });
+  }
+
+  wireAllCards(root);
+
+  if (typeof MutationObserver !== "undefined" && root === document) {
+    const observer = new MutationObserver(() => {
+      wireAllCards(document);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
 }

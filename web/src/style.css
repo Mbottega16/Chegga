@@ -3839,7 +3839,7 @@ section.card {
 /* ---- Unified 2-Column Main Studio Workspace ---- */
 .studio-workspace-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.48fr) minmax(350px, 0.92fr);
+  grid-template-columns: minmax(350px, 0.95fr) minmax(0, 1.48fr);
   gap: 20px;
   align-items: start;
   margin-bottom: 20px;
@@ -4737,111 +4737,330 @@ section.card {
   color: var(--muted);
 }
 
-/* ---- Sample Game Spotlight Card in Picker ---- */
-.empty-state-picker-featured {
-  padding: 8px 0;
-  text-align: left;
-  align-items: stretch;
-  gap: 12px;
-}
-
-.sample-game-card {
-  background: var(--panel-hover);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  padding: 16px 18px;
+/* ---- Sync Form Grid & Square Demo Button with Popover ---- */
+.sync-form-grid {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  margin-bottom: 12px;
 }
 
-.sample-game-badge {
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--accent);
-  text-transform: uppercase;
-}
-
-.sample-game-header {
+.sync-inputs-row {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
   gap: 8px;
+  width: 100%;
 }
 
-.sample-game-title {
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--text);
+.sync-inputs-row select {
+  flex: 0 0 125px;
+  min-width: 110px;
 }
 
-.sample-game-score {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: #4ade80;
-  background: rgba(74, 222, 128, 0.12);
-  border: 1px solid rgba(74, 222, 128, 0.25);
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
+.sync-inputs-row input {
+  flex: 1;
+  min-width: 0;
 }
 
-.sample-game-meta {
-  font-size: 0.82rem;
-  color: var(--muted);
-}
-
-.sample-quality-bar {
+.sync-actions-row {
   display: flex;
-  height: 8px;
-  border-radius: 4px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.05);
-  gap: 2px;
-  margin: 2px 0 6px;
+  gap: 8px;
+  width: 100%;
+  align-items: center;
 }
 
-.sq-chip {
-  display: block;
-  height: 100%;
-}
-.sq-brilliant { background: #22d3ee; }
-.sq-great     { background: #3b82f6; }
-.sq-best      { background: #4ade80; }
-.sq-inacc     { background: #facc15; }
-.sq-blunder   { background: #f43f5e; }
-
-.sample-game-btn {
-  display: inline-flex;
+.sync-actions-row button[type="submit"] {
+  flex: 1;
+  height: 42px;
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-weight: 600;
-  padding: 10px 16px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  width: 100%;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--accent-ink);
-  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
-.sample-game-btn:hover {
-  opacity: 0.92;
+.demo-square-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 42px;
+}
+
+.demo-square-btn {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.demo-square-btn:hover {
+  background: var(--panel-hover);
+  border-color: var(--accent);
+  color: var(--accent-strong);
   transform: translateY(-1px);
 }
 
-[data-theme="light"] .sample-game-card {
-  background: #f8fafc;
-  border-color: var(--border-strong);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+.demo-square-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.demo-popover-panel {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  width: 220px;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+}
+
+.demo-popover-panel::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 14px;
+  border-width: 6px;
+  border-style: solid;
+  border-color: var(--border-strong) transparent transparent transparent;
+}
+
+.demo-square-wrap:hover .demo-popover-panel,
+.demo-square-btn:focus-visible + .demo-popover-panel {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.demo-popover-title {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.demo-popover-desc {
+  font-size: 0.74rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+/* ---- Review a Game — Horizontal Board States Slider ---- */
+.empty-state-picker-featured {
+  padding: 0;
+  text-align: left;
+}
+
+.game-slider-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.game-slider-track {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  padding: 4px 2px 10px;
+  width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+.game-slider-track::-webkit-scrollbar {
+  height: 6px;
+}
+
+.game-slider-track::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.game-slider-track::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+
+.game-slider-nav {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  transition: all 0.15s ease;
+}
+
+.game-slider-nav:hover {
+  background: var(--panel-hover);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.game-slider-card {
+  flex: 0 0 250px;
+  scroll-snap-align: start;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.18s ease;
+  text-align: left;
+}
+
+.game-slider-card:hover {
+  border-color: var(--accent);
+  background: var(--panel-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.game-slider-board-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 226px;
+  margin: 0 auto;
+}
+
+.game-slider-board-slot {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #0f131a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-slider-board-slot .mini-board-svg,
+.picker-mini-board-wrap .mini-board-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.game-slider-move-tag {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 10;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(10, 12, 16, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  transition: all 0.12s ease;
+}
+
+.game-slider-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.game-slider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.game-slider-opening {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-slider-badge {
+  font-size: 0.66rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.game-slider-badge-win {
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.35);
+}
+
+.game-slider-badge-loss {
+  background: rgba(242, 85, 90, 0.15);
+  color: #f2555a;
+  border: 1px solid rgba(242, 85, 90, 0.35);
+}
+
+.game-slider-badge-draw {
+  background: rgba(138, 147, 166, 0.15);
+  color: #8a93a6;
+  border: 1px solid rgba(138, 147, 166, 0.35);
+}
+
+.game-slider-vs {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.game-slider-vs span {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.game-slider-meta {
+  font-size: 0.72rem;
+  color: var(--muted-dim);
+  margin-top: 2px;
+}
+
+.game-slider-cta {
+  margin-top: 6px;
+  width: 100%;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 6px;
 }
 
 /* ---- 15 Lab Tools Bento Grid (Standard Box Spec) ---- */
