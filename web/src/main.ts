@@ -137,6 +137,15 @@ import { setupFeedbackWidget } from "./feedback";
 import { setupFeedbackForm } from "./feedbackForm";
 import { BOARD_THEMES, applyBoardTheme, loadSavedBoardTheme } from "./boardTheme";
 import {
+  initTheme,
+  applyThemeMode,
+  applyAccentColor,
+  cycleThemeMode,
+  getActiveThemeMode,
+  getActiveAccent,
+  ACCENT_OPTIONS,
+} from "./theme";
+import {
   analyzePosition,
   getAnalysisEngine,
   evalBarWhiteFraction,
@@ -268,6 +277,9 @@ app.innerHTML = `
         </div>
       </div>
       <div class="header-actions">
+        <button type="button" id="theme-toggle-btn" class="header-theme-btn" title="Toggle theme mode (Dark / Light / OLED)">
+          <span id="theme-toggle-icon">🌙</span> <span id="theme-toggle-label">Dark</span>
+        </button>
         <span class="header-engine-pill"><span class="engine-dot"></span>Stockfish WASM Local</span>
         <button type="button" id="feedback-btn" class="feedback-btn" hidden>Feedback</button>
       </div>
@@ -344,7 +356,7 @@ app.innerHTML = `
                 <label class="play-checkbox-label"><input type="checkbox" id="fx-enabled" checked /> Effects</label>
               </div>
               <div class="play-controls">
-                <span class="control-pair"><label for="board-theme">Theme</label>
+                <span class="control-pair"><label for="board-theme">Board</label>
                 <select id="board-theme">
                   ${BOARD_THEMES.map((t) => `<option value="${t.id}">${t.label}</option>`).join("")}
                 </select></span>
@@ -353,6 +365,27 @@ app.innerHTML = `
                   ${PIECE_SET_OPTIONS.map((o) => `<option value="${o.id}">${o.label}</option>`).join("")}
                 </select></span>
                 <label class="play-checkbox-label"><input type="checkbox" id="colorblind-palette" /> Colorblind-safe</label>
+              </div>
+              <div class="settings-section-divider"></div>
+              <div class="settings-theme-block">
+                <div class="settings-block-title">Display Mode</div>
+                <div class="theme-mode-pills" role="radiogroup" aria-label="Display Mode">
+                  <button type="button" class="theme-mode-pill" data-mode="dark">🌙 Dark</button>
+                  <button type="button" class="theme-mode-pill" data-mode="light">☀️ Light</button>
+                  <button type="button" class="theme-mode-pill" data-mode="oled">🖤 OLED</button>
+                  <button type="button" class="theme-mode-pill" data-mode="system">⚙ Auto</button>
+                </div>
+
+                <div class="settings-block-title" style="margin-top: 12px;">Studio Accent</div>
+                <div class="theme-accent-swatches" role="radiogroup" aria-label="Studio Accent Color">
+                  ${ACCENT_OPTIONS.map(
+                    (a) =>
+                      `<button type="button" class="theme-accent-swatch" data-accent="${a.id}" title="${a.label}" aria-label="${a.label}" style="--swatch-hex: ${a.hex};">
+                        <span class="swatch-color" style="background: ${a.hex};"></span>
+                        <span class="swatch-name">${a.label}</span>
+                      </button>`
+                  ).join("")}
+                </div>
               </div>
             </div>
           </details>
@@ -1005,6 +1038,67 @@ boardThemeSelect.value = loadSavedBoardTheme();
 boardThemeSelect.addEventListener("change", () => {
   applyBoardTheme(boardThemeSelect.value);
   board3dInstance?.refreshTheme();
+});
+
+// --- Theme & Appearance Wiring ---
+initTheme();
+
+const themeToggleBtn = document.querySelector<HTMLButtonElement>("#theme-toggle-btn");
+const themeToggleIcon = document.querySelector<HTMLSpanElement>("#theme-toggle-icon");
+const themeToggleLabel = document.querySelector<HTMLSpanElement>("#theme-toggle-label");
+const themeModePills = document.querySelectorAll<HTMLButtonElement>(".theme-mode-pill");
+const themeAccentSwatches = document.querySelectorAll<HTMLButtonElement>(".theme-accent-swatch");
+
+function syncThemeUi() {
+  const currentMode = getActiveThemeMode();
+  const currentAccent = getActiveAccent();
+
+  if (themeToggleIcon && themeToggleLabel) {
+    if (currentMode === "light") {
+      themeToggleIcon.textContent = "☀️";
+      themeToggleLabel.textContent = "Light";
+    } else if (currentMode === "oled") {
+      themeToggleIcon.textContent = "🖤";
+      themeToggleLabel.textContent = "OLED";
+    } else if (currentMode === "system") {
+      themeToggleIcon.textContent = "⚙️";
+      themeToggleLabel.textContent = "Auto";
+    } else {
+      themeToggleIcon.textContent = "🌙";
+      themeToggleLabel.textContent = "Dark";
+    }
+  }
+
+  themeModePills.forEach((p) => {
+    p.classList.toggle("active", p.dataset.mode === currentMode);
+  });
+
+  themeAccentSwatches.forEach((s) => {
+    s.classList.toggle("active", s.dataset.accent === currentAccent);
+  });
+}
+
+syncThemeUi();
+window.addEventListener("chegga:theme-changed", syncThemeUi);
+
+if (themeToggleBtn) {
+  themeToggleBtn.addEventListener("click", () => {
+    cycleThemeMode();
+  });
+}
+
+themeModePills.forEach((pill) => {
+  pill.addEventListener("click", () => {
+    const mode = pill.dataset.mode as any;
+    if (mode) applyThemeMode(mode);
+  });
+});
+
+themeAccentSwatches.forEach((swatch) => {
+  swatch.addEventListener("click", () => {
+    const accent = swatch.dataset.accent as any;
+    if (accent) applyAccentColor(accent);
+  });
 });
 
 const pieceSetSelect = document.querySelector<HTMLSelectElement>("#piece-set")!;

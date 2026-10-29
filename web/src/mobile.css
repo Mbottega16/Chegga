@@ -160,7 +160,7 @@ body {
   }
   section.card,
   details.collapsible {
-    scroll-margin-top: 56px; /* matches the shorter mobile nav strip */
+    scroll-margin-top: 68px; /* matches the mobile nav strip with comfortable clearance */
   }
 }
 
@@ -504,3 +504,125 @@ body {
     background: linear-gradient(to bottom, transparent, var(--bg) 35%);
   }
 }
+
+/* ================================================================
+   iPhone & All-Devices Broadcast Studio Polish (Safe Areas & Touch)
+   ================================================================ */
+
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+@media (max-width: 600px) {
+  /* Safe-area insets for iPhone notch, dynamic island, and home indicator */
+  .header {
+    padding-top: max(12px, var(--safe-top));
+    padding-left: max(4px, var(--safe-left));
+    padding-right: max(4px, var(--safe-right));
+  }
+
+  .wrap {
+    padding-left: max(12px, var(--safe-left));
+    padding-right: max(12px, var(--safe-right));
+    padding-bottom: max(60px, calc(var(--safe-bottom) + 36px));
+  }
+
+  /* Compact dynamic board scaling for mobile phones */
+  .play-board-wrap {
+    display: flex !important;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto 14px;
+    padding: 6px !important;
+    max-width: 100%;
+    width: fit-content;
+  }
+
+  .play-board {
+    grid-template-columns: repeat(8, min(calc((100vw - 44px) / 8), 52px)) !important;
+    grid-template-rows: repeat(8, min(calc((100vw - 44px) / 8), 52px)) !important;
+  }
+
+  .play-piece {
+    font-size: min(calc((100vw - 44px) / 8 * 0.74), 38px) !important;
+  }
+
+  /* Small phone tightening (iPhone SE, 360-380px) */
+  @media (max-width: 380px) {
+    .play-board {
+      grid-template-columns: repeat(8, calc((100vw - 32px) / 8)) !important;
+      grid-template-rows: repeat(8, calc((100vw - 32px) / 8)) !important;
+    }
+    .play-piece {
+      font-size: calc((100vw - 32px) / 8 * 0.72) !important;
+    }
+  }
+
+  /* Settings drawer on phone: floating bottom sheet */
+  .studio-settings-drawer[open] .studio-settings-popover {
+    position: fixed;
+    inset: auto 10px max(10px, var(--safe-bottom)) 10px;
+    width: auto;
+    max-height: 82vh;
+    overflow-y: auto;
+    border-radius: 18px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.85);
+    z-index: 1000;
+    -webkit-overflow-scrolling: touch;
+    animation: studioSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes studioSlideUp {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  /* Stepper review buttons: minimum 44px thumb-friendly touch targets */
+  .review-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin: 12px 0 8px;
+  }
+
+  .review-buttons button {
+    min-height: 48px;
+    font-size: 1.15rem;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Advantage curve touch scrubbing */
+  .eval-advantage-curve {
+    touch-action: pan-y;
+    width: 100%;
+    height: 48px;
+  }
+
+  /* Native touch swipe for game cards: hide redundant small button arrows */
+  .picker-nav {
+    display: none !important;
+  }
+
+  .picker-track {
+    padding-bottom: 14px;
+    scroll-padding: 0 12px;
+  }
+
+  /* Play controls wrapping */
+  .play-controls-primary {
+    gap: 8px;
+  }
+}
+

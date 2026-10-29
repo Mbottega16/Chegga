@@ -99,11 +99,17 @@ To prevent multi-megabyte data blobs and archived legacy apps from slowing down 
 
 *Overwrite this at the end of every session; move the previous handoff into `HISTORY.md` first.*
 
-- **Last Worked On:** **Cross-platform pre-push git hook & build verification** (2026-10-29): wired tracked `.githooks/pre-push`, updated `.git/hooks/pre-push`, added `scripts/pre-push.sh`, `scripts/pre-push.ps1`, and root `package.json` scripts (`pre-push`, `verify`, `test:smoke`). Configured `git config core.hooksPath .githooks`. The hook gates every `git push` on `npm test` (332 Vitest unit tests) and `npm run build` (tsc typecheck + Vite production bundle), blocking bad pushes on Windows, Mac, and Linux. Supports `CHEGGA_SKIP_PRE_PUSH=1` and optional `CHEGGA_RUN_SMOKE=1`.
+- **Last Worked On:** **Responsive iPhone & desktop overhaul with light/dark/OLED theme system & accent customization** (2026-10-29):
+  - Built `web/src/theme.ts` supporting Dark Mode, Light Mode (crisp daylight paper), OLED Black (`#000000`), and System Auto preference.
+  - Implemented 6 studio accent palettes (`amber`, `emerald`, `sapphire`, `ruby`, `amethyst`, `cyan`) with reactive ambient stage aura and CSS variable cascade.
+  - Added header `#theme-toggle-btn` and interactive Appearance & Theme controls in `.studio-settings-popover`.
+  - Mobile responsiveness: added `viewport-fit=cover`, safe-area padding for notch/home bar, responsive board viewport scaling (`min(100vw - 24px, 480px)`), 44px+ touch targets, mobile floating settings sheet, and calibrated sticky jump-nav margin (`scroll-margin-top: 68px`).
+  - Added unit test suite `web/tests/unit/theme.test.ts` (6 tests).
 - **Current State (2026-10-29):**
-  - `main` builds cleanly (`tsc && vite build`), 332 unit tests across 27 files passing (`npm test`), root `npm run pre-push` and `.githooks/pre-push` verified against `git push --dry-run` (both pass and failure blocking tested).
+  - `main` builds cleanly (`tsc && vite build`), 338 unit tests across 28 files passing (`npm test`), Playwright mobile & desktop smoke tests 100% green (24/24 tests), and pre-push hook active.
 - **Next Up:**
   1. Real-device mobile validation (test touch swipe gestures, 3D board pinch-zoom, and eval-curve scrubbing on physical iOS/Android screens).
   2. High-volume account sync validation on Safari/WebKit IndexedDB (1,000+ game sync batches + background Stockfish queue).
   3. Optional Vercel project/domain rename from `chegga-web.vercel.app` to `chegga.vercel.app`.
+
 

@@ -4,11 +4,22 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0a0c10" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <script>
+      (function() {
+        try {
+          var m = localStorage.getItem("chegga:theme:mode") || "dark";
+          var resolved = m === "system" ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : m;
+          document.documentElement.setAttribute("data-theme", resolved);
+          var a = localStorage.getItem("chegga:theme:accent") || "amber";
+          document.documentElement.setAttribute("data-accent", a);
+        } catch (e) {}
+      })();
+    </script>
 
     <meta
       name="description"

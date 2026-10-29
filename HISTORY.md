@@ -19,6 +19,19 @@ This repo is public, so private planning notes stay in the owner's vault, not he
 
 ---
 
+## 2026-10-29 — responsive iPhone & desktop overhaul with light, dark, OLED modes and accent customization
+
+*PC · Antigravity · front-end overhaul & design*
+- **Changed:**
+  - Added theme and color customization engine (`web/src/theme.ts`) supporting **Dark Mode** (default broadcast studio), **Light Mode** (high-contrast daylight paper with crisp borders), **OLED Black** (`#000000` power saver), and **System Auto** mode.
+  - Implemented 6 Studio Accent Color themes (`amber` Studio Gold, `emerald`, `sapphire`, `ruby`, `amethyst`, `cyan` Cyber Cyan) with reactive board aura lighting, badge accents, and focus rings.
+  - Added one-click `#theme-toggle-btn` in header for instant mode switching, and a dedicated "Appearance & Theme" block with mode selector pills and interactive accent color swatches in the `⚙ Settings` popover (`.studio-settings-popover`).
+  - Optimized for mobile/iPhone and small viewports: added `viewport-fit=cover`, safe-area insets (`env(safe-area-inset-top/bottom)`), dynamic chessboard scaling to viewport width (`min(100vw - 24px, 480px)`), 44px touch targets on review steppers and buttons, horizontal swipeable mini-board game picker, floating settings sheet on phones, and increased mobile jump-nav `scroll-margin-top` to 68px.
+  - Added anti-flash inline script in `web/index.html` and 6 automated unit tests in `web/tests/unit/theme.test.ts`.
+- **Why:** Responsive design pass across all devices (iPhone, iPad, desktop) and complete visual customization requested by owner.
+- **Verified:** 338 unit tests passing (`npm test`), production build passing cleanly (`tsc && vite build`), and Playwright E2E smoke tests passing 100% on both mobile and desktop profiles (12/12 mobile, 12/12 desktop).
+- **Left open:** Physical device testing for touch responsiveness on real iOS/Android hardware.
+
 ## 2026-10-29 — cross-platform pre-push verification git hook wired
 
 *PC · Antigravity · git hooks & tooling*
