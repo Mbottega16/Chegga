@@ -1,0 +1,92 @@
+#!/bin/sh
+# Chegga pre-push git hook
+# Runs Vitest unit test suite and TypeScript + Vite production build before pushing.
+# Blocks pushes with non-zero exit code if tests fail or build is broken.
+
+# Ensure common node/npm locations on macOS / Linux / GUI clients are in PATH
+for p in /usr/local/bin /opt/homebrew/bin "$HOME/.nvm/versions/node/$(ls "$HOME/.nvm/versions/node" 2>/dev/null | tail -n 1)/bin" "$HOME/.volta/bin" "$HOME/.asdf/shims"; do
+  if [ -d "$p" ]; then
+    PATH="$p:$PATH"
+  fi
+done
+export PATH
+
+# Allow deliberate escape hatch
+if [ "$CHEGGA_SKIP_PRE_PUSH" = "1" ] || [ "$CHEGGA_SKIP_HOOKS" = "1" ]; then
+  echo "pre-push: skipped via CHEGGA_SKIP_PRE_PUSH=1"
+  exit 0
+fi
+
+# Detect remote branch/tag deletion (local_oid is 40 zeros or "(delete)")
+z40="0000000000000000000000000000000000000000"
+is_delete=true
+has_input=false
+
+while read -r local_ref local_oid remote_ref remote_oid; do
+  has_input=true
+  if [ "$local_oid" != "$z40" ] && [ "$local_oid" != "(delete)" ] && [ -n "$local_oid" ]; then
+    is_delete=false
+    break
+  fi
+done
+
+if [ "$has_input" = "true" ] && [ "$is_delete" = "true" ]; then
+  # Only deleting branches/tags on remote, no new commits to verify
+  exit 0
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ -z "$REPO_ROOT" ]; then
+  REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+fi
+cd "$REPO_ROOT" || exit 1
+
+if ! command -v npm >/dev/null 2>&1; then
+  echo "pre-push: BLOCKED - 'npm' command not found in PATH."
+  echo "          Ensure Node.js and npm are installed and in PATH."
+  exit 1
+fi
+
+echo "=================================================="
+echo "Chegga pre-push verification gate"
+echo "=================================================="
+
+echo "--> Step 1/2: Running Vitest unit test suite (npm test)..."
+npm test
+TEST_EXIT=$?
+if [ $TEST_EXIT -ne 0 ]; then
+  echo ""
+  echo "pre-push: BLOCKED - Unit tests failed (exit code $TEST_EXIT)! Push aborted."
+  echo "          Run 'npm test' to inspect and fix failures."
+  echo "          (Use 'git push --no-verify' to bypass in an emergency)"
+  exit 1
+fi
+
+echo ""
+echo "--> Step 2/2: Verifying typecheck & production build (npm run build)..."
+npm run build
+BUILD_EXIT=$?
+if [ $BUILD_EXIT -ne 0 ]; then
+  echo ""
+  echo "pre-push: BLOCKED - Build/typecheck failed (exit code $BUILD_EXIT)! Push aborted."
+  echo "          Run 'npm run build' to inspect and fix failures."
+  echo "          (Use 'git push --no-verify' to bypass in an emergency)"
+  exit 1
+fi
+
+if [ "$CHEGGA_RUN_SMOKE" = "1" ] || [ "$CHEGGA_SMOKE" = "1" ]; then
+  echo ""
+  echo "--> Optional Step: Running Playwright desktop smoke tests..."
+  npx playwright test tests/e2e/smoke.spec.ts --project=desktop
+  SMOKE_EXIT=$?
+  if [ $SMOKE_EXIT -ne 0 ]; then
+    echo ""
+    echo "pre-push: BLOCKED - Smoke tests failed (exit code $SMOKE_EXIT)! Push aborted."
+    exit 1
+  fi
+fi
+
+echo ""
+echo "pre-push: All verification checks passed cleanly. Proceeding with push."
+echo "=================================================="
+exit 0

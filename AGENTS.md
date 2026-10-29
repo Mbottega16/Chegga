@@ -35,7 +35,7 @@ A client-side-only Chess.com & Lichess game analyzer and tactical trainer. Stock
   Chess.com's piece set or board skin.
 - **Parked, not cut:** 15 broader cards carry `data-coming-soon="true"`; every deep link into
   them still works because `expandCard()` clears the gate on its target first.
-- **Tests before every push** is the intent; the `pre-push` hook is not wired yet (Next Up).
+- **Tests before every push** is wired via tracked `.githooks/pre-push` and `.git/hooks/pre-push` (`npm test` + `npm run build`). Escape hatch: `git push --no-verify` or `CHEGGA_SKIP_PRE_PUSH=1`.
 
 ## How it's built
 
@@ -68,6 +68,7 @@ cd web
 npm test               # Vitest unit suite (332 tests) — MUST pass before any commit
 npm run build          # TypeScript typecheck (tsc) + Vite production build
 npm run test:smoke     # Playwright E2E smoke suite (review picker, tutorial, sync, mobile)
+npm run pre-push       # Full pre-push gate (npm test && npm run build) — runs automatically on git push
 npm run dev            # Standard Vite dev server
 npm run dev:vscode     # Safe preview server for VS Code Simple Browser (no HMR webview bug)
 ```
@@ -98,11 +99,11 @@ To prevent multi-megabyte data blobs and archived legacy apps from slowing down 
 
 *Overwrite this at the end of every session; move the previous handoff into `HISTORY.md` first.*
 
-- **Last Worked On:** **Broadcast Chess Studio** front-end overhaul & declutter (2026-10-28): wide `1360px` split-stage workspace (`main.ts`, `style.css`), animated SVG hero tactical showcase (`heroArt.ts`), 8×8 SVG mini-board position previews on Game Picker and Saved Position cards (`miniBoardSvg.ts`, `gamePickerView.ts`), reactive `--stage-aura` board lighting, glowing SVG evaluation curve with time-trouble heat bands (`gameReviewView.ts`), circular daily progress ring (`todayView.ts`), radial move-quality donut chart + 2×2 bento layout (`profileView.ts`), compact `⚙ Settings` board popover drawer, and stripped redundant `.tagline` text blocks across the app.
-- **Current State (2026-10-28):**
-  - `main` builds cleanly (`tsc && vite build`), 332 unit tests across 27 files passing (`npm test`), and 28/28 Chromium E2E tests (`smoke.spec.ts` + `review-picker.spec.ts` across desktop & mobile viewports) passing.
+- **Last Worked On:** **Cross-platform pre-push git hook & build verification** (2026-10-29): wired tracked `.githooks/pre-push`, updated `.git/hooks/pre-push`, added `scripts/pre-push.sh`, `scripts/pre-push.ps1`, and root `package.json` scripts (`pre-push`, `verify`, `test:smoke`). Configured `git config core.hooksPath .githooks`. The hook gates every `git push` on `npm test` (332 Vitest unit tests) and `npm run build` (tsc typecheck + Vite production bundle), blocking bad pushes on Windows, Mac, and Linux. Supports `CHEGGA_SKIP_PRE_PUSH=1` and optional `CHEGGA_RUN_SMOKE=1`.
+- **Current State (2026-10-29):**
+  - `main` builds cleanly (`tsc && vite build`), 332 unit tests across 27 files passing (`npm test`), root `npm run pre-push` and `.githooks/pre-push` verified against `git push --dry-run` (both pass and failure blocking tested).
 - **Next Up:**
   1. Real-device mobile validation (test touch swipe gestures, 3D board pinch-zoom, and eval-curve scrubbing on physical iOS/Android screens).
   2. High-volume account sync validation on Safari/WebKit IndexedDB (1,000+ game sync batches + background Stockfish queue).
-  3. Wire `npm test` into `.git/hooks/pre-push` so unit regressions block pushes automatically.
-  4. Optional Vercel project/domain rename from `chegga-web.vercel.app` to `chegga.vercel.app`.
+  3. Optional Vercel project/domain rename from `chegga-web.vercel.app` to `chegga.vercel.app`.
+

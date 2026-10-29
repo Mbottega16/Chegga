@@ -3,6 +3,9 @@
   "private": true,
   "scripts": {
     "build": "npm --prefix web run build",
-    "test": "npm --prefix web run test"
+    "test": "npm --prefix web run test",
+    "test:smoke": "npm --prefix web run test:smoke",
+    "pre-push": "npm test && npm run build",
+    "verify": "npm test && npm run build"
   }
 }

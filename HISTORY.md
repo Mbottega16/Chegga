@@ -19,6 +19,14 @@ This repo is public, so private planning notes stay in the owner's vault, not he
 
 ---
 
+## 2026-10-29 — cross-platform pre-push verification git hook wired
+
+*PC · Antigravity · git hooks & tooling*
+- **Changed:** Created tracked cross-platform `.githooks/pre-push` gate and updated `.git/hooks/pre-push` to forward to it (with local `git config core.hooksPath .githooks` configured). Added wrapper scripts `scripts/pre-push.sh` and `scripts/pre-push.ps1`, and added `pre-push`, `verify`, and `test:smoke` scripts to root `package.json`. The hook executes `npm test` (332 Vitest unit tests across 27 files) and `npm run build` (`tsc && vite build`), handles POSIX/Windows/macOS PATH resolution, skips branch deletions, and exits with non-zero code on failure. Supports `CHEGGA_SKIP_PRE_PUSH=1` and optional `CHEGGA_RUN_SMOKE=1` desktop Playwright smoke verification.
+- **Why:** Prevent pushing regressions or broken builds to GitHub. Closes the longstanding Next Up item in `CLAUDE.md`.
+- **Verified:** Tested `git push --dry-run` (both clean pass and intentional assertion failure in `timePressure.test.ts` blocking push with exit code 1), verified `CHEGGA_SKIP_PRE_PUSH=1` escape hatch, and tested `powershell -File scripts/pre-push.ps1`, `npm run pre-push`, `npm test` (332/332 passed in 4.99s), and `npm run build` (built in 1.58s).
+- **Left open:** None for this task. Real-device mobile validation and Safari/WebKit high-volume sync remain on the backlog.
+
 ## 2026-10-28 — Broadcast Chess Studio front-end overhaul & declutter
 
 *PC · Antigravity · Broadcast Studio UI*
