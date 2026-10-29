@@ -140,13 +140,15 @@ export const LAB_TOOLS: LabToolItem[] = [
 export function renderLabBentoGrid(): string {
   return LAB_TOOLS.map(
     (t) => `
-    <div class="lab-tile" data-target="${t.targetId}" role="button" tabindex="0">
-      <div class="lab-tile-header">
-        <span class="lab-tile-icon">${svgIcon(t.icon, "lab-svg-icon", 18)}</span>
-        <span class="lab-badge">${t.badge}</span>
+    <div class="lab-tile" data-target="${t.targetId}" data-name="${t.name}" data-desc="${t.desc}" role="button" tabindex="0">
+      <div class="lab-tile-icon-wrap">
+        <span class="lab-tile-icon">${svgIcon(t.icon, "lab-svg-icon", 24)}</span>
       </div>
-      <strong class="lab-tile-title">${t.name}</strong>
-      <span class="lab-tile-desc">${t.desc}</span>
+      <div class="lab-tile-title">${t.name}</div>
+      <div class="lab-tile-caption-drawer" role="tooltip">
+        <p class="lab-drawer-desc">${t.desc}</p>
+        <span class="lab-drawer-action">Click to launch ↗</span>
+      </div>
     </div>
   `
   ).join("");

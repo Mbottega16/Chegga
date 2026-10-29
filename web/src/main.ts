@@ -16,7 +16,6 @@ installErrorOverlay(); // first, before anything else can throw
 import "./style.css";
 import "./mobile.css"; // small-viewport pass — loaded after style.css so equal-specificity rules win
 import { showEmptyStates, emptyFor, clearEmptyFor, wireEmptyStateCtas } from "./emptyStates";
-import { renderHeroArt } from "./heroArt";
 import { renderLabBentoGrid } from "./labBento";
 import {
   iconStage,
@@ -31,8 +30,6 @@ import {
   iconCurriculum,
   iconTerminal,
   iconPlay,
-  iconZap,
-  iconCheck,
   iconMoon,
   iconSun,
   iconCube,
@@ -308,10 +305,12 @@ app.innerHTML = `
         </div>
       </div>
       <div class="header-actions">
+        <button type="button" id="hero-play-btn" class="header-action-btn btn-primary" title="Play vs. bot">${iconPlay} Play</button>
+        <button type="button" id="hero-analyze-btn" class="header-action-btn" title="Sync & analyze games">${iconConnect} Sync</button>
         <button type="button" id="theme-toggle-btn" class="header-theme-btn" title="Toggle theme mode (Dark / Light / OLED)">
           <span id="theme-toggle-icon">${iconMoon}</span> <span id="theme-toggle-label">Dark</span>
         </button>
-        <span class="header-engine-pill"><span class="engine-dot"></span>Stockfish WASM Local</span>
+        <span class="header-engine-pill"><span class="engine-dot"></span>Stockfish WASM</span>
         <button type="button" id="feedback-btn" class="feedback-btn" hidden>Feedback</button>
       </div>
     </header>
@@ -320,28 +319,6 @@ app.innerHTML = `
       <span>You're viewing <strong>sample data</strong> — a made-up player, not a real account. Connect your own to see your games.</span>
       <button type="button" id="demo-clear-btn">Clear sample data</button>
     </p>
-
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="hero-grid">
-        <div class="hero-copy">
-          <div class="hero-kicker">${iconZap} <span>Tactical Studio &amp; Real-Time Engine</span></div>
-          <h2 id="hero-title">See how good each move was, the moment you make it.</h2>
-          <p class="hero-sub">
-            Every move is evaluated live with candidate alternatives, tactical blunder detection, and advantage curves. Play Stockfish locally or sync your complete Chess.com &amp; Lichess archive.
-          </p>
-          <div class="hero-cta">
-            <button type="button" id="hero-play-btn" class="btn btn-primary">${iconPlay} Play a bot</button>
-            <button type="button" id="hero-analyze-btn" class="btn-ghost">${iconConnect} Analyze my games instead</button>
-          </div>
-          <div class="hero-feature-ribbon">
-            <span class="hero-feature-chip">${iconCheck} 100% In-Browser Privacy</span>
-            <span class="hero-feature-chip">${iconCheck} 7 Tactical Move Tiers</span>
-            <span class="hero-feature-chip">${iconCheck} Stockfish 18 WASM</span>
-          </div>
-        </div>
-        ${renderHeroArt()}
-      </div>
-    </section>
 
     <nav class="section-nav" aria-label="Jump to section">
       <a href="#play-section">${iconStage} <span>Play</span></a>
@@ -823,6 +800,9 @@ app.innerHTML = `
       <p class="card-teaser" data-card-teaser>
         15 specialized tactical engines, blunder diagnostics, and analytics suites built into Chegga.
       </p>
+      <div class="lab-inspector-panel" id="lab-inspector-panel" aria-live="polite">
+        <span class="lab-inspector-hint">Cursor over any tool below to preview its capabilities.</span>
+      </div>
       <div class="lab-bento-grid">
         ${renderLabBentoGrid()}
       </div>
@@ -923,14 +903,34 @@ setupMobileTaglines();
 wireEmptyStateCtas();
 showEmptyStates(); // seed data-dependent cards for a visitor with no synced account (redesign #5)
 
-// Wire Lab Bento Grid tiles to expand their corresponding tools
-document.querySelector(".lab-bento-grid")?.addEventListener("click", (e) => {
+// Wire Lab Bento Grid tiles to expand their corresponding tools and update the hover caption panel
+const labGrid = document.querySelector(".lab-bento-grid");
+const inspectorPanel = document.getElementById("lab-inspector-panel");
+
+labGrid?.addEventListener("click", (e) => {
   const tile = (e.target as HTMLElement).closest(".lab-tile");
   if (!tile) return;
   const targetId = tile.getAttribute("data-target");
   if (targetId) {
     expandCard(targetId);
   }
+});
+
+labGrid?.addEventListener("mouseover", (e) => {
+  const tile = (e.target as HTMLElement).closest(".lab-tile");
+  if (!tile || !inspectorPanel) return;
+  const name = tile.getAttribute("data-name");
+  const desc = tile.getAttribute("data-desc");
+  if (name && desc) {
+    inspectorPanel.innerHTML = `<strong>${name}</strong> — <span>${desc}</span>`;
+    inspectorPanel.classList.add("active");
+  }
+});
+
+labGrid?.addEventListener("mouseleave", () => {
+  if (!inspectorPanel) return;
+  inspectorPanel.innerHTML = `<span class="lab-inspector-hint">Cursor over any tool below to preview its capabilities.</span>`;
+  inspectorPanel.classList.remove("active");
 });
 
 setupFeedbackWidget(); // Featurebase widget — org slug "mibottega" set in feedback.ts
