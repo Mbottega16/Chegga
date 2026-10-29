@@ -259,3 +259,230 @@ export function computeFirstMistakePly(games: GameRecord[], ownMoves: MoveAnalys
   if (firstMistakePlies.length === 0) return undefined;
   return Math.round((firstMistakePlies.reduce((a, b) => a + b, 0) / firstMistakePlies.length) * 10) / 10;
 }
+
+// --- 8. The Thinking Sweet Spot (Time vs. Accuracy Curve) ---
+
+export interface TimeAccuracyBucket {
+  label: string;
+  range: [number, number];
+  moves: number;
+  accuracyRate: number; // 0 - 100 (% Best/Excellent/Brilliant)
+  blunderRate: number;  // 0 - 100 (% Mistake/Blunder)
+  avgCpLoss: number;
+}
+
+export interface ThinkingSweetSpotSummary {
+  buckets: TimeAccuracyBucket[];
+  sweetSpotLabel?: string;
+  sweetSpotAccuracy?: number;
+  rushBlunderPenalty?: number; // Blunder % in <2s vs sweet spot
+}
+
+const TIME_BUCKET_DEFS: { label: string; range: [number, number] }[] = [
+  { label: "<2s (Rush)", range: [0, 2] },
+  { label: "2-5s (Quick)", range: [2, 5] },
+  { label: "5-10s (Measured)", range: [5, 10] },
+  { label: "10-20s (Deep)", range: [10, 20] },
+  { label: "20-40s (Calculation)", range: [20, 40] },
+  { label: "40s+ (Hesitant)", range: [40, Infinity] },
+];
+
+export function computeThinkingSweetSpot(
+  moves: (MoveAnalysisRecord & { timeSpentSec?: number })[],
+): ThinkingSweetSpotSummary {
+  const bucketCounts = TIME_BUCKET_DEFS.map((def) => ({
+    ...def,
+    moves: 0,
+    accurateMoves: 0,
+    blunderMoves: 0,
+    totalCpLoss: 0,
+  }));
+
+  // Infer or use timeSpentSec
+  for (let i = 0; i < moves.length; i++) {
+    const m = moves[i];
+    let timeSpent = m.timeSpentSec;
+    if (timeSpent === undefined && i > 0 && moves[i - 1].gameId === m.gameId) {
+      const prevClock = moves[i - 1].clockSeconds;
+      const currClock = m.clockSeconds;
+      if (prevClock !== undefined && currClock !== undefined && prevClock >= currClock) {
+        timeSpent = prevClock - currClock;
+      }
+    }
+
+    if (timeSpent === undefined || timeSpent < 0) continue;
+
+    const b = bucketCounts.find((def) => timeSpent >= def.range[0] && timeSpent < def.range[1]);
+    if (!b) continue;
+
+    b.moves += 1;
+    b.totalCpLoss += m.centipawnLoss ?? 0;
+    const isAccurate = m.classification === "best" || m.classification === "excellent" || m.classification === "brilliant";
+    const isBlunder = m.classification === "blunder" || m.classification === "mistake";
+    if (isAccurate) b.accurateMoves += 1;
+    if (isBlunder) b.blunderMoves += 1;
+  }
+
+  const buckets: TimeAccuracyBucket[] = bucketCounts.map((b) => ({
+    label: b.label,
+    range: b.range,
+    moves: b.moves,
+    accuracyRate: b.moves > 0 ? Math.round((b.accurateMoves / b.moves) * 100) : 0,
+    blunderRate: b.moves > 0 ? Math.round((b.blunderMoves / b.moves) * 100) : 0,
+    avgCpLoss: b.moves > 0 ? Math.round(b.totalCpLoss / b.moves) : 0,
+  }));
+
+  // Find sweet spot: highest accuracy among buckets with at least 3 moves
+  const qualified = buckets.filter((b) => b.moves >= 3);
+  const best = qualified.sort((a, b) => b.accuracyRate - a.accuracyRate)[0];
+
+  const rushBucket = buckets[0];
+  const rushBlunderPenalty =
+    best && rushBucket && rushBucket.moves >= 2
+      ? Math.max(0, rushBucket.blunderRate - best.blunderRate)
+      : undefined;
+
+  return {
+    buckets,
+    sweetSpotLabel: best?.label,
+    sweetSpotAccuracy: best?.accuracyRate,
+    rushBlunderPenalty,
+  };
+}
+
+// --- 9. Tilt & Error Clustering Index ---
+
+export interface TiltSummary {
+  totalBlunders: number;
+  clusteredBlunders: number;
+  clusterRate: number; // 0 - 100 (%)
+  postMistakeRushRate: number; // 0 - 100 (%)
+}
+
+export function computeTiltIndex(
+  moves: (MoveAnalysisRecord & { timeSpentSec?: number })[],
+): TiltSummary {
+  const movesByGame = new Map<string, typeof moves>();
+  for (const m of moves) {
+    const list = movesByGame.get(m.gameId) ?? [];
+    list.push(m);
+    movesByGame.set(m.gameId, list);
+  }
+
+  let totalBlunders = 0;
+  let clusteredBlunders = 0;
+  let postMistakeMoves = 0;
+  let postMistakeRushes = 0;
+
+  for (const list of movesByGame.values()) {
+    const sorted = [...list].sort((a, b) => a.ply - b.ply);
+    for (let i = 0; i < sorted.length; i++) {
+      const curr = sorted[i];
+      const isBad = curr.classification === "blunder" || curr.classification === "mistake";
+      if (curr.classification === "blunder") {
+        totalBlunders += 1;
+        // Did a mistake or blunder happen on the immediately preceding own-move?
+        if (i > 0) {
+          const prev = sorted[i - 1];
+          if (prev.classification === "blunder" || prev.classification === "mistake") {
+            clusteredBlunders += 1;
+          }
+        }
+      }
+
+      if (isBad && i < sorted.length - 1) {
+        const next = sorted[i + 1];
+        postMistakeMoves += 1;
+        if (next.timeSpentSec !== undefined && next.timeSpentSec <= 2.5) {
+          postMistakeRushes += 1;
+        }
+      }
+    }
+  }
+
+  return {
+    totalBlunders,
+    clusteredBlunders,
+    clusterRate: totalBlunders > 0 ? Math.round((clusteredBlunders / totalBlunders) * 100) : 0,
+    postMistakeRushRate: postMistakeMoves > 0 ? Math.round((postMistakeRushes / postMistakeMoves) * 100) : 0,
+  };
+}
+
+// --- 10. The Mirror of Habits (Tactical Leak Aggregation) ---
+
+export interface MotifLeak {
+  motif: string;
+  label: string;
+  icon: string;
+  count: number;
+  share: number; // 0 - 100 (%)
+}
+
+export interface MirrorOfHabits {
+  topLeaks: MotifLeak[];
+  mostEndangeredPiece?: { piece: string; count: number; share: number };
+}
+
+const MOTIF_INFO: Record<string, { label: string; icon: string }> = {
+  fork: { label: "Knight/Pawn Forks", icon: "⚔️" },
+  pin: { label: "Absolute Pins", icon: "📌" },
+  back_rank: { label: "Back-Rank Weaknesses", icon: "🏰" },
+  skewer: { label: "Skewers & X-Rays", icon: "🎯" },
+  trapped_piece: { label: "Trapped Pieces", icon: "🪤" },
+  hung_material: { label: "Hanging Pieces", icon: "💥" },
+  missed_capture: { label: "Missed Free Captures", icon: "🏹" },
+  missed_mate: { label: "Missed Checkmates", icon: "👑" },
+  allowed_mate: { label: "Walked into Mate", icon: "💀" },
+  positional: { label: "Positional Errors", icon: "📐" },
+};
+
+export function computeMirrorOfHabits(moves: MoveAnalysisRecord[]): MirrorOfHabits {
+  const motifCounts = new Map<string, number>();
+  const pieceCounts = new Map<string, number>();
+  let totalTaggable = 0;
+
+  for (const m of moves) {
+    if (m.classification !== "blunder" && m.classification !== "mistake") continue;
+    totalTaggable += 1;
+    const tag = m.blunderTag ?? "positional";
+    motifCounts.set(tag, (motifCounts.get(tag) ?? 0) + 1);
+
+    // If san has piece identifier (N, B, R, Q)
+    const firstChar = m.san[0];
+    if (firstChar === "N") pieceCounts.set("Knight", (pieceCounts.get("Knight") ?? 0) + 1);
+    else if (firstChar === "B") pieceCounts.set("Bishop", (pieceCounts.get("Bishop") ?? 0) + 1);
+    else if (firstChar === "R") pieceCounts.set("Rook", (pieceCounts.get("Rook") ?? 0) + 1);
+    else if (firstChar === "Q") pieceCounts.set("Queen", (pieceCounts.get("Queen") ?? 0) + 1);
+    else if (firstChar >= "a" && firstChar <= "h") pieceCounts.set("Pawn", (pieceCounts.get("Pawn") ?? 0) + 1);
+  }
+
+  const topLeaks: MotifLeak[] = Array.from(motifCounts.entries())
+    .map(([motif, count]) => {
+      const info = MOTIF_INFO[motif] ?? { label: motif.replace(/_/g, " "), icon: "⚠️" };
+      return {
+        motif,
+        label: info.label,
+        icon: info.icon,
+        count,
+        share: totalTaggable > 0 ? Math.round((count / totalTaggable) * 100) : 0,
+      };
+    })
+    .sort((a, b) => b.count - a.count);
+
+  let mostEndangeredPiece: MirrorOfHabits["mostEndangeredPiece"];
+  if (pieceCounts.size > 0) {
+    const sortedPieces = Array.from(pieceCounts.entries()).sort((a, b) => b[1] - a[1]);
+    const [piece, count] = sortedPieces[0];
+    mostEndangeredPiece = {
+      piece,
+      count,
+      share: totalTaggable > 0 ? Math.round((count / totalTaggable) * 100) : 0,
+    };
+  }
+
+  return {
+    topLeaks,
+    mostEndangeredPiece,
+  };
+}
+

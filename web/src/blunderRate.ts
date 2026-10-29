@@ -11,7 +11,17 @@ import type { GameRecord, MoveAnalysisRecord } from "./db";
 
 // blunderTag values that mean "a concrete thing was on the board and got
 // missed in one move" — the trainable kind.
-const OVERSIGHT_TAGS = new Set(["hung_material", "missed_capture", "missed_mate", "allowed_mate"]);
+const OVERSIGHT_TAGS = new Set([
+  "hung_material",
+  "missed_capture",
+  "missed_mate",
+  "allowed_mate",
+  "fork",
+  "pin",
+  "skewer",
+  "back_rank",
+  "trapped_piece",
+]);
 
 export interface BlunderRatePoint {
   month: string; // "YYYY-MM"

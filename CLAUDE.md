@@ -99,17 +99,20 @@ To prevent multi-megabyte data blobs and archived legacy apps from slowing down 
 
 *Overwrite this at the end of every session; move the previous handoff into `HISTORY.md` first.*
 
-- **Last Worked On:** **Responsive iPhone & desktop overhaul with light/dark/OLED theme system & accent customization** (2026-10-29):
-  - Built `web/src/theme.ts` supporting Dark Mode, Light Mode (crisp daylight paper), OLED Black (`#000000`), and System Auto preference.
-  - Implemented 6 studio accent palettes (`amber`, `emerald`, `sapphire`, `ruby`, `amethyst`, `cyan`) with reactive ambient stage aura and CSS variable cascade.
-  - Added header `#theme-toggle-btn` and interactive Appearance & Theme controls in `.studio-settings-popover`.
-  - Mobile responsiveness: added `viewport-fit=cover`, safe-area padding for notch/home bar, responsive board viewport scaling (`min(100vw - 24px, 480px)`), 44px+ touch targets, mobile floating settings sheet, and calibrated sticky jump-nav margin (`scroll-margin-top: 68px`).
-  - Added unit test suite `web/tests/unit/theme.test.ts` (6 tests).
+- **Last Worked On:** **Tactical Motif Engine, Blunder DNA, Punishment Refutation & Habit Mirror** (2026-10-29):
+  - Tactical motif detection in `web/src/blunderTagger.ts` (`fork`, `pin`, `skewer`, `back_rank`, `trapped_piece`, `hung_material`).
+  - Structured **Blunder DNA** extraction (`motif`, `rootCause`, `damageLabel`, `tacticalLines`) with visual capsule (`.blunder-dna-capsule`, `.dna-pill`) in game review.
+  - Interactive **Punishment Refutation Trail** (`#review-punishment`) letting players toggle between played moves and the opponent's refutation sequence on the board.
+  - **Geometric Threat Radar** (`#review-threat-radar`) rendering tactical tension laser arrows between attackers and victims.
+  - **The Thinking Sweet Spot** (`computeThinkingSweetSpot` in `gamePatterns.ts`, visual pace chart in `profileView.ts`) correlating move accuracy and blunder rates across clock-time intervals.
+  - **The Mirror of Habits & Error Spiral Index** (`computeTiltIndex`, `computeMirrorOfHabits`) surfacing recurring tactical leaks, endangered pieces, tilt spirals, and 1-click **Train This Leak ⚔️** action into the Leitner trainer.
+  - Unit test suite expanded to 349 tests across 30 files (`blunderTagger.test.ts` and `gamePatterns.test.ts` added).
 - **Current State (2026-10-29):**
-  - `main` builds cleanly (`tsc && vite build`), 338 unit tests across 28 files passing (`npm test`), Playwright mobile & desktop smoke tests 100% green (24/24 tests), and pre-push hook active.
+  - `main` builds cleanly (`tsc && vite build`), 349 unit tests across 30 files passing (`npm test`), Playwright mobile & desktop smoke tests 100% green (24/24 tests), and pre-push hook active.
 - **Next Up:**
   1. Real-device mobile validation (test touch swipe gestures, 3D board pinch-zoom, and eval-curve scrubbing on physical iOS/Android screens).
   2. High-volume account sync validation on Safari/WebKit IndexedDB (1,000+ game sync batches + background Stockfish queue).
   3. Optional Vercel project/domain rename from `chegga-web.vercel.app` to `chegga.vercel.app`.
+
 
 

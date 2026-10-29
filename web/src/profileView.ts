@@ -177,6 +177,9 @@ export function renderProfile(
       </div>
     </div>
 
+    ${renderSweetSpot(profile)}
+    ${renderMirrorOfHabits(profile)}
+
     <h3>Opening repertoire &amp; leak diagnostic</h3>
     <table>
       <thead><tr><th>Opening</th><th>Games</th><th>Record</th><th>Win rate</th><th>Avg loss</th><th>Action</th></tr></thead>
@@ -185,6 +188,93 @@ export function renderProfile(
 
     ${monthlyRows ? `<h3>Monthly trend</h3><table><thead><tr><th>Month</th><th>Games</th><th>Avg CP loss</th><th>Blunder rate</th></tr></thead><tbody>${monthlyRows}</tbody></table>` : ""}
   `;
+}
+
+function renderSweetSpot(profile: ProfileSummary): string {
+  if (!profile.sweetSpot || !profile.sweetSpot.buckets.some((b) => b.moves > 0)) {
+    return "";
+  }
+  const buckets = profile.sweetSpot.buckets;
+  const maxMoves = Math.max(...buckets.map((b) => b.moves), 1);
+  const bars = buckets
+    .map((b) => {
+      const barHeight = Math.max(4, Math.round((b.moves / maxMoves) * 44));
+      const isSweet = b.label === profile.sweetSpot?.sweetSpotLabel;
+      const strokeColor = isSweet ? "var(--accent-strong)" : "var(--border-strong)";
+      const fillColor = isSweet ? "var(--accent)" : "rgba(255, 255, 255, 0.08)";
+      return `
+        <div class="sweet-spot-bar-col ${isSweet ? "is-sweet-spot" : ""}">
+          <div class="sweet-spot-metric-val">${b.accuracyRate}%</div>
+          <div class="sweet-spot-bar-wrap" title="${b.label}: ${b.moves} moves, ${b.accuracyRate}% accurate, ${b.blunderRate}% blunders">
+            <div class="sweet-spot-bar" style="height:${barHeight}px;background:${fillColor};border:1px solid ${strokeColor}"></div>
+          </div>
+          <div class="sweet-spot-label">${b.label.split(" ")[0]}</div>
+        </div>`;
+    })
+    .join("");
+
+  const bannerText = profile.sweetSpot.sweetSpotLabel
+    ? `🎯 <strong>Your Sweet Spot:</strong> ${escapeHtml(profile.sweetSpot.sweetSpotLabel)} (${profile.sweetSpot.sweetSpotAccuracy}% accuracy). ${profile.sweetSpot.rushBlunderPenalty ? `Rushing in &lt;2s increases blunders by <strong>+${profile.sweetSpot.rushBlunderPenalty}%</strong>.` : ""}`
+    : "Track more games to discover your optimal thinking pace.";
+
+  return `
+    <div class="profile-sweet-spot-card">
+      <div class="sweet-spot-header">
+        <div>
+          <h3>The Thinking Sweet Spot (Time vs. Accuracy)</h3>
+          <p class="section-tagline">How move accuracy and blunders correlate with seconds spent on the clock.</p>
+        </div>
+        <span class="sweet-spot-badge">Decision Pace</span>
+      </div>
+      <p class="sweet-spot-banner">${bannerText}</p>
+      <div class="sweet-spot-chart">${bars}</div>
+    </div>`;
+}
+
+function renderMirrorOfHabits(profile: ProfileSummary): string {
+  if (!profile.mirrorOfHabits || profile.mirrorOfHabits.topLeaks.length === 0) {
+    return "";
+  }
+  const leakCards = profile.mirrorOfHabits.topLeaks
+    .slice(0, 4)
+    .map((l) => {
+      return `
+        <div class="motif-leak-card" data-motif="${escapeHtml(l.motif)}">
+          <div class="leak-card-top">
+            <span class="leak-icon">${l.icon}</span>
+            <div class="leak-text">
+              <span class="leak-name">${escapeHtml(l.label)}</span>
+              <span class="leak-count">${l.count}× (${l.share}%)</span>
+            </div>
+          </div>
+          <button type="button" class="btn-quiet leak-train-btn" data-train-motif="${escapeHtml(l.motif)}" title="Train puzzles matching ${escapeHtml(l.label)}">Train This Leak ⚔️</button>
+        </div>`;
+    })
+    .join("");
+
+  const endangeredHtml = profile.mirrorOfHabits.mostEndangeredPiece
+    ? `<span class="habit-endangered-pill" title="Piece most often left vulnerable">🛡️ Most Endangered: <strong>${escapeHtml(profile.mirrorOfHabits.mostEndangeredPiece.piece)}</strong> (${profile.mirrorOfHabits.mostEndangeredPiece.count} blunders)</span>`
+    : "";
+
+  const tiltHtml =
+    profile.tilt && profile.tilt.totalBlunders > 0
+      ? `<span class="habit-tilt-pill" title="Blunders immediately following another mistake">🌀 Error Spiral: <strong>${profile.tilt.clusterRate}%</strong> ${profile.tilt.postMistakeRushRate > 0 ? `(${profile.tilt.postMistakeRushRate}% rushed after error)` : ""}</span>`
+      : "";
+
+  return `
+    <div class="profile-mirror-card">
+      <div class="mirror-header">
+        <div>
+          <h3>The Mirror of Habits (Recurring Tactical Leaks)</h3>
+          <p class="section-tagline">Pattern recognition over raw centipawns: drill your most frequent recurring mistakes.</p>
+        </div>
+        <div class="mirror-meta-pills">
+          ${endangeredHtml}
+          ${tiltHtml}
+        </div>
+      </div>
+      <div class="motif-leaks-grid">${leakCards}</div>
+    </div>`;
 }
 
 export type { StrengthEstimate };

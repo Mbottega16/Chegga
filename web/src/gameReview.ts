@@ -17,6 +17,7 @@ import { Chess, type Square } from "chess.js";
 import type { MoveAnalysisRecord } from "./db";
 import { CLASSIFICATION_ORDER } from "./classificationColors";
 import { clocksByFen, parseTimeControlBaseSeconds, parseTimeControlIncrementSeconds, timeSpentSeconds } from "./clockParser";
+import { extractBlunderDna, type BlunderDna } from "./blunderTagger";
 
 export interface ReviewStep {
   ply: number; // 1-based half-move, same convention as MoveAnalysisRecord.ply
@@ -38,6 +39,7 @@ export interface ReviewStep {
   // Extra facts from the same record, carried so the explanation and the
   // candidate view can say more than a tier. Evals are White-relative.
   blunderTag?: string;
+  blunderDna?: BlunderDna;
   moveRank?: number;
   gamePhase?: "opening" | "middlegame" | "endgame";
   evalBeforeCp?: number;
@@ -152,35 +154,99 @@ export function buildReview(
       clockAlert = "rush";
     }
 
-    return {
-      ply,
-      moveNumber: Math.floor(i / 2) + 1,
-      side,
-      isHuman: side === humanColor,
-      san: move.san,
-      from: move.from,
-      to: move.to,
-      uci: move.from + move.to + (move.promotion ?? ""),
-      fenBefore: move.before,
-      fenAfter: move.after,
-      classification: graded?.classification,
-      centipawnLoss: graded?.centipawnLoss,
-      bestMoveSan: graded?.bestMoveSan,
-      bestMoveUci: graded?.bestMoveUci,
-      blunderTag: graded?.blunderTag,
-      moveRank: graded?.moveRank,
-      gamePhase: graded?.gamePhase,
-      evalBeforeCp: graded?.evalBeforeCp,
-      evalBeforeMate: graded?.evalBeforeMate,
-      evalAfterCp: graded?.evalAfterCp,
-      evalAfterMate: graded?.evalAfterMate,
-      clockRemainingSec,
-      timeSpentSec,
-      clockAlert,
-    };
-  });
+      const blunderDna =
+        graded && (graded.classification === "mistake" || graded.classification === "blunder")
+          ? extractBlunderDna({
+              fenBefore: move.before,
+              uci: move.from + move.to + (move.promotion ?? ""),
+              san: move.san,
+              classification: graded.classification,
+              sideToMove: side,
+              centipawnLoss: graded.centipawnLoss,
+              evalBeforeMate: graded.evalBeforeMate,
+              evalAfterMate: graded.evalAfterMate,
+              bestMoveSan: graded.bestMoveSan,
+              clockRemainingSec,
+              timeSpentSec,
+              clockAlert,
+            }) ?? undefined
+          : undefined;
+
+      return {
+        ply,
+        moveNumber: Math.floor(i / 2) + 1,
+        side,
+        isHuman: side === humanColor,
+        san: move.san,
+        from: move.from,
+        to: move.to,
+        uci: move.from + move.to + (move.promotion ?? ""),
+        fenBefore: move.before,
+        fenAfter: move.after,
+        classification: graded?.classification,
+        centipawnLoss: graded?.centipawnLoss,
+        bestMoveSan: graded?.bestMoveSan,
+        bestMoveUci: graded?.bestMoveUci,
+        blunderTag: graded?.blunderTag,
+        blunderDna,
+        moveRank: graded?.moveRank,
+        gamePhase: graded?.gamePhase,
+        evalBeforeCp: graded?.evalBeforeCp,
+        evalBeforeMate: graded?.evalBeforeMate,
+        evalAfterCp: graded?.evalAfterCp,
+        evalAfterMate: graded?.evalAfterMate,
+        clockRemainingSec,
+        timeSpentSec,
+        clockAlert,
+      };
+    });
 
   return { gameId, pgn, startFen, humanColor, steps };
+}
+
+export interface PunishmentPreview {
+  punishmentSan: string;
+  punishmentUci: string;
+  source: "engine" | "played";
+  fenAfterPunishment: string;
+  from: Square;
+  to: Square;
+}
+
+export function getPunishmentForStep(review: ReviewGame, stepIndex: number): PunishmentPreview | null {
+  const step = review.steps[stepIndex];
+  if (!step || !step.isHuman || (step.classification !== "blunder" && step.classification !== "mistake")) {
+    return null;
+  }
+
+  const nextStep = review.steps[stepIndex + 1];
+  let uci = nextStep?.bestMoveUci || nextStep?.uci;
+  let san = nextStep?.bestMoveSan || nextStep?.san;
+  let source: "engine" | "played" = nextStep?.bestMoveUci ? "engine" : "played";
+
+  if (!uci && step.blunderDna?.attackerSquare && step.blunderDna?.victimSquare) {
+    uci = step.blunderDna.attackerSquare + step.blunderDna.victimSquare;
+    san = `${step.blunderDna.attackerPiece?.toUpperCase() || ""}x${step.blunderDna.victimSquare}`;
+    source = "engine";
+  }
+
+  if (!uci || uci.length < 4) return null;
+
+  try {
+    const board = new Chess(step.fenAfter);
+    const m = board.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci.slice(4) || undefined });
+    if (!m) return null;
+    return {
+      punishmentSan: san || m.san,
+      punishmentUci: uci,
+      source,
+      fenAfterPunishment: board.fen(),
+      from: uci.slice(0, 2) as Square,
+      to: uci.slice(2, 4) as Square,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** The reviewer's costliest mistakes and blunders, worst first -- the

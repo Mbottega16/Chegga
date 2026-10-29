@@ -4390,6 +4390,288 @@ section.card {
   font-weight: 600;
 }
 
+/* ---- Tactical Blunder DNA & Refutation Engine ---- */
+
+.blunder-dna-capsule {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 10px 0 6px;
+  padding: 8px 12px;
+  background: rgba(244, 63, 94, 0.08);
+  border: 1px solid rgba(244, 63, 94, 0.28);
+  border-radius: 8px;
+}
+
+[data-theme="light"] .blunder-dna-capsule {
+  background: rgba(244, 63, 94, 0.05);
+  border-color: rgba(244, 63, 94, 0.22);
+}
+
+.dna-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 999px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-normal);
+  letter-spacing: -0.01em;
+}
+
+.dna-pill .dna-icon {
+  font-size: 0.95rem;
+}
+
+.dna-pill.dna-motif {
+  border-color: rgba(244, 63, 94, 0.35);
+  color: #fb7185;
+}
+
+.dna-pill.dna-cause {
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+}
+
+.dna-pill.dna-damage {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  font-family: "JetBrains Mono", monospace;
+}
+
+/* Action Buttons: Punishment & Threat Radar */
+.punishment-btn,
+.threat-radar-btn {
+  font-weight: 700 !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.punishment-btn {
+  border-color: rgba(244, 63, 94, 0.4) !important;
+  color: #fb7185 !important;
+}
+
+.punishment-btn:hover,
+.punishment-btn.active {
+  background: rgba(244, 63, 94, 0.16) !important;
+  border-color: #f43f5e !important;
+  box-shadow: 0 0 12px rgba(244, 63, 94, 0.35) !important;
+}
+
+.threat-radar-btn {
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  color: #34d399 !important;
+}
+
+.threat-radar-btn:hover,
+.threat-radar-btn.active {
+  background: rgba(16, 185, 129, 0.16) !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.35) !important;
+}
+
+.punishment-caption-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(244, 63, 94, 0.2);
+  color: #fb7185;
+  font-weight: 800;
+  margin-right: 4px;
+}
+
+/* ---- Thinking Sweet Spot Card ---- */
+.profile-sweet-spot-card {
+  margin: 20px 0;
+  padding: 18px 20px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  backdrop-filter: blur(12px);
+}
+
+.sweet-spot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.sweet-spot-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(227, 168, 87, 0.15);
+  color: var(--accent-strong);
+  border: 1px solid var(--accent);
+}
+
+.sweet-spot-banner {
+  font-size: 0.9rem;
+  color: var(--text-normal);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.sweet-spot-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding-top: 10px;
+  min-height: 85px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sweet-spot-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.sweet-spot-metric-val {
+  font-size: 0.75rem;
+  font-weight: 800;
+  font-family: "JetBrains Mono", monospace;
+  color: var(--text-muted);
+}
+
+.is-sweet-spot .sweet-spot-metric-val {
+  color: var(--accent-strong);
+  transform: scale(1.1);
+}
+
+.sweet-spot-bar-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  height: 50px;
+  align-items: flex-end;
+}
+
+.sweet-spot-bar {
+  width: 60%;
+  max-width: 38px;
+  border-radius: 4px 4px 0 0;
+  transition: all 0.3s ease;
+}
+
+.is-sweet-spot .sweet-spot-bar {
+  box-shadow: 0 0 14px rgba(227, 168, 87, 0.45);
+}
+
+.sweet-spot-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ---- Mirror of Habits Card ---- */
+.profile-mirror-card {
+  margin: 20px 0;
+  padding: 18px 20px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+}
+
+.mirror-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.mirror-meta-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.habit-endangered-pill,
+.habit-tilt-pill {
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-normal);
+}
+
+[data-theme="light"] .habit-endangered-pill,
+[data-theme="light"] .habit-tilt-pill {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.motif-leaks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.motif-leak-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.motif-leak-card:hover {
+  border-color: rgba(227, 168, 87, 0.4);
+  transform: translateY(-1px);
+}
+
+.leak-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.leak-icon {
+  font-size: 1.4rem;
+}
+
+.leak-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.leak-name {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text-strong);
+}
+
+.leak-count {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.leak-train-btn {
+  width: 100%;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  padding: 6px 10px !important;
+  border-radius: 6px !important;
+}
+
 /* ---- Responsive Breakpoints ---- */
 @media (max-width: 1040px) {
   .studio-workspace-grid {

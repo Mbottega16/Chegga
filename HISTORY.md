@@ -19,6 +19,21 @@ This repo is public, so private planning notes stay in the owner's vault, not he
 
 ---
 
+## 2026-10-29 — Tactical Motif Engine, Blunder DNA, Punishment Refutation & Habit Mirror
+
+*PC · Antigravity · analytics & cognitive UX*
+- **Changed:**
+  - Expanded `web/src/blunderTagger.ts` with deterministic tactical motif detection (`fork`, `pin`, `skewer`, `back_rank`, `trapped_piece`) alongside `hung_material`, `missed_mate`, `allowed_mate`, and `missed_capture`.
+  - Built the **Blunder DNA** extraction engine delivering a structured breakdown: Motif, Root Cause (Time Rush $\le 2.5$s, Clock Panic $\le 10$s, Tunnel Vision, or Tactical Blindspot), and Centipawn/Piece Damage.
+  - Added visual **Blunder DNA Capsule** (`.blunder-dna-capsule`, `.dna-pill`) displayed directly above the review board on mistakes and blunders.
+  - Implemented **Interactive Punishment Refutation Trail** (`#review-punishment`): one-click toggle to play the opponent's punishment on the board with refutation trail arrow, source indicator, and instant toggle back to played position.
+  - Added **Geometric Threat Radar** (`#review-threat-radar`): toggles high-contrast tactical tension laser arrows from attackers to victims.
+  - Built **The Thinking Sweet Spot** (`computeThinkingSweetSpot` in `gamePatterns.ts`) analyzing move accuracy and blunder penalties across 6 time-spent intervals, rendered with an interactive pace chart in `profileView.ts`.
+  - Built **The Mirror of Habits & Error Spiral Index** (`computeTiltIndex`, `computeMirrorOfHabits`): aggregates recurring motif leaks, detects tilt blunder streaks, flags most endangered pieces, and provides a 1-click **Train This Leak ⚔️** action that jumps directly into the Leitner trainer focused on that motif.
+- **Why:** Owner requested deeper chess insights beyond centipawns and better visual representation of blunders, mistakes, and recurring player habits.
+- **Verified:** 349 unit tests passing across 30 files (`npm test`), production build passing cleanly (`tsc && vite build`), and Playwright E2E smoke suite 100% green (24/24 tests across desktop and mobile profiles).
+- **Left open:** Real-device mobile validation and high-volume Safari/WebKit IndexedDB batch testing.
+
 ## 2026-10-29 — responsive iPhone & desktop overhaul with light, dark, OLED modes and accent customization
 
 *PC · Antigravity · front-end overhaul & design*

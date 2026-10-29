@@ -11,6 +11,7 @@
 import { getClassColor, getClassGlyph } from "./classificationColors";
 import { moveLabel, tallyHumanQuality, REVIEW_QUALITY_LABELS, type ReviewGame } from "./gameReview";
 import { formatCandidateEval, isShadedTier, type Candidate } from "./candidateMoves";
+import type { BlunderDna } from "./blunderTagger";
 
 function escapeAttr(text: string): string {
   return text.replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c]!);
@@ -233,3 +234,33 @@ export function renderCandidateList(
   const shaded = candidates.filter((c) => isShadedTier(c.tier)).length;
   return `<div class="candidate-list" role="group" aria-label="The engine's best moves in this position">${chips}</div>${outside}<p class="candidate-legend">${shaded} top move${shaded === 1 ? "" : "s"} shaded — tap to preview</p>`;
 }
+
+export function renderBlunderDna(dna: BlunderDna): string {
+  return `
+    <div class="blunder-dna-capsule" role="region" aria-label="Blunder DNA breakdown">
+      <span class="dna-pill dna-motif" title="Tactical pattern"><span class="dna-icon">${dna.motifIcon}</span> ${escapeAttr(dna.motifLabel)}</span>
+      <span class="dna-pill dna-cause" title="Root cause"><span class="dna-icon">${dna.rootCauseIcon}</span> ${escapeAttr(dna.rootCauseLabel)}</span>
+      <span class="dna-pill dna-damage" title="Material or evaluation loss"><span class="dna-icon">💥</span> ${escapeAttr(dna.damageLabel)}</span>
+    </div>`;
+}
+
+export function renderPunishmentAction(opts: {
+  hasPunishment: boolean;
+  isViewingPunishment: boolean;
+  punishmentSan?: string;
+}): string {
+  if (!opts.hasPunishment) return "";
+  const btnClass = opts.isViewingPunishment ? "punishment-toggle-btn active" : "punishment-toggle-btn";
+  const btnText = opts.isViewingPunishment
+    ? `↩ Back to Played Move`
+    : `⚡ Show Refutation (${opts.punishmentSan || "Punishment"})`;
+  return `<button type="button" class="${btnClass}" id="review-punishment-btn" title="Watch opponent's refutation move on the board">${btnText}</button>`;
+}
+
+export function renderThreatRadarAction(opts: { hasThreats: boolean; isActive: boolean }): string {
+  if (!opts.hasThreats) return "";
+  const btnClass = opts.isActive ? "threat-radar-toggle-btn active" : "threat-radar-toggle-btn";
+  const label = opts.isActive ? "👁️ Hide Tension Web" : "🎯 Threat Radar";
+  return `<button type="button" class="${btnClass}" id="review-threat-radar-btn" title="Highlight attacking lasers and victim pieces">${label}</button>`;
+}
+

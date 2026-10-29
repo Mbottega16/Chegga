@@ -233,6 +233,41 @@ export function explainMove(input: ExplainInput): string[] {
           : `${input.san} allows a forced mate against you.`,
       );
       break;
+    case "fork":
+      out.push(
+        bestDiffers
+          ? `${input.san} walks into a fork. ${best} was safer.`
+          : `${input.san} walks into a fork.`,
+      );
+      break;
+    case "pin":
+      out.push(
+        bestDiffers
+          ? `${input.san} allows an absolute pin. ${best} avoids it.`
+          : `${input.san} allows an absolute pin.`,
+      );
+      break;
+    case "back_rank":
+      out.push(
+        bestDiffers
+          ? `${input.san} creates a back-rank vulnerability. ${best} protects your king.`
+          : `${input.san} creates a back-rank vulnerability.`,
+      );
+      break;
+    case "skewer":
+      out.push(
+        bestDiffers
+          ? `${input.san} allows a skewer winning material. ${best} was safer.`
+          : `${input.san} allows a skewer winning material.`,
+      );
+      break;
+    case "trapped_piece":
+      out.push(
+        bestDiffers
+          ? `${input.san} leaves your piece trapped without escape squares. ${best} saves it.`
+          : `${input.san} leaves your piece trapped without escape squares.`,
+      );
+      break;
     case "hung_material": {
       const hung = hungSentence(input);
       if (hung) out.push(hung);

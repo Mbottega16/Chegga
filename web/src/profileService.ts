@@ -38,6 +38,15 @@ export interface TimePressureBucket {
   blunderRate: number;
 }
 
+import {
+  computeThinkingSweetSpot,
+  computeTiltIndex,
+  computeMirrorOfHabits,
+  type ThinkingSweetSpotSummary,
+  type TiltSummary,
+  type MirrorOfHabits,
+} from "./gamePatterns";
+
 export interface ProfileSummary {
   gamesAnalyzed: number;
   totalMoves: number;
@@ -51,6 +60,9 @@ export interface ProfileSummary {
   blunderTagCounts: Record<string, number>;
   monthlyTrend: MonthlyStat[];
   timePressureBreakdown: TimePressureBucket[];
+  sweetSpot?: ThinkingSweetSpotSummary;
+  tilt?: TiltSummary;
+  mirrorOfHabits?: MirrorOfHabits;
 }
 
 const TIME_PRESSURE_BAND_ORDER = [
@@ -257,6 +269,10 @@ export function computeProfile(analyzedGames: GameRecord[], ownMoves: MoveAnalys
     };
   });
 
+  const sweetSpot = computeThinkingSweetSpot(ownMoves);
+  const tilt = computeTiltIndex(ownMoves);
+  const mirrorOfHabits = computeMirrorOfHabits(ownMoves);
+
   return {
     gamesAnalyzed,
     totalMoves,
@@ -270,5 +286,8 @@ export function computeProfile(analyzedGames: GameRecord[], ownMoves: MoveAnalys
     blunderTagCounts,
     monthlyTrend,
     timePressureBreakdown,
+    sweetSpot,
+    tilt,
+    mirrorOfHabits,
   };
 }

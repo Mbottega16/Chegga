@@ -171,11 +171,18 @@ import {
   canPracticeStep,
   keyMoments,
   worstHumanStepIndex,
+  getPunishmentForStep,
   REVIEW_QUALITY_LABELS,
   type ReviewGame,
   type ReviewStep,
 } from "./gameReview";
-import { renderEvalGraph, renderReviewStrip, renderQualityTally, renderCandidateList } from "./gameReviewView";
+import {
+  renderEvalGraph,
+  renderReviewStrip,
+  renderQualityTally,
+  renderCandidateList,
+  renderBlunderDna,
+} from "./gameReviewView";
 import { explainMove, explainInputFromStep, explainInputFromPuzzle } from "./moveExplanation";
 import {
   buildCandidates,
@@ -407,6 +414,7 @@ app.innerHTML = `
               <div class="review-broadcast-banner">
                 <p id="review-caption" class="review-caption"></p>
                 <p id="review-why" class="review-why" style="display:none"></p>
+                <div id="review-blunder-dna-host" style="display:none"></div>
               </div>
               <div class="review-buttons">
                 <button type="button" id="review-first" aria-label="Jump to the starting position">⏮</button>
@@ -437,6 +445,8 @@ app.innerHTML = `
               <label class="play-checkbox-label review-before-label"><input type="checkbox" id="review-before" /> Show position before move + best candidates</label>
               <div id="review-candidates"></div>
               <div class="review-buttons review-practice">
+                <button type="button" id="review-punishment" class="btn-quiet punishment-btn" style="display:none" title="Watch opponent's refutation move on the board">⚡ Show Refutation</button>
+                <button type="button" id="review-threat-radar" class="btn-quiet threat-radar-btn" style="display:none" title="Highlight tactical tension web on the board">🎯 Threat Radar</button>
                 <button type="button" id="review-try" class="btn-quiet" style="display:none">Try this position</button>
                 <button type="button" id="review-save" class="btn-quiet" style="display:none">Save this position</button>
                 <button type="button" id="review-save-key" class="btn-quiet" style="display:none">Save key moments</button>
@@ -1441,8 +1451,11 @@ const reviewLastBtn = document.querySelector<HTMLButtonElement>("#review-last")!
 const reviewAutoplayBtn = document.querySelector<HTMLButtonElement>("#review-autoplay")!;
 const reviewWorstBtn = document.querySelector<HTMLButtonElement>("#review-worst")!;
 const reviewWhy = document.querySelector<HTMLParagraphElement>("#review-why")!;
+const reviewBlunderDnaHost = document.querySelector<HTMLDivElement>("#review-blunder-dna-host")!;
 const reviewBeforeCheckbox = document.querySelector<HTMLInputElement>("#review-before")!;
 const reviewCandidatesHost = document.querySelector<HTMLDivElement>("#review-candidates")!;
+const reviewPunishmentBtn = document.querySelector<HTMLButtonElement>("#review-punishment")!;
+const reviewThreatRadarBtn = document.querySelector<HTMLButtonElement>("#review-threat-radar")!;
 const reviewTryBtn = document.querySelector<HTMLButtonElement>("#review-try")!;
 const reviewSaveBtn = document.querySelector<HTMLButtonElement>("#review-save")!;
 const reviewSaveKeyBtn = document.querySelector<HTMLButtonElement>("#review-save-key")!;
@@ -1465,6 +1478,8 @@ let review: ReviewGame | null = null;
 let reviewIndex = -1; // -1 = the starting position, before ply 1
 let reviewAutoplayTimer: number | null = null;
 let reviewOpening: string | undefined; // the opening name of a synced game, kept for saved puzzles
+let isViewingPunishment = false;
+let isViewingThreatRadar = false;
 // "Before" view: the position the move was chosen in, with the engine's
 // ranked candidate moves shaded on the board. Off = the position after the
 // move, with its grade held on the square (the original review).
@@ -1583,11 +1598,31 @@ function updateReviewActions(step: ReviewStep | null) {
     reviewSaveBtn.disabled = saved;
   }
   reviewSaveKeyBtn.style.display = review && keyMoments(review).length ? "" : "none";
+
+  const punishment = review && reviewIndex >= 0 ? getPunishmentForStep(review, reviewIndex) : null;
+  if (punishment && !reviewShowBefore) {
+    reviewPunishmentBtn.style.display = "";
+    reviewPunishmentBtn.textContent = `⚡ Show Refutation (${punishment.punishmentSan})`;
+  } else {
+    reviewPunishmentBtn.style.display = "none";
+  }
+
+  const hasTacticalLines = !reviewShowBefore && !!step?.blunderDna?.tacticalLines?.length;
+  if (hasTacticalLines) {
+    reviewThreatRadarBtn.style.display = "";
+    reviewThreatRadarBtn.textContent = "🎯 Threat Radar";
+  } else {
+    reviewThreatRadarBtn.style.display = "none";
+  }
 }
 
 function showReviewStep(index: number) {
   if (!review || !playBoard) return;
   endTry(); // stepping the review leaves any position being tried
+  isViewingPunishment = false;
+  isViewingThreatRadar = false;
+  reviewPunishmentBtn.classList.remove("active");
+  reviewThreatRadarBtn.classList.remove("active");
   const oldIndex = reviewIndex;
   const clamped = Math.max(-1, Math.min(index, review.steps.length - 1));
   const movingForward = clamped > oldIndex;
@@ -1668,6 +1703,14 @@ function showReviewStep(index: number) {
     setStageAura(null, null);
   }
   reviewWhy.style.display = why.length ? "" : "none";
+
+  if (step?.isHuman && step.blunderDna) {
+    reviewBlunderDnaHost.innerHTML = renderBlunderDna(step.blunderDna);
+    reviewBlunderDnaHost.style.display = "";
+  } else {
+    reviewBlunderDnaHost.innerHTML = "";
+    reviewBlunderDnaHost.style.display = "none";
+  }
   updateReviewActions(step);
   reviewStripHost.innerHTML = renderEvalGraph(review, clamped) + renderReviewStrip(review, clamped);
   const atStart = clamped < 0;
@@ -1731,6 +1774,12 @@ function exitReview() {
   reviewCaption.textContent = "";
   reviewWhy.textContent = "";
   reviewWhy.style.display = "none";
+  isViewingPunishment = false;
+  isViewingThreatRadar = false;
+  reviewBlunderDnaHost.innerHTML = "";
+  reviewBlunderDnaHost.style.display = "none";
+  reviewPunishmentBtn.style.display = "none";
+  reviewThreatRadarBtn.style.display = "none";
   reviewCandidatesHost.innerHTML = "";
   clearOverlayState();
 }
@@ -2180,6 +2229,51 @@ reviewTryBtn.addEventListener("click", () => {
   const step = currentReviewStep();
   const p = review && step ? puzzleFromStep(review, step, reviewOpening) : null;
   if (p) startTry(p);
+});
+
+reviewPunishmentBtn.addEventListener("click", () => {
+  if (!review || reviewIndex < 0 || !playBoard) return;
+  const punishment = getPunishmentForStep(review, reviewIndex);
+  if (!punishment) return;
+
+  isViewingPunishment = !isViewingPunishment;
+  if (isViewingPunishment) {
+    reviewPunishmentBtn.classList.add("active");
+    reviewPunishmentBtn.textContent = "↩ Back to Played Move";
+    playBoard.showPosition(punishment.fenAfterPunishment, { from: punishment.from, to: punishment.to });
+    playBoard.showArrows([{ from: punishment.from, to: punishment.to, color: "rgba(244, 63, 94, 0.95)", width: 3.2 }]);
+    reviewCaption.innerHTML = `<span class="punishment-caption-badge">💥 Refutation (${punishment.source}):</span> <strong>${punishment.punishmentSan}</strong> punishes the error.`;
+  } else {
+    reviewPunishmentBtn.classList.remove("active");
+    showReviewStep(reviewIndex);
+  }
+});
+
+reviewThreatRadarBtn.addEventListener("click", () => {
+  if (!review || reviewIndex < 0 || !playBoard) return;
+  const step = review.steps[reviewIndex];
+  if (!step?.blunderDna?.tacticalLines?.length) return;
+
+  isViewingThreatRadar = !isViewingThreatRadar;
+  if (isViewingThreatRadar) {
+    reviewThreatRadarBtn.classList.add("active");
+    reviewThreatRadarBtn.textContent = "👁️ Hide Tension Web";
+    const arrows = step.blunderDna.tacticalLines.map((line) => ({
+      from: line.from,
+      to: line.to,
+      color: line.color || "#f43f5e",
+      width: 2.8,
+    }));
+    playBoard.showArrows(arrows, { animate: true });
+  } else {
+    reviewThreatRadarBtn.classList.remove("active");
+    reviewThreatRadarBtn.textContent = "🎯 Threat Radar";
+    if (step && shouldShowBetterMove(step) && step.bestMoveUci && betterMoveArrowFitsAfterBoard(step)) {
+      playBoard.showArrow(step.bestMoveUci.slice(0, 2) as Square, step.bestMoveUci.slice(2, 4) as Square);
+    } else {
+      playBoard.showArrows([]);
+    }
+  }
 });
 
 // --- Game picker: swipeable cards for the synced games ---
@@ -4154,6 +4248,18 @@ function updatePuzzleFocusIndicator() {
   });
   puzzleFocusIndicator.appendChild(clearBtn);
 }
+
+document.addEventListener("click", (e) => {
+  const target = (e.target as HTMLElement).closest<HTMLButtonElement>(".leak-train-btn");
+  if (!target) return;
+  const motif = target.dataset.trainMotif;
+  if (!motif) return;
+  puzzleFocusFilter = { blunderTag: motif };
+  updatePuzzleFocusIndicator();
+  expandCard("puzzle-section");
+  loadPuzzle();
+  puzzleSection.scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 function updatePuzzleStreakDisplay() {
   if (!currentUsername) return;
