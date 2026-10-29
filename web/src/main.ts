@@ -17,6 +17,30 @@ import "./style.css";
 import "./mobile.css"; // small-viewport pass — loaded after style.css so equal-specificity rules win
 import { showEmptyStates, emptyFor, clearEmptyFor, wireEmptyStateCtas } from "./emptyStates";
 import { renderHeroArt } from "./heroArt";
+import { renderLabBentoGrid } from "./labBento";
+import {
+  iconStage,
+  iconConnect,
+  iconToday,
+  iconProfile,
+  iconLab,
+  iconTools,
+  iconFeedback,
+  iconGuide,
+  iconStorage,
+  iconCurriculum,
+  iconTerminal,
+  iconPlay,
+  iconZap,
+  iconCheck,
+  iconMoon,
+  iconSun,
+  iconCube,
+  iconKeyboard,
+  iconShare,
+  iconCopy,
+  iconDownload,
+} from "./icons";
 import {
   openDb,
   putGame,
@@ -285,7 +309,7 @@ app.innerHTML = `
       </div>
       <div class="header-actions">
         <button type="button" id="theme-toggle-btn" class="header-theme-btn" title="Toggle theme mode (Dark / Light / OLED)">
-          <span id="theme-toggle-icon">🌙</span> <span id="theme-toggle-label">Dark</span>
+          <span id="theme-toggle-icon">${iconMoon}</span> <span id="theme-toggle-label">Dark</span>
         </button>
         <span class="header-engine-pill"><span class="engine-dot"></span>Stockfish WASM Local</span>
         <button type="button" id="feedback-btn" class="feedback-btn" hidden>Feedback</button>
@@ -300,14 +324,19 @@ app.innerHTML = `
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-grid">
         <div class="hero-copy">
-          <div class="hero-kicker"><span class="hero-kicker-dot"></span>Instant Game Review &amp; Tactical Engine</div>
+          <div class="hero-kicker">${iconZap} <span>Tactical Studio &amp; Real-Time Engine</span></div>
           <h2 id="hero-title">See how good each move was, the moment you make it.</h2>
           <p class="hero-sub">
-            Real-time move grading vs. bot, or sync your games for deep local tactical analysis.
+            Every move is evaluated live with candidate alternatives, tactical blunder detection, and advantage curves. Play Stockfish locally or sync your complete Chess.com &amp; Lichess archive.
           </p>
           <div class="hero-cta">
-            <button type="button" id="hero-play-btn">Play a bot</button>
-            <button type="button" id="hero-analyze-btn" class="btn-ghost">Analyze my games instead</button>
+            <button type="button" id="hero-play-btn" class="btn btn-primary">${iconPlay} Play a bot</button>
+            <button type="button" id="hero-analyze-btn" class="btn-ghost">${iconConnect} Analyze my games instead</button>
+          </div>
+          <div class="hero-feature-ribbon">
+            <span class="hero-feature-chip">${iconCheck} 100% In-Browser Privacy</span>
+            <span class="hero-feature-chip">${iconCheck} 7 Tactical Move Tiers</span>
+            <span class="hero-feature-chip">${iconCheck} Stockfish 18 WASM</span>
           </div>
         </div>
         ${renderHeroArt()}
@@ -315,18 +344,19 @@ app.innerHTML = `
     </section>
 
     <nav class="section-nav" aria-label="Jump to section">
-      <a href="#play-section">♟ Stage</a>
-      <a href="#sync-section">⚡ Connect</a>
-      <a href="#today-section">🔥 Today</a>
-      <a href="#profile-section">📊 Profile</a>
-      <a href="#coming-soon-section">🧪 Lab</a>
-      <a href="#studio-tools-dock">🛠 Tools</a>
+      <a href="#play-section">${iconStage} <span>Play</span></a>
+      <a href="#sync-section">${iconConnect} <span>Get started</span></a>
+      <a href="#today-section">${iconToday} <span>Today</span></a>
+      <a href="#profile-section">${iconProfile} <span>Profile</span></a>
+      <a href="#coming-soon-section">${iconLab} <span>Coming soon</span></a>
+      <a href="#feedback-form-details">${iconFeedback} <span>Feedback</span></a>
     </nav>
 
     <main id="main-content">
     <div class="studio-workspace-grid">
       <section class="card studio-stage-card" id="play-section" data-tier="primary" data-non-collapsible="true">
         <h2>Play vs. bot &amp; Game Review</h2>
+        <p class="card-teaser" data-card-teaser>Test your tactics against Stockfish with live quality grading, blunder alerts, and move playback.</p>
         <div class="play-controls play-controls-primary">
           <label for="bot-elo">Bot</label>
           <input type="range" id="bot-elo" min="100" max="3000" step="10" value="800" />
@@ -339,7 +369,7 @@ app.innerHTML = `
           <button type="button" id="bot-new-game-btn">New game</button>
           <button type="button" id="bot-undo-btn">Undo</button>
           <details class="studio-settings-drawer">
-            <summary class="btn-quiet studio-settings-btn">⚙ Settings</summary>
+            <summary class="btn-quiet studio-settings-btn">${iconTools} Settings</summary>
             <div class="studio-settings-popover">
               <div class="play-controls">
                 <span class="control-pair"><label for="bot-odds">Handicap</label>
@@ -357,7 +387,7 @@ app.innerHTML = `
               <div class="play-controls">
                 <label class="play-checkbox-label"><input type="checkbox" id="bot-show-analysis" checked /> Live analysis &amp; move juice</label>
                 <label class="play-checkbox-label"><input type="checkbox" id="bot-show-heatmap" /> Square control</label>
-                <label class="play-checkbox-label"><input type="checkbox" id="bot-show-3d" /> 🎲 3D board</label>
+                <label class="play-checkbox-label"><input type="checkbox" id="bot-show-3d" /> ${iconCube} 3D board</label>
                 <label class="play-checkbox-label"><input type="checkbox" id="bot-sound-enabled" checked /> Sound</label>
                 <label class="play-checkbox-label"><input type="checkbox" id="fx-enabled" checked /> Effects</label>
               </div>
@@ -425,7 +455,7 @@ app.innerHTML = `
               </div>
               <div id="review-shortcuts-help" class="review-shortcuts-help" style="display:none">
                 <div class="shortcuts-header">
-                  <strong>Review Keyboard Shortcuts</strong>
+                  <strong>${iconKeyboard} Review Keyboard Shortcuts</strong>
                   <button type="button" id="review-shortcuts-close" class="btn-ghost" aria-label="Close shortcuts help">✕</button>
                 </div>
                 <div class="shortcuts-grid">
@@ -452,9 +482,9 @@ app.innerHTML = `
               </div>
               <div id="review-tally"></div>
               <div class="review-export-actions">
-                <button type="button" id="review-share-summary-btn" class="btn-quiet" title="Copy shareable summary card">✨ Share summary</button>
-                <button type="button" id="review-copy-pgn-btn" class="btn-quiet" title="Copy annotated PGN to clipboard">📋 Copy PGN</button>
-                <button type="button" id="review-download-pgn-btn" class="btn-quiet" title="Download annotated .pgn file">💾 Download .pgn</button>
+                <button type="button" id="review-share-summary-btn" class="btn-quiet" title="Copy shareable summary card">${iconShare} Share summary</button>
+                <button type="button" id="review-copy-pgn-btn" class="btn-quiet" title="Copy annotated PGN to clipboard">${iconCopy} Copy PGN</button>
+                <button type="button" id="review-download-pgn-btn" class="btn-quiet" title="Download annotated .pgn file">${iconDownload} Download .pgn</button>
               </div>
               <p id="review-export-status" class="status-line status-ok" style="display:none"></p>
             </div>
@@ -475,9 +505,9 @@ app.innerHTML = `
               <h3>Game report</h3>
               <div id="post-game-report-output"></div>
               <div class="post-game-actions">
-                <button type="button" id="post-game-share-btn" class="btn-quiet" title="Copy shareable summary card">✨ Share summary</button>
-                <button type="button" id="post-game-copy-pgn-btn" class="btn-quiet" title="Copy annotated PGN to clipboard">📋 Copy PGN</button>
-                <button type="button" id="download-pgn-btn" class="btn-quiet" title="Download annotated .pgn file">💾 Download .pgn</button>
+                <button type="button" id="post-game-share-btn" class="btn-quiet" title="Copy shareable summary card">${iconShare} Share summary</button>
+                <button type="button" id="post-game-copy-pgn-btn" class="btn-quiet" title="Copy annotated PGN to clipboard">${iconCopy} Copy PGN</button>
+                <button type="button" id="download-pgn-btn" class="btn-quiet" title="Download annotated .pgn file">${iconDownload} Download .pgn</button>
               </div>
               <p id="post-game-export-status" class="status-line status-ok" style="display:none"></p>
             </div>
@@ -487,7 +517,8 @@ app.innerHTML = `
 
       <div class="studio-command-column">
         <section class="card studio-sync-card" id="sync-section" data-tier="primary">
-          <h2>Connect &amp; Sync Games</h2>
+          <h2>Get started</h2>
+          <p class="card-teaser" data-card-teaser>Enter your Chess.com or Lichess username to load your recent games and track your progress.</p>
           <form id="sync-form" class="row">
             <label for="sync-site" class="sr-only">Where you play</label>
             <select id="sync-site">
@@ -496,11 +527,11 @@ app.innerHTML = `
             </select>
             <label for="username" class="sr-only">Chess.com or Lichess username</label>
             <input id="username" type="text" placeholder="Username (e.g. MichaelBottega)" autocomplete="off" required />
-            <button type="submit" id="sync-btn">Sync games</button>
+            <button type="submit" id="sync-btn">${iconConnect} Sync games</button>
           </form>
           <div class="demo-cta">
             <span>No account handy?</span>
-            <button type="button" id="demo-load-btn" class="btn-ghost">See a demo</button>
+            <button type="button" id="demo-load-btn" class="btn-ghost">${iconPlay} See a demo</button>
           </div>
           <p id="sync-log" class="status-line"></p>
           <div id="sync-progress"></div>
@@ -527,6 +558,7 @@ app.innerHTML = `
 
         <section class="card studio-picker-card" id="picker-section" data-tier="primary" style="display:none">
           <h2>Review a Game</h2>
+          <p class="card-teaser" data-card-teaser>Evaluate moves, explore best lines, and replay key blunder moments.</p>
           <div id="picker-output"></div>
           <p id="picker-status" class="status-line" role="status"></p>
           <div id="saved-positions"></div>
@@ -783,64 +815,40 @@ app.innerHTML = `
     </section>
 
     <div class="studio-utilities-header">
-      <p class="section-divider">Studio Lab, Reference &amp; Data Tools</p>
+      <p class="section-divider">Studio Lab Suite</p>
     </div>
 
-    <div class="studio-utilities-dock">
-      <section class="card studio-lab-card" id="coming-soon-section">
-        <h2>Coming soon · 15 Lab Tools</h2>
-        <p class="card-teaser" data-card-teaser>
-          15 extra training &amp; analytics tools parked while core review ships.
-        </p>
-        <div class="coming-soon-groups">
-          <div class="coming-soon-group">
-            <h3>Growth &amp; tracking</h3>
-            <ul class="coming-soon-list">
-              <li><strong>Road to target rating</strong></li>
-              <li><strong>This week's plan</strong></li>
-              <li><strong>Blunder rate trend</strong></li>
-              <li><strong>Consistency &amp; tilt</strong></li>
-              <li><strong>Unconverted wins</strong></li>
-              <li><strong>Insights &amp; leaks</strong></li>
-              <li><strong>Game patterns</strong></li>
-              <li><strong>Rivals tracker</strong></li>
-              <li><strong>22 Achievements</strong></li>
-            </ul>
-          </div>
-          <div class="coming-soon-group">
-            <h3>Training &amp; Explore</h3>
-            <ul class="coming-soon-list">
-              <li><strong>Own-blunder puzzles</strong></li>
-              <li><strong>99k Lichess tactics</strong></li>
-              <li><strong>Vision trainer</strong></li>
-              <li><strong>Endgame drills</strong></li>
-              <li><strong>Move explorer</strong></li>
-              <li><strong>Depth heatmap</strong></li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <div class="studio-utilities-header">
-        <div class="section-divider">Studio Tools &amp; Reference</div>
+    <section class="card studio-lab-card" id="coming-soon-section">
+      <h2>Coming soon · 15 Lab Tools</h2>
+      <p class="card-teaser" data-card-teaser>
+        15 specialized tactical engines, blunder diagnostics, and analytics suites built into Chegga.
+      </p>
+      <div class="lab-bento-grid">
+        ${renderLabBentoGrid()}
       </div>
-      <div class="studio-utilities-dock" id="studio-tools-dock">
+    </section>
+
+    <div class="studio-utilities-header">
+      <p class="section-divider">Studio Reference &amp; Storage</p>
+    </div>
+
+    <div class="studio-utilities-dock" id="studio-tools-dock">
         <details class="collapsible studio-tool-details" id="feedback-form-details">
-          <summary>💬 Feedback</summary>
+          <summary>${iconFeedback} Feedback</summary>
           <div class="studio-tool-body">
             <div id="tally-embed"></div>
           </div>
         </details>
 
         <details class="collapsible studio-tool-details" id="rules-guide-details">
-          <summary>📖 Rules &amp; Tactics</summary>
+          <summary>${iconGuide} Rules &amp; Tactics</summary>
           <div class="studio-tool-body">
             ${renderCheatSheet()}
           </div>
         </details>
 
         <details class="collapsible studio-tool-details" id="backup-details">
-          <summary>💾 Data &amp; Storage</summary>
+          <summary>${iconStorage} Data &amp; Storage</summary>
           <div class="studio-tool-body">
             <div class="play-controls">
               <button type="button" id="export-data-btn">Export data</button>
@@ -873,14 +881,14 @@ app.innerHTML = `
         </details>
 
         <details class="collapsible studio-tool-details" id="curriculum-details">
-          <summary>🧭 Curriculum Map</summary>
+          <summary>${iconCurriculum} Curriculum Map</summary>
           <div class="studio-tool-body">
             <div id="pk-taxonomy-root">${renderTaxonomyBrowser()}</div>
           </div>
         </details>
 
         <details class="collapsible studio-tool-details" id="dev-details">
-          <summary>🛠 Raw PGN &amp; Engine</summary>
+          <summary>${iconTerminal} Raw PGN &amp; Engine</summary>
           <div class="studio-tool-body">
             <h3>Analyze Pasted PGN</h3>
             <form id="analyze-form">
@@ -914,6 +922,17 @@ setupCollapsibleCards();
 setupMobileTaglines();
 wireEmptyStateCtas();
 showEmptyStates(); // seed data-dependent cards for a visitor with no synced account (redesign #5)
+
+// Wire Lab Bento Grid tiles to expand their corresponding tools
+document.querySelector(".lab-bento-grid")?.addEventListener("click", (e) => {
+  const tile = (e.target as HTMLElement).closest(".lab-tile");
+  if (!tile) return;
+  const targetId = tile.getAttribute("data-target");
+  if (targetId) {
+    expandCard(targetId);
+  }
+});
+
 setupFeedbackWidget(); // Featurebase widget — org slug "mibottega" set in feedback.ts
 setupFeedbackForm(); // Tally form — loads on first open of the "Send feedback" card
 
@@ -1067,16 +1086,16 @@ function syncThemeUi() {
 
   if (themeToggleIcon && themeToggleLabel) {
     if (currentMode === "light") {
-      themeToggleIcon.textContent = "☀️";
+      themeToggleIcon.innerHTML = iconSun;
       themeToggleLabel.textContent = "Light";
     } else if (currentMode === "oled") {
-      themeToggleIcon.textContent = "🖤";
+      themeToggleIcon.innerHTML = iconMoon;
       themeToggleLabel.textContent = "OLED";
     } else if (currentMode === "system") {
-      themeToggleIcon.textContent = "⚙️";
+      themeToggleIcon.innerHTML = iconTools;
       themeToggleLabel.textContent = "Auto";
     } else {
-      themeToggleIcon.textContent = "🌙";
+      themeToggleIcon.innerHTML = iconMoon;
       themeToggleLabel.textContent = "Dark";
     }
   }

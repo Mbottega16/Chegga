@@ -1,30 +1,19 @@
-// Chegga Web — designed empty / pre-data states for the data-dependent cards.
+// Chegga Web — empty/pre-data state wiring.
 //
-// Redesign note #5: cards that are `display:none` until data land leave a
-// new visitor looking at a stub page, and cards shown blank look broken.
-// This gives every can-be-empty card the same shape while it waits:
-//   - one line on what it will show
-//   - a faded skeleton of the populated version (aria-hidden, decorative)
-//   - the action that fills it
-//
-// It's pure string-building plus one delegated click handler. `emptyFor`
-// is called from main.ts wherever the old code set a section to
-// `display:none`; `showEmptyStates` seeds every card for a fresh visitor
-// with no synced account at all.
+// Shows purposeful, feature-rich previews for data-dependent panels before a
+// visitor syncs an account so panels are filled and balanced rather than
+// hollow or 1/4-filled.
 
-type SkeletonKind = "report" | "bars" | "board" | "chart" | "rows" | "lines";
+export type SkeletonKind = "report" | "bars" | "board" | "chart" | "rows" | "lines";
 
-interface EmptyStateConfig {
-  /** `<section>` id, still carrying the inline `display:none`. */
+export interface EmptyStateConfig {
   sectionId: string;
-  /** the `<div>` inside it whose innerHTML the real render replaces. */
   outputId: string;
   line: string;
   ctaLabel: string;
   skeleton: SkeletonKind;
 }
 
-// Order mirrors the DOM so the seeded page reads top-to-bottom sensibly.
 const EMPTY_STATES: EmptyStateConfig[] = [
   {
     sectionId: "picker-section",
@@ -141,10 +130,8 @@ function emptyStateHtml(cfg: EmptyStateConfig): string {
 }
 
 /**
- * Show #picker-section in its compact graphic waiting state so the right-hand
- * Studio Command Deck invites the visitor to connect, while keeping secondary
- * data-dependent panels hidden until games are actually synced (no wall of
- * empty skeleton panels).
+ * Show #picker-section and primary cards in purposeful, filled waiting states
+ * that draw the eye to the heading, provide clear captions, and invite interaction.
  */
 export function emptyFor(sectionId: string): boolean {
   const cfg = byId.get(sectionId);
@@ -157,14 +144,40 @@ export function emptyFor(sectionId: string): boolean {
     section.appendChild(output);
   }
   if (!section || !output) return false;
-  if (sectionId === "picker-section" || sectionId === "focus-section" || sectionId === "profile-section") {
+
+  if (sectionId === "picker-section") {
+    section.style.display = "";
+    output.innerHTML = `
+      <div class="empty-state empty-state-picker-featured">
+        <div class="sample-game-card">
+          <div class="sample-game-badge">SAMPLE GAME SPOTLIGHT</div>
+          <div class="sample-game-header">
+            <div class="sample-game-title">Chegga Bot vs. Player</div>
+            <span class="sample-game-score">1 - 0</span>
+          </div>
+          <div class="sample-game-meta">32 moves · 89.4% Accuracy · Sicilian Defense</div>
+          <div class="sample-quality-bar" title="1 Brilliant · 4 Great · 18 Best · 3 Inaccuracies · 1 Blunder">
+            <span class="sq-chip sq-brilliant" style="flex: 1"></span>
+            <span class="sq-chip sq-great" style="flex: 4"></span>
+            <span class="sq-chip sq-best" style="flex: 18"></span>
+            <span class="sq-chip sq-inacc" style="flex: 3"></span>
+            <span class="sq-chip sq-blunder" style="flex: 1"></span>
+          </div>
+          <button type="button" class="btn btn-primary sample-game-btn" id="picker-demo-cta-btn">
+            ▶ Step Through Sample Game
+          </button>
+        </div>
+        <p class="empty-state-line">Or enter your Chess.com / Lichess username above to analyze your real games.</p>
+        <button type="button" class="empty-state-cta" data-empty-cta>Sync your games</button>
+      </div>
+    `;
+    output.dataset.emptyState = "1";
+  } else if (sectionId === "focus-section" || sectionId === "profile-section") {
     section.style.display = "";
     const shortLine =
-      sectionId === "picker-section"
-        ? "Sync your username above or try the sample dataset to step through your games."
-        : sectionId === "focus-section"
-          ? "Connect your games to unlock your personalized weakness prescription."
-          : "Connect your games to unlock move-quality rings, phase metrics, and opening diagnostics.";
+      sectionId === "focus-section"
+        ? "Connect your games to unlock your personalized weakness prescription."
+        : "Connect your games to unlock move-quality rings, phase metrics, and opening diagnostics.";
     output.innerHTML = `<div class="empty-state">
       <div class="empty-state-graphic" aria-hidden="true">
         <svg viewBox="0 0 120 48" width="110" height="44" fill="none">
@@ -203,9 +216,15 @@ export function showEmptyStates(): void {
   for (const cfg of EMPTY_STATES) emptyFor(cfg.sectionId);
 }
 
-/** Wire the CTA buttons once: jump to the sync form and focus the input. */
+/** Wire the CTA buttons once: jump to the sync form and focus the input, or load the sample game. */
 export function wireEmptyStateCtas(): void {
   document.addEventListener("click", (e) => {
+    const sampleBtn = (e.target as HTMLElement).closest("#picker-demo-cta-btn");
+    if (sampleBtn) {
+      const demoBtn = document.getElementById("demo-load-btn") as HTMLButtonElement | null;
+      if (demoBtn) demoBtn.click();
+      return;
+    }
     const btn = (e.target as HTMLElement).closest("[data-empty-cta]");
     if (!btn) return;
     document.getElementById("sync-section")?.scrollIntoView({ behavior: "smooth", block: "start" });

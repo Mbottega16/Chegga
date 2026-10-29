@@ -41,6 +41,7 @@ const DEFAULT_EXPANDED_IDS = new Set([
   "profile-section",
   "puzzle-section",
   "play-section",
+  "coming-soon-section",
 ]);
 
 /** Collapsed by default until the viewer explicitly opens (and thereby
