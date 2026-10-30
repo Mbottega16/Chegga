@@ -21,6 +21,7 @@ import { renderLabBentoGrid } from "./labBento";
 import {
   iconStage,
   iconConnect,
+  iconGames,
   iconToday,
   iconProfile,
   iconLab,
@@ -321,33 +322,27 @@ app.innerHTML = `
       <button type="button" id="demo-clear-btn">Clear sample data</button>
     </p>
 
-    <nav class="section-nav" aria-label="Jump to section">
-      <a href="#play-section">${iconStage} <span>Play</span></a>
-      <a href="#picker-section">🗂 <span>Review</span></a>
-      <a href="#sync-section">${iconConnect} <span>Get connected</span></a>
-      <a href="#today-section">${iconToday} <span>Today</span></a>
-      <a href="#profile-section">${iconProfile} <span>Profile</span></a>
-      <a href="#coming-soon-section">${iconLab} <span>Coming soon</span></a>
-      <a href="#feedback-form-details">${iconFeedback} <span>Feedback</span></a>
-    </nav>
-
     <main id="main-content">
     <div class="studio-workspace-grid">
       <div class="studio-left-column">
-        <nav class="card studio-nav-card" id="studio-nav-panel" aria-label="Studio Menu">
+        <nav class="card studio-nav-card section-nav" id="studio-nav-panel" aria-label="Studio Menu">
           <div class="studio-nav-title">Studio Menu</div>
           <div class="studio-nav-list">
             <a href="#sync-section" class="studio-nav-link active">
               <span class="nav-icon">${iconConnect}</span>
-              <span class="nav-text">Getting Connected</span>
+              <span class="nav-text">Getting Connected.</span>
             </a>
             <a href="#play-section" class="studio-nav-link">
               <span class="nav-icon">${iconStage}</span>
               <span class="nav-text">Playing</span>
             </a>
             <a href="#picker-section" class="studio-nav-link">
-              <span class="nav-icon">🗂</span>
+              <span class="nav-icon">${iconGames}</span>
               <span class="nav-text">Reviewing</span>
+            </a>
+            <a href="#today-section" class="studio-nav-link">
+              <span class="nav-icon">${iconToday}</span>
+              <span class="nav-text">Daily Training</span>
             </a>
             <a href="#profile-section" class="studio-nav-link">
               <span class="nav-icon">${iconProfile}</span>
@@ -357,11 +352,15 @@ app.innerHTML = `
               <span class="nav-icon">${iconLab}</span>
               <span class="nav-text">What's Coming Soon</span>
             </a>
+            <a href="#feedback-form-details" class="studio-nav-link">
+              <span class="nav-icon">${iconFeedback}</span>
+              <span class="nav-text">Feedback</span>
+            </a>
           </div>
         </nav>
 
         <section class="card studio-sync-card" id="sync-section" data-tier="primary">
-          <h2>Get connected</h2>
+          <h2>Get connected.</h2>
           <p class="card-teaser" data-card-teaser>Enter your Chess.com or Lichess username to load your recent games and track your progress.</p>
           <form id="sync-form" class="sync-form-grid">
             <div class="sync-inputs-row">

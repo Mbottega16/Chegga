@@ -3671,9 +3671,9 @@ body {
 }
 
 .wrap {
-  max-width: 1360px;
+  max-width: min(1740px, 98vw);
   margin: 0 auto;
-  padding: 14px 18px 80px;
+  padding: 10px 14px 80px;
 }
 
 /* ---- Studio Header (Standard Box Spec) ---- */
@@ -3788,38 +3788,9 @@ body {
   background: #4ade80;
 }
 
-/* ---- Studio Mode Dock (.section-nav - Standard Box Spec) ---- */
-.section-nav {
-  position: sticky;
-  top: 8px;
-  z-index: 120;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  margin-bottom: 16px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-}
-
-.section-nav a {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 0.83rem;
-  color: var(--muted);
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.section-nav a:hover,
-.section-nav a.active {
-  color: var(--text);
-  background: var(--panel-hover);
+/* ---- Studio Mode Dock (.section-nav) ---- */
+nav.section-nav:not(.studio-nav-card) {
+  display: none !important;
 }
 
 section.card,
@@ -3839,10 +3810,11 @@ section.card {
 /* ---- Unified 2-Column Main Studio Workspace ---- */
 .studio-workspace-grid {
   display: grid;
-  grid-template-columns: minmax(250px, 1fr) minmax(0, 3fr) minmax(260px, 1.05fr);
+  grid-template-columns: minmax(260px, 1fr) minmax(0, 3fr) minmax(280px, 1.08fr);
   gap: 20px;
-  align-items: start;
+  align-items: stretch;
   margin-bottom: 24px;
+  width: 100%;
 }
 
 .studio-workspace-grid > section.card,
@@ -3859,14 +3831,44 @@ section.card {
   flex-direction: column;
   gap: 16px;
   min-width: 0;
+  height: 100%;
+}
+
+/* Left column bottom card (Daily Training Set) stretches to match center height */
+.studio-left-column #today-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.studio-left-column #today-section #today-output {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Center stage column card */
+.studio-stage-column #play-section {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 /* Studio Nav Hub Card (Left Panel Menu) */
+.studio-nav-card.section-nav,
 .studio-nav-card {
+  position: static;
   padding: 12px 14px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0;
 }
 
 .studio-nav-title {
@@ -5159,6 +5161,14 @@ section.card {
 }
 
 /* ---- Right Column: Previously Played Games Stack ---- */
+.studio-right-column #picker-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+}
+
 .studio-right-column .picker-card-header {
   display: flex;
   align-items: center;
@@ -5184,10 +5194,13 @@ section.card {
   border: 1px solid var(--accent);
 }
 
+.studio-right-column #picker-output,
+.studio-right-column .empty-state-picker-featured,
 .studio-right-column .game-slider-wrap {
-  position: relative;
+  flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   width: 100%;
 }
 
@@ -5196,10 +5209,12 @@ section.card {
 }
 
 .studio-right-column .game-slider-track {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  max-height: 660px;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 2px 4px 10px;
