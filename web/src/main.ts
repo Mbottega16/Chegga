@@ -333,7 +333,33 @@ app.innerHTML = `
 
     <main id="main-content">
     <div class="studio-workspace-grid">
-      <div class="studio-command-column">
+      <div class="studio-left-column">
+        <nav class="card studio-nav-card" id="studio-nav-panel" aria-label="Studio Menu">
+          <div class="studio-nav-title">Studio Menu</div>
+          <div class="studio-nav-list">
+            <a href="#sync-section" class="studio-nav-link active">
+              <span class="nav-icon">${iconConnect}</span>
+              <span class="nav-text">Getting Connected</span>
+            </a>
+            <a href="#play-section" class="studio-nav-link">
+              <span class="nav-icon">${iconStage}</span>
+              <span class="nav-text">Playing</span>
+            </a>
+            <a href="#picker-section" class="studio-nav-link">
+              <span class="nav-icon">🗂</span>
+              <span class="nav-text">Reviewing</span>
+            </a>
+            <a href="#profile-section" class="studio-nav-link">
+              <span class="nav-icon">${iconProfile}</span>
+              <span class="nav-text">Your Profile</span>
+            </a>
+            <a href="#coming-soon-section" class="studio-nav-link">
+              <span class="nav-icon">${iconLab}</span>
+              <span class="nav-text">What's Coming Soon</span>
+            </a>
+          </div>
+        </nav>
+
         <section class="card studio-sync-card" id="sync-section" data-tier="primary">
           <h2>Get connected</h2>
           <p class="card-teaser" data-card-teaser>Enter your Chess.com or Lichess username to load your recent games and track your progress.</p>
@@ -382,16 +408,15 @@ app.innerHTML = `
           <p id="background-analyze-log" class="status-line status-ok" style="display:none"></p>
           <div id="background-analyze-progress"></div>
         </section>
+
+        <!-- Daily Training Set on left side underneath Get connected -->
+        <section class="card studio-today-card" id="today-section" data-tier="primary">
+          <h2>Daily Training Set</h2>
+          <div id="today-output"></div>
+        </section>
       </div>
 
       <div class="studio-stage-column">
-        <section class="card studio-picker-card" id="picker-section" data-tier="primary">
-          <h2>Review a Game</h2>
-          <div id="picker-output"></div>
-          <p id="picker-status" class="status-line" role="status"></p>
-          <div id="saved-positions"></div>
-        </section>
-
         <section class="card studio-stage-card" id="play-section" data-tier="primary" data-non-collapsible="true">
           <div id="resume-banner" class="status-line status-ok" style="display:none">
             You have a game in progress.
@@ -556,15 +581,21 @@ app.innerHTML = `
           </div>
         </section>
       </div>
-    </div>
+
+      <div class="studio-right-column">
+        <section class="card studio-picker-card" id="picker-section" data-tier="primary">
+          <div class="picker-card-header">
+            <h2>Previously Played Games</h2>
+            <span class="picker-count-badge">5 recent</span>
+          </div>
+          <div id="picker-output"></div>
+          <p id="picker-status" class="status-line" role="status"></p>
+          <div id="saved-positions"></div>
+        </section>
+      </div>
     </div>
 
     <div class="studio-bento-row">
-      <section class="card studio-today-card" id="today-section" data-tier="primary">
-        <h2>Daily Training Set</h2>
-        <div id="today-output"></div>
-      </section>
-
       <section class="card studio-focus-card" id="focus-section" data-tier="primary" style="display:none">
         <h2>Your Focus</h2>
         <div id="focus-output"></div>
@@ -813,9 +844,6 @@ app.innerHTML = `
 
     <section class="card studio-lab-card" id="coming-soon-section">
       <h2>Coming soon · 15 Lab Tools</h2>
-      <p class="card-teaser" data-card-teaser>
-        15 specialized tactical engines, blunder diagnostics, and analytics suites built into Chegga.
-      </p>
       <div class="lab-inspector-panel" id="lab-inspector-panel" aria-live="polite">
         <span class="lab-inspector-hint">Cursor over any tool below to preview its capabilities.</span>
       </div>

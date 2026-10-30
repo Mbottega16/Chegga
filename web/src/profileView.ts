@@ -31,7 +31,31 @@ export function renderProfile(
   const classificationBar = CLASSIFICATION_ORDER.filter((label) => profile.classificationCounts[label] > 0)
     .map((label) => {
       const pct = (profile.classificationRate[label] ?? 0) * 100;
-      return `<div class="classification-segment" style="width:${pct}%;background:${getClassColor(label)}" title="${label}: ${profile.classificationCounts[label]} moves (${pct.toFixed(1)}%)">${pct >= 6 ? label : ""}</div>`;
+      const count = profile.classificationCounts[label] ?? 0;
+      const text = pct >= 8 ? `${label} ${pct.toFixed(0)}%` : pct >= 4 ? `${pct.toFixed(0)}%` : "";
+      return `<div class="classification-segment" style="width:${pct}%;background:${getClassColor(label)}" title="${label}: ${count} moves (${pct.toFixed(1)}%)">${text}</div>`;
+    })
+    .join("");
+
+  const classificationBreakdown = CLASSIFICATION_ORDER.filter((label) => (profile.classificationCounts[label] ?? 0) > 0)
+    .map((label) => {
+      const pct = ((profile.classificationRate[label] ?? 0) * 100).toFixed(1);
+      const count = profile.classificationCounts[label] ?? 0;
+      const color = getClassColor(label);
+      return `
+        <div class="quality-tier-card" style="--tier-color: ${color}">
+          <div class="quality-tier-top">
+            <span class="quality-tier-dot" style="background: ${color}"></span>
+            <span class="quality-tier-name">${label}</span>
+            <span class="quality-tier-pct">${pct}%</span>
+          </div>
+          <div class="quality-tier-meta">
+            <span class="quality-tier-count">${count} moves</span>
+          </div>
+          <div class="quality-tier-bar">
+            <div class="quality-tier-bar-fill" style="width: ${pct}%; background: ${color}"></div>
+          </div>
+        </div>`;
     })
     .join("");
 
@@ -147,8 +171,12 @@ export function renderProfile(
         </svg>
       </div>
       <div class="profile-quality-bar-col">
-        <h3>Move quality distribution</h3>
+        <div class="profile-quality-title-row">
+          <h3>Move quality distribution</h3>
+          <span class="profile-quality-total">${profile.totalMoves} total moves evaluated</span>
+        </div>
         <div class="classification-bar">${classificationBar}</div>
+        <div class="quality-breakdown-grid">${classificationBreakdown}</div>
       </div>
     </div>
 
@@ -195,26 +223,55 @@ function renderSweetSpot(profile: ProfileSummary): string {
     return "";
   }
   const buckets = profile.sweetSpot.buckets;
-  const maxMoves = Math.max(...buckets.map((b) => b.moves), 1);
+
+  // Personalized SVG pace icons for each thinking speed band
+  const paceIcons: Record<string, string> = {
+    "< 2s": `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`,
+    "2–5s": `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`,
+    "5–15s": `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg>`,
+    "15–30s": `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 0-7 7c0 2.5 1.5 4.7 3.6 5.8.5.3.8.8.8 1.4V18h5.2v-1.8c0-.6.3-1.1.8-1.4A7 7 0 0 0 12 2z"></path><path d="M9 21h6"></path></svg>`,
+    "> 30s": `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22h14"></path><path d="M5 2h14"></path><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"></path><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"></path></svg>`,
+  };
+
   const bars = buckets
     .map((b) => {
-      const barHeight = Math.max(4, Math.round((b.moves / maxMoves) * 44));
       const isSweet = b.label === profile.sweetSpot?.sweetSpotLabel;
-      const strokeColor = isSweet ? "var(--accent-strong)" : "var(--border-strong)";
-      const fillColor = isSweet ? "var(--accent)" : "rgba(255, 255, 255, 0.08)";
+      const barHeight = Math.max(8, Math.round((b.accuracyRate / 100) * 58));
+      const strokeColor = isSweet ? "var(--accent)" : "var(--border-strong)";
+      const fillColor = isSweet
+        ? "linear-gradient(180deg, var(--accent) 0%, rgba(229, 160, 48, 0.45) 100%)"
+        : "linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.04) 100%)";
+      const icon = paceIcons[b.label] || paceIcons["5–15s"];
+
       return `
         <div class="sweet-spot-bar-col ${isSweet ? "is-sweet-spot" : ""}">
+          <div class="sweet-spot-col-icon" title="${b.label} pace">${icon}</div>
           <div class="sweet-spot-metric-val">${b.accuracyRate}%</div>
           <div class="sweet-spot-bar-wrap" title="${b.label}: ${b.moves} moves, ${b.accuracyRate}% accurate, ${b.blunderRate}% blunders">
             <div class="sweet-spot-bar" style="height:${barHeight}px;background:${fillColor};border:1px solid ${strokeColor}"></div>
           </div>
           <div class="sweet-spot-label">${b.label.split(" ")[0]}</div>
+          <div class="sweet-spot-sub">${b.moves} moves</div>
         </div>`;
     })
     .join("");
 
   const bannerText = profile.sweetSpot.sweetSpotLabel
-    ? `🎯 <strong>Your Sweet Spot:</strong> ${escapeHtml(profile.sweetSpot.sweetSpotLabel)} (${profile.sweetSpot.sweetSpotAccuracy}% accuracy). ${profile.sweetSpot.rushBlunderPenalty ? `Rushing in &lt;2s increases blunders by <strong>+${profile.sweetSpot.rushBlunderPenalty}%</strong>.` : ""}`
+    ? `<div class="sweet-spot-banner-inner">
+        <span class="sweet-spot-banner-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="4"></circle>
+            <line x1="22" y1="12" x2="18" y2="12"></line>
+            <line x1="6" y1="12" x2="2" y2="12"></line>
+            <line x1="12" y1="6" x2="12" y2="2"></line>
+            <line x1="12" y1="22" x2="12" y2="18"></line>
+          </svg>
+        </span>
+        <div class="sweet-spot-banner-text">
+          <strong>Optimal Decision Pace:</strong> ${escapeHtml(profile.sweetSpot.sweetSpotLabel)} (${profile.sweetSpot.sweetSpotAccuracy}% accuracy peak). ${profile.sweetSpot.rushBlunderPenalty ? `Rushing in &lt;2s increases blunder frequency by <strong>+${profile.sweetSpot.rushBlunderPenalty}%</strong>.` : ""}
+        </div>
+      </div>`
     : "Track more games to discover your optimal thinking pace.";
 
   return `
@@ -224,9 +281,15 @@ function renderSweetSpot(profile: ProfileSummary): string {
           <h3>The Thinking Sweet Spot (Time vs. Accuracy)</h3>
           <p class="section-tagline">How move accuracy and blunders correlate with seconds spent on the clock.</p>
         </div>
-        <span class="sweet-spot-badge">Decision Pace</span>
+        <span class="sweet-spot-badge">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          Decision Pace
+        </span>
       </div>
-      <p class="sweet-spot-banner">${bannerText}</p>
+      <div class="sweet-spot-banner">${bannerText}</div>
       <div class="sweet-spot-chart">${bars}</div>
     </div>`;
 }
