@@ -186,6 +186,16 @@ const SAMPLE_GAMES: SampleGameItem[] = [
     pgn: `[Event "French Defense"]
 1. e4 e6 2. d4 d5 3. Nd2 Nf6 4. e5 Nfd7 5. Bd3 c5 6. c3 Nc6 7. dxc5 Ncxe5 8. Be2 Nxc5 9. Nh3 Be7 10. O-O O-O 11. g4 Ncd7 12. a4 Nc5 13. f4 Nc6 14. Re1 Qd7 15. Rf1 Nxa4 16. Rxa4 Bc5+ 17. Kg2 a5 18. Qe1 g6 19. Qg3 Rb8 20. Bf3 Be7 21. Qe1 Qd6 22. Nb3 f6 23. Qg3 Re8 24. Nf2 h6 25. Qh4 Rd8 26. Qxh6 Bd7 27. Qxg6+ Kf8 28. Qh6+ Kf7 29. Qh5+ Kg7 30. Qh3 b5 31. Ra1 Kg8 32. Nxa5 Nxa5 33. Kg3 Nb3 34. Rb1 Ra8 35. Bxd5 Nxc1 36. Bxa8 Rxa8 37. Rbxc1 Kf8 38. Qh6+ Kg8 39. Ne4 Qd5 40. Nxf6+ Kf7 41. Nxd7 Qd3+ 1/2-1/2`,
   },
+  {
+    opening: "Queen's Gambit Declined",
+    opponent: "QueensideCastle (1540)",
+    resultBadge: "Loss 0-1",
+    resultClass: "loss",
+    movesText: "35 moves · Central clash",
+    orientation: "white",
+    pgn: `[Event "Queen's Gambit Declined"]
+1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Nf3 Be7 5. Bf4 O-O 6. e3 c5 7. Bxb8 cxd4 8. exd4 Rxb8 9. Bd3 Bd7 10. cxd5 g5 11. Nxg5 exd5 12. Rb1 Re8 13. a4 Bc5+ 14. Kf1 Bxd4 15. Nxd5 Bxa4 16. Qxa4 Qxd5 17. Bf5 Qxf5 18. Qxd4 Qxb1+ 19. Qd1 Qxb2 20. g4 Nxg4 21. Qxg4 Qa1+ 22. Kg2 Qb2 23. Ne4+ Kf8 24. Nf6 Re7 25. Qh3 Qxf6 26. Qa3 Qc6+ 27. Kg1 Qh6 28. Qb4 Qg7+ 29. Kf1 Qa1+ 30. Kg2 Qg7+ 31. Kh3 Qh6+ 32. Kg2 Qc6+ 33. Kf1 Qa6+ 34. Kg1 Qg6+ 35. Qg4 Qb1+ 0-1`,
+  },
 ];
 
 export function emptyFor(sectionId: string): boolean {
@@ -220,7 +230,7 @@ export function emptyFor(sectionId: string): boolean {
             </div>
             <div class="game-slider-vs">vs <span>${g.opponent}</span></div>
             <div class="game-slider-meta">${g.movesText}</div>
-            <button type="button" class="btn btn-primary game-slider-cta" id="picker-demo-cta-btn" title="Open this game in review">
+            <button type="button" class="btn btn-primary game-slider-cta" data-empty-cta id="picker-demo-cta-btn" title="Open this game in review">
               Review game
             </button>
           </div>

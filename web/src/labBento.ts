@@ -141,10 +141,12 @@ export function renderLabBentoGrid(): string {
   return LAB_TOOLS.map(
     (t) => `
     <div class="lab-tile" data-target="${t.targetId}" data-name="${t.name}" data-desc="${t.desc}" role="button" tabindex="0">
-      <div class="lab-tile-icon-wrap">
-        <span class="lab-tile-icon">${svgIcon(t.icon, "lab-svg-icon", 24)}</span>
+      <div class="lab-tile-row">
+        <div class="lab-tile-icon-wrap">
+          <span class="lab-tile-icon">${svgIcon(t.icon, "lab-svg-icon", 22)}</span>
+        </div>
+        <div class="lab-tile-title">${t.name}</div>
       </div>
-      <div class="lab-tile-title">${t.name}</div>
       <div class="lab-tile-caption-drawer" role="tooltip">
         <p class="lab-drawer-desc">${t.desc}</p>
         <span class="lab-drawer-action">Click to launch ↗</span>

@@ -3846,11 +3846,13 @@ section.card {
 }
 
 .studio-workspace-grid > section.card,
-.studio-command-column > section.card {
+.studio-command-column > section.card,
+.studio-stage-column > section.card {
   margin-bottom: 0;
 }
 
-.studio-command-column {
+.studio-command-column,
+.studio-stage-column {
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -3879,6 +3881,30 @@ section.card {
 
 .studio-stage-card[data-stage-aura] #play-board-wrap {
   box-shadow: 0 0 36px -4px color-mix(in srgb, var(--stage-aura, var(--accent)) 45%, transparent);
+}
+
+.studio-stage-footer-controls {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.studio-stage-footer-controls h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text);
+  letter-spacing: -0.015em;
+}
+
+.studio-stage-footer-controls .card-teaser {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
 }
 
 /* ---- Compact Board Settings Popover Drawer ---- */
@@ -5105,8 +5131,8 @@ section.card {
 
 .lab-bento-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
   margin-top: 10px;
 }
 
@@ -5114,11 +5140,11 @@ section.card {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 22px 20px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  min-height: 140px;
+  justify-content: center;
+  min-height: 56px;
   position: relative;
   overflow: hidden;
   cursor: pointer;
@@ -5138,33 +5164,44 @@ section.card {
   outline-offset: 2px;
 }
 
+.lab-tile-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
 .lab-tile-icon-wrap {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   border-radius: 6px;
   background: var(--accent-wash);
   color: var(--accent);
-  margin-bottom: 12px;
+  margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .lab-svg-icon {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.15rem;
+  height: 1.15rem;
   stroke: var(--accent);
   stroke-width: 2;
   fill: none;
 }
 
 .lab-tile-title {
-  font-size: 1.22rem;
+  font-size: 1.02rem;
   font-weight: 700;
   line-height: 1.25;
   color: #ffffff;
   letter-spacing: -0.015em;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 [data-theme="light"] .lab-tile-title {
@@ -5172,20 +5209,23 @@ section.card {
 }
 
 .lab-tile-caption-drawer {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 1px solid transparent;
   font-size: 0.8rem;
   line-height: 1.45;
   color: var(--muted);
   max-height: 0;
   opacity: 0;
   overflow: hidden;
-  transition: max-height 0.22s ease, opacity 0.22s ease, margin 0.22s ease;
+  transition: max-height 0.22s ease, opacity 0.22s ease, margin 0.22s ease, padding 0.22s ease;
 }
 
 .lab-tile:hover .lab-tile-caption-drawer,
 .lab-tile:focus-visible .lab-tile-caption-drawer {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top-color: var(--border);
   max-height: 80px;
   opacity: 1;
 }

@@ -323,7 +323,8 @@ app.innerHTML = `
 
     <nav class="section-nav" aria-label="Jump to section">
       <a href="#play-section">${iconStage} <span>Play</span></a>
-      <a href="#sync-section">${iconConnect} <span>Get started</span></a>
+      <a href="#picker-section">🗂 <span>Review</span></a>
+      <a href="#sync-section">${iconConnect} <span>Get connected</span></a>
       <a href="#today-section">${iconToday} <span>Today</span></a>
       <a href="#profile-section">${iconProfile} <span>Profile</span></a>
       <a href="#coming-soon-section">${iconLab} <span>Coming soon</span></a>
@@ -334,7 +335,7 @@ app.innerHTML = `
     <div class="studio-workspace-grid">
       <div class="studio-command-column">
         <section class="card studio-sync-card" id="sync-section" data-tier="primary">
-          <h2>Get started</h2>
+          <h2>Get connected</h2>
           <p class="card-teaser" data-card-teaser>Enter your Chess.com or Lichess username to load your recent games and track your progress.</p>
           <form id="sync-form" class="sync-form-grid">
             <div class="sync-inputs-row">
@@ -381,175 +382,181 @@ app.innerHTML = `
           <p id="background-analyze-log" class="status-line status-ok" style="display:none"></p>
           <div id="background-analyze-progress"></div>
         </section>
+      </div>
 
-        <section class="card studio-picker-card" id="picker-section" data-tier="primary" style="display:none">
+      <div class="studio-stage-column">
+        <section class="card studio-picker-card" id="picker-section" data-tier="primary">
           <h2>Review a Game</h2>
           <div id="picker-output"></div>
           <p id="picker-status" class="status-line" role="status"></p>
           <div id="saved-positions"></div>
         </section>
-      </div>
 
-      <section class="card studio-stage-card" id="play-section" data-tier="primary" data-non-collapsible="true">
-        <h2>Play vs. bot &amp; Game Review</h2>
-        <p class="card-teaser" data-card-teaser>Test your tactics against Stockfish with live quality grading, blunder alerts, and move playback.</p>
-        <div class="play-controls play-controls-primary">
-          <label for="bot-elo">Bot</label>
-          <input type="range" id="bot-elo" min="100" max="3000" step="10" value="800" />
-          <span id="bot-elo-value" class="play-elo-value">800 Elo</span>
-          <label for="bot-color">Side</label>
-          <select id="bot-color">
-            <option value="white">White</option>
-            <option value="black">Black</option>
-          </select>
-          <button type="button" id="bot-new-game-btn">New game</button>
-          <button type="button" id="bot-undo-btn">Undo</button>
-          <details class="studio-settings-drawer">
-            <summary class="btn-quiet studio-settings-btn">${iconTools} Settings</summary>
-            <div class="studio-settings-popover">
-              <div class="play-controls">
-                <span class="control-pair"><label for="bot-odds">Handicap</label>
-                <select id="bot-odds">
-                  ${ODDS_OPTIONS.map((o) => `<option value="${o.value}">${o.label}</option>`).join("")}
-                </select></span>
-                <label class="play-checkbox-label"><input type="checkbox" id="bot-hang-warning" /> Warn about hanging pieces</label>
-                <span class="control-pair"><label for="hang-sensitivity">Sensitivity</label>
-                <select id="hang-sensitivity">
-                  <option value="5">Beginner (Q/R)</option>
-                  <option value="3">Intermediate (+ B/N)</option>
-                  <option value="1" selected>Advanced (+ pawns)</option>
-                </select></span>
-              </div>
-              <div class="play-controls">
-                <label class="play-checkbox-label"><input type="checkbox" id="bot-show-analysis" checked /> Live analysis &amp; move juice</label>
-                <label class="play-checkbox-label"><input type="checkbox" id="bot-show-heatmap" /> Square control</label>
-                <label class="play-checkbox-label"><input type="checkbox" id="bot-show-3d" /> ${iconCube} 3D board</label>
-                <label class="play-checkbox-label"><input type="checkbox" id="bot-sound-enabled" checked /> Sound</label>
-                <label class="play-checkbox-label"><input type="checkbox" id="fx-enabled" checked /> Effects</label>
-              </div>
-              <div class="play-controls">
-                <span class="control-pair"><label for="board-theme">Board</label>
-                <select id="board-theme">
-                  ${BOARD_THEMES.map((t) => `<option value="${t.id}">${t.label}</option>`).join("")}
-                </select></span>
-                <span class="control-pair"><label for="piece-set">Pieces</label>
-                <select id="piece-set">
-                  ${PIECE_SET_OPTIONS.map((o) => `<option value="${o.id}">${o.label}</option>`).join("")}
-                </select></span>
-                <label class="play-checkbox-label"><input type="checkbox" id="colorblind-palette" /> Colorblind-safe</label>
-              </div>
-              <div class="settings-section-divider"></div>
-              <div class="settings-theme-block">
-                <div class="settings-block-title">Display Mode</div>
-                <div class="theme-mode-pills" role="radiogroup" aria-label="Display Mode">
-                  <button type="button" class="theme-mode-pill" data-mode="dark">🌙 Dark</button>
-                  <button type="button" class="theme-mode-pill" data-mode="light">☀️ Light</button>
-                  <button type="button" class="theme-mode-pill" data-mode="oled">🖤 OLED</button>
-                  <button type="button" class="theme-mode-pill" data-mode="system">⚙ Auto</button>
+        <section class="card studio-stage-card" id="play-section" data-tier="primary" data-non-collapsible="true">
+          <div id="resume-banner" class="status-line status-ok" style="display:none">
+            You have a game in progress.
+            <button type="button" id="resume-btn">Resume it</button>
+            <button type="button" id="discard-resume-btn">Discard</button>
+          </div>
+          <div class="play-layout">
+            <div class="play-board-wrap" id="play-board-wrap"></div>
+            <div class="play-sidebar">
+              <div id="review-panel" style="display:none">
+                <div class="review-header-bar">
+                  <h3 class="review-heading">Broadcast Review</h3>
+                  <button type="button" class="kbd-help-btn" id="review-kbd-help-btn" title="View keyboard shortcuts">⌨ Shortcuts</button>
                 </div>
-
-                <div class="settings-block-title" style="margin-top: 12px;">Studio Accent</div>
-                <div class="theme-accent-swatches" role="radiogroup" aria-label="Studio Accent Color">
-                  ${ACCENT_OPTIONS.map(
-                    (a) =>
-                      `<button type="button" class="theme-accent-swatch" data-accent="${a.id}" title="${a.label}" aria-label="${a.label}" style="--swatch-hex: ${a.hex};">
-                        <span class="swatch-color" style="background: ${a.hex};"></span>
-                        <span class="swatch-name">${a.label}</span>
-                      </button>`
-                  ).join("")}
+                <div id="review-strip-host"></div>
+                <div class="review-broadcast-banner">
+                  <p id="review-caption" class="review-caption"></p>
+                  <p id="review-why" class="review-why" style="display:none"></p>
+                  <div id="review-blunder-dna-host" style="display:none"></div>
                 </div>
-              </div>
-            </div>
-          </details>
-        </div>
-        <div id="resume-banner" class="status-line status-ok" style="display:none">
-          You have a game in progress.
-          <button type="button" id="resume-btn">Resume it</button>
-          <button type="button" id="discard-resume-btn">Discard</button>
-        </div>
-        <div class="play-layout">
-          <div class="play-board-wrap" id="play-board-wrap"></div>
-          <div class="play-sidebar">
-            <div id="review-panel" style="display:none">
-              <div class="review-header-bar">
-                <h3 class="review-heading">Broadcast Review</h3>
-                <button type="button" class="kbd-help-btn" id="review-kbd-help-btn" title="View keyboard shortcuts">⌨ Shortcuts</button>
-              </div>
-              <div id="review-strip-host"></div>
-              <div class="review-broadcast-banner">
-                <p id="review-caption" class="review-caption"></p>
-                <p id="review-why" class="review-why" style="display:none"></p>
-                <div id="review-blunder-dna-host" style="display:none"></div>
-              </div>
-              <div class="review-buttons">
-                <button type="button" id="review-first" aria-label="Jump to the starting position">⏮</button>
-                <button type="button" id="review-prev" aria-label="Previous move">◀</button>
-                <button type="button" id="review-next" aria-label="Next move">▶</button>
-                <button type="button" id="review-last" aria-label="Jump to the last move">⏭</button>
-                <button type="button" id="review-autoplay" class="btn-ghost">▶ Play it back</button>
-                <button type="button" id="review-worst" class="btn-ghost">Your worst move</button>
-              </div>
-              <div id="review-shortcuts-help" class="review-shortcuts-help" style="display:none">
-                <div class="shortcuts-header">
-                  <strong>${iconKeyboard} Review Keyboard Shortcuts</strong>
-                  <button type="button" id="review-shortcuts-close" class="btn-ghost" aria-label="Close shortcuts help">✕</button>
+                <div class="review-buttons">
+                  <button type="button" id="review-first" aria-label="Jump to the starting position">⏮</button>
+                  <button type="button" id="review-prev" aria-label="Previous move">◀</button>
+                  <button type="button" id="review-next" aria-label="Next move">▶</button>
+                  <button type="button" id="review-last" aria-label="Jump to the last move">⏭</button>
+                  <button type="button" id="review-autoplay" class="btn-ghost">▶ Play it back</button>
+                  <button type="button" id="review-worst" class="btn-ghost">Your worst move</button>
                 </div>
-                <div class="shortcuts-grid">
-                  <div><kbd>←</kbd> / <kbd>→</kbd></div><div>Previous / Next move</div>
-                  <div><kbd>Home</kbd> / <kbd>End</kbd></div><div>First / Last move</div>
-                  <div><kbd>Space</kbd></div><div>Play back game (autoplay)</div>
-                  <div><kbd>B</kbd></div><div>Toggle "Before" view &amp; candidates</div>
-                  <div><kbd>W</kbd></div><div>Jump to your worst move</div>
-                  <div><kbd>T</kbd></div><div>Try this position</div>
-                  <div><kbd>S</kbd></div><div>Copy shareable summary card</div>
-                  <div><kbd>C</kbd></div><div>Copy annotated PGN</div>
-                  <div><kbd>D</kbd></div><div>Download .pgn file</div>
-                  <div><kbd>?</kbd></div><div>Toggle this shortcuts cheat-sheet</div>
+                <div id="review-shortcuts-help" class="review-shortcuts-help" style="display:none">
+                  <div class="shortcuts-header">
+                    <strong>${iconKeyboard} Review Keyboard Shortcuts</strong>
+                    <button type="button" id="review-shortcuts-close" class="btn-ghost" aria-label="Close shortcuts help">✕</button>
+                  </div>
+                  <div class="shortcuts-grid">
+                    <div><kbd>←</kbd> / <kbd>→</kbd></div><div>Previous / Next move</div>
+                    <div><kbd>Home</kbd> / <kbd>End</kbd></div><div>First / Last move</div>
+                    <div><kbd>Space</kbd></div><div>Play back game (autoplay)</div>
+                    <div><kbd>B</kbd></div><div>Toggle "Before" view &amp; candidates</div>
+                    <div><kbd>W</kbd></div><div>Jump to your worst move</div>
+                    <div><kbd>T</kbd></div><div>Try this position</div>
+                    <div><kbd>S</kbd></div><div>Copy shareable summary card</div>
+                    <div><kbd>C</kbd></div><div>Copy annotated PGN</div>
+                    <div><kbd>D</kbd></div><div>Download .pgn file</div>
+                    <div><kbd>?</kbd></div><div>Toggle this shortcuts cheat-sheet</div>
+                  </div>
+                </div>
+                <label class="play-checkbox-label review-before-label"><input type="checkbox" id="review-before" /> Show position before move + best candidates</label>
+                <div id="review-candidates"></div>
+                <div class="review-buttons review-practice">
+                  <button type="button" id="review-punishment" class="btn-quiet punishment-btn" style="display:none" title="Watch opponent's refutation move on the board">⚡ Show Refutation</button>
+                  <button type="button" id="review-threat-radar" class="btn-quiet threat-radar-btn" style="display:none" title="Highlight tactical tension web on the board">🎯 Threat Radar</button>
+                  <button type="button" id="review-try" class="btn-quiet" style="display:none">Try this position</button>
+                  <button type="button" id="review-save" class="btn-quiet" style="display:none">Save this position</button>
+                  <button type="button" id="review-save-key" class="btn-quiet" style="display:none">Save key moments</button>
+                </div>
+                <div id="review-tally"></div>
+                <div class="review-export-actions">
+                  <button type="button" id="review-share-summary-btn" class="btn-quiet" title="Copy shareable summary card">${iconShare} Share summary</button>
+                  <button type="button" id="review-copy-pgn-btn" class="btn-quiet" title="Copy annotated PGN to clipboard">${iconCopy} Copy PGN</button>
+                  <button type="button" id="review-download-pgn-btn" class="btn-quiet" title="Download annotated .pgn file">${iconDownload} Download .pgn</button>
+                </div>
+                <p id="review-export-status" class="status-line status-ok" style="display:none"></p>
+              </div>
+              <div id="try-panel" style="display:none">
+                <h3 class="review-heading">Try this position</h3>
+                <p id="try-status" class="review-caption" role="status"></p>
+                <div class="review-buttons">
+                  <button type="button" id="try-again" class="btn-quiet" style="display:none">Try again</button>
+                  <button type="button" id="try-show" class="btn-quiet" style="display:none">Show the best move</button>
+                  <button type="button" id="try-done">Done</button>
                 </div>
               </div>
-              <label class="play-checkbox-label review-before-label"><input type="checkbox" id="review-before" /> Show position before move + best candidates</label>
-              <div id="review-candidates"></div>
-              <div class="review-buttons review-practice">
-                <button type="button" id="review-punishment" class="btn-quiet punishment-btn" style="display:none" title="Watch opponent's refutation move on the board">⚡ Show Refutation</button>
-                <button type="button" id="review-threat-radar" class="btn-quiet threat-radar-btn" style="display:none" title="Highlight tactical tension web on the board">🎯 Threat Radar</button>
-                <button type="button" id="review-try" class="btn-quiet" style="display:none">Try this position</button>
-                <button type="button" id="review-save" class="btn-quiet" style="display:none">Save this position</button>
-                <button type="button" id="review-save-key" class="btn-quiet" style="display:none">Save key moments</button>
+              <p id="play-status" class="status-line">Click "New game" to start.</p>
+              <p id="play-hang-warning" class="status-line status-error" style="display:none"></p>
+              <div id="analysis-output"></div>
+              <div id="play-move-list" class="play-move-list"></div>
+              <div id="post-game-report" style="display:none">
+                <h3>Game report</h3>
+                <div id="post-game-report-output"></div>
+                <div class="post-game-actions">
+                  <button type="button" id="post-game-share-btn" class="btn-quiet" title="Copy shareable summary card">${iconShare} Share summary</button>
+                  <button type="button" id="post-game-copy-pgn-btn" class="btn-quiet" title="Copy annotated PGN to clipboard">${iconCopy} Copy PGN</button>
+                  <button type="button" id="download-pgn-btn" class="btn-quiet" title="Download annotated .pgn file">${iconDownload} Download .pgn</button>
+                </div>
+                <p id="post-game-export-status" class="status-line status-ok" style="display:none"></p>
               </div>
-              <div id="review-tally"></div>
-              <div class="review-export-actions">
-                <button type="button" id="review-share-summary-btn" class="btn-quiet" title="Copy shareable summary card">${iconShare} Share summary</button>
-                <button type="button" id="review-copy-pgn-btn" class="btn-quiet" title="Copy annotated PGN to clipboard">${iconCopy} Copy PGN</button>
-                <button type="button" id="review-download-pgn-btn" class="btn-quiet" title="Download annotated .pgn file">${iconDownload} Download .pgn</button>
-              </div>
-              <p id="review-export-status" class="status-line status-ok" style="display:none"></p>
-            </div>
-            <div id="try-panel" style="display:none">
-              <h3 class="review-heading">Try this position</h3>
-              <p id="try-status" class="review-caption" role="status"></p>
-              <div class="review-buttons">
-                <button type="button" id="try-again" class="btn-quiet" style="display:none">Try again</button>
-                <button type="button" id="try-show" class="btn-quiet" style="display:none">Show the best move</button>
-                <button type="button" id="try-done">Done</button>
-              </div>
-            </div>
-            <p id="play-status" class="status-line">Click "New game" to start.</p>
-            <p id="play-hang-warning" class="status-line status-error" style="display:none"></p>
-            <div id="analysis-output"></div>
-            <div id="play-move-list" class="play-move-list"></div>
-            <div id="post-game-report" style="display:none">
-              <h3>Game report</h3>
-              <div id="post-game-report-output"></div>
-              <div class="post-game-actions">
-                <button type="button" id="post-game-share-btn" class="btn-quiet" title="Copy shareable summary card">${iconShare} Share summary</button>
-                <button type="button" id="post-game-copy-pgn-btn" class="btn-quiet" title="Copy annotated PGN to clipboard">${iconCopy} Copy PGN</button>
-                <button type="button" id="download-pgn-btn" class="btn-quiet" title="Download annotated .pgn file">${iconDownload} Download .pgn</button>
-              </div>
-              <p id="post-game-export-status" class="status-line status-ok" style="display:none"></p>
             </div>
           </div>
-        </div>
-      </section>
+
+          <div class="studio-stage-footer-controls">
+            <h2>Play vs. bot &amp; Game Review</h2>
+            <p class="card-teaser" data-card-teaser>Test your tactics against Stockfish with live quality grading, blunder alerts, and move playback.</p>
+            <div class="play-controls play-controls-primary">
+              <label for="bot-elo">Bot</label>
+              <input type="range" id="bot-elo" min="100" max="3000" step="10" value="800" />
+              <span id="bot-elo-value" class="play-elo-value">800 Elo</span>
+              <label for="bot-color">Side</label>
+              <select id="bot-color">
+                <option value="white">White</option>
+                <option value="black">Black</option>
+              </select>
+              <button type="button" id="bot-new-game-btn">New game</button>
+              <button type="button" id="bot-undo-btn">Undo</button>
+              <details class="studio-settings-drawer">
+                <summary class="btn-quiet studio-settings-btn">${iconTools} Settings</summary>
+                <div class="studio-settings-popover">
+                  <div class="play-controls">
+                    <span class="control-pair"><label for="bot-odds">Handicap</label>
+                    <select id="bot-odds">
+                      ${ODDS_OPTIONS.map((o) => `<option value="${o.value}">${o.label}</option>`).join("")}
+                    </select></span>
+                    <label class="play-checkbox-label"><input type="checkbox" id="bot-hang-warning" /> Warn about hanging pieces</label>
+                    <span class="control-pair"><label for="hang-sensitivity">Sensitivity</label>
+                    <select id="hang-sensitivity">
+                      <option value="5">Beginner (Q/R)</option>
+                      <option value="3">Intermediate (+ B/N)</option>
+                      <option value="1" selected>Advanced (+ pawns)</option>
+                    </select></span>
+                  </div>
+                  <div class="play-controls">
+                    <label class="play-checkbox-label"><input type="checkbox" id="bot-show-analysis" checked /> Live analysis &amp; move juice</label>
+                    <label class="play-checkbox-label"><input type="checkbox" id="bot-show-heatmap" /> Square control</label>
+                    <label class="play-checkbox-label"><input type="checkbox" id="bot-show-3d" /> ${iconCube} 3D board</label>
+                    <label class="play-checkbox-label"><input type="checkbox" id="bot-sound-enabled" checked /> Sound</label>
+                    <label class="play-checkbox-label"><input type="checkbox" id="fx-enabled" checked /> Effects</label>
+                  </div>
+                  <div class="play-controls">
+                    <span class="control-pair"><label for="board-theme">Board</label>
+                    <select id="board-theme">
+                      ${BOARD_THEMES.map((t) => `<option value="${t.id}">${t.label}</option>`).join("")}
+                    </select></span>
+                    <span class="control-pair"><label for="piece-set">Pieces</label>
+                    <select id="piece-set">
+                      ${PIECE_SET_OPTIONS.map((o) => `<option value="${o.id}">${o.label}</option>`).join("")}
+                    </select></span>
+                    <label class="play-checkbox-label"><input type="checkbox" id="colorblind-palette" /> Colorblind-safe</label>
+                  </div>
+                  <div class="settings-section-divider"></div>
+                  <div class="settings-theme-block">
+                    <div class="settings-block-title">Display Mode</div>
+                    <div class="theme-mode-pills" role="radiogroup" aria-label="Display Mode">
+                      <button type="button" class="theme-mode-pill" data-mode="dark">🌙 Dark</button>
+                      <button type="button" class="theme-mode-pill" data-mode="light">☀️ Light</button>
+                      <button type="button" class="theme-mode-pill" data-mode="oled">🖤 OLED</button>
+                      <button type="button" class="theme-mode-pill" data-mode="system">⚙ Auto</button>
+                    </div>
+
+                    <div class="settings-block-title" style="margin-top: 12px;">Studio Accent</div>
+                    <div class="theme-accent-swatches" role="radiogroup" aria-label="Studio Accent Color">
+                      ${ACCENT_OPTIONS.map(
+                        (a) =>
+                          `<button type="button" class="theme-accent-swatch" data-accent="${a.id}" title="${a.label}" aria-label="${a.label}" style="--swatch-hex: ${a.hex};">
+                            <span class="swatch-color" style="background: ${a.hex};"></span>
+                            <span class="swatch-name">${a.label}</span>
+                          </button>`
+                      ).join("")}
+                    </div>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
     </div>
 
     <div class="studio-bento-row">

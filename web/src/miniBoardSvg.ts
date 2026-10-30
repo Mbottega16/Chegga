@@ -4,6 +4,7 @@
 // so visitors see real board positions instead of walls of plain text.
 
 import { Chess } from "chess.js";
+import { pieceImgUrl } from "./pieceSet";
 
 const STANDARD_START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -96,10 +97,16 @@ export function extractPreviewFromPgn(pgn: string): BoardPreview {
 
 function renderPieceGlyph(pieceChar: string, x: number, y: number): string {
   const isWhite = pieceChar === pieceChar.toUpperCase();
+  const color = isWhite ? "w" : "b";
+  const type = pieceChar.toLowerCase();
+  const url = pieceImgUrl(color, type);
+  if (url) {
+    return `<image href="${url}" x="${(x + 0.5).toFixed(1)}" y="${(y + 0.5).toFixed(1)}" width="9" height="9" preserveAspectRatio="xMidYMid meet" />`;
+  }
+
   const fill = isWhite ? "#f8fafc" : "#111622";
   const stroke = isWhite ? "#0f172a" : "#cbd5e1";
   const strokeW = isWhite ? "0.75" : "0.65";
-  const type = pieceChar.toLowerCase();
   const cx = x + 5;
 
   switch (type) {
