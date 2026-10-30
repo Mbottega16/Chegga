@@ -60,15 +60,17 @@ function renderCard(card: PickerCard, busyId: string | null): string {
       </div>
       <div class="picker-card-info">
         <div class="game-card-player">
-          <span class="game-card-vs">vs</span>
-          <strong class="game-card-opponent">${esc(card.opponent)}</strong>
-          ${card.opponentRating ? `<span class="picker-rating">${card.opponentRating}</span>` : ""}
+          <div class="game-card-name-group">
+            <span class="game-card-vs">vs</span>
+            <strong class="game-card-opponent">${esc(card.opponent)}</strong>
+            ${card.opponentRating ? `<span class="picker-rating">(${card.opponentRating})</span>` : ""}
+          </div>
+          <span class="picker-result picker-result-badge">${RESULT_LABEL[card.result]}</span>
         </div>
         <div class="game-card-sub">
           <span class="picker-opening">${card.opening ? esc(card.opening) : "Standard Game"}</span>
-          <span class="picker-result picker-result-badge">${RESULT_LABEL[card.result]}</span>
+          <span class="picker-meta">${esc(meta)}</span>
         </div>
-        <div class="picker-meta">${esc(meta)}</div>
         <span class="picker-status"><span class="picker-status-dot" aria-hidden="true">${statusIcon}</span> ${statusLine(card, busy)}</span>
       </div>
     </div>

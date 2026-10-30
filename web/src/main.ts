@@ -323,62 +323,62 @@ app.innerHTML = `
     </p>
 
     <main id="main-content">
-    <div class="studio-workspace-grid">
-      <div class="studio-left-column">
-        <section class="card studio-sync-card" id="sync-section" data-tier="primary" data-non-collapsible="true">
-          <div class="sync-card-header">
-            <h2>Get connected.</h2>
-            <button type="button" class="sync-expand-toggle" id="sync-expand-toggle" title="Expand panel across board" aria-label="Expand or collapse connection panel">
-              <span class="sync-toggle-icon">↗</span>
-            </button>
+    <div class="studio-workspace-grid" id="studio-grid">
+      <section class="card studio-sync-card" id="sync-section" data-tier="primary" data-non-collapsible="true">
+        <div class="sync-card-header">
+          <h2>Get connected.</h2>
+          <button type="button" class="sync-expand-toggle" id="sync-expand-toggle" title="Expand connection panel" aria-label="Expand or collapse connection panel">
+            <span class="sync-toggle-icon">↗</span>
+          </button>
+        </div>
+        <p class="card-teaser" data-card-teaser>Enter your Chess.com or Lichess username to load your recent games and track your progress.</p>
+        <form id="sync-form" class="sync-form-grid">
+          <div class="sync-inputs-row">
+            <label for="sync-site" class="sr-only">Where you play</label>
+            <select id="sync-site">
+              <option value="chesscom">Chess.com</option>
+              <option value="lichess">Lichess</option>
+            </select>
+            <label for="username" class="sr-only">Chess.com or Lichess username</label>
+            <input id="username" type="text" placeholder="Username (e.g. MichaelBottega)" autocomplete="off" required />
           </div>
-          <p class="card-teaser" data-card-teaser>Enter your Chess.com or Lichess username to load your recent games and track your progress.</p>
-          <form id="sync-form" class="sync-form-grid">
-            <div class="sync-inputs-row">
-              <label for="sync-site" class="sr-only">Where you play</label>
-              <select id="sync-site">
-                <option value="chesscom">Chess.com</option>
-                <option value="lichess">Lichess</option>
-              </select>
-              <label for="username" class="sr-only">Chess.com or Lichess username</label>
-              <input id="username" type="text" placeholder="Username (e.g. MichaelBottega)" autocomplete="off" required />
-            </div>
-            <div class="sync-actions-row">
-              <button type="submit" id="sync-btn">${iconConnect} Sync games</button>
-              <div class="demo-square-wrap">
-                <button type="button" id="demo-load-btn" class="demo-square-btn" title="Try demo" aria-label="Try demo">
-                  ${iconPlay}
-                </button>
-                <div class="demo-popover-panel" role="tooltip">
-                  <strong class="demo-popover-title">Try demo</strong>
-                  <span class="demo-popover-desc">Instant sample game review without an account</span>
-                </div>
+          <div class="sync-actions-row">
+            <button type="submit" id="sync-btn">${iconConnect} Sync games</button>
+            <div class="demo-square-wrap">
+              <button type="button" id="demo-load-btn" class="demo-square-btn" title="Try demo" aria-label="Try demo">
+                ${iconPlay}
+              </button>
+              <div class="demo-popover-panel" role="tooltip">
+                <strong class="demo-popover-title">Try demo</strong>
+                <span class="demo-popover-desc">Instant sample game review without an account</span>
               </div>
             </div>
+          </div>
+        </form>
+        <p id="sync-log" class="status-line"></p>
+        <div id="sync-progress"></div>
+        <p id="full-sync-prompt" class="status-line status-ok" style="display:none">
+          <span id="full-sync-prompt-text"></span> <button type="button" id="full-sync-btn">Get my full history</button>
+        </p>
+        <p id="lichess-history" class="status-line status-ok" style="display:none">
+          <span id="lichess-history-text"></span> <button type="button" id="lichess-history-btn">Get my full history</button>
+          <button type="button" id="lichess-history-cancel" style="display:none">Cancel</button>
+        </p>
+        <details class="studio-batch-drawer">
+          <summary class="btn-quiet">Batch analyze more games</summary>
+          <form id="analyze-recent-form" class="row" style="margin-top:10px">
+            <label for="analyze-count" class="sr-only">Number of recent games to analyze</label>
+            <input id="analyze-count" type="number" min="1" max="200" value="10" />
+            <button type="submit" id="analyze-recent-btn">Analyze most recent</button>
           </form>
-          <p id="sync-log" class="status-line"></p>
-          <div id="sync-progress"></div>
-          <p id="full-sync-prompt" class="status-line status-ok" style="display:none">
-            <span id="full-sync-prompt-text"></span> <button type="button" id="full-sync-btn">Get my full history</button>
-          </p>
-          <p id="lichess-history" class="status-line status-ok" style="display:none">
-            <span id="lichess-history-text"></span> <button type="button" id="lichess-history-btn">Get my full history</button>
-            <button type="button" id="lichess-history-cancel" style="display:none">Cancel</button>
-          </p>
-          <details class="studio-batch-drawer">
-            <summary class="btn-quiet">Batch analyze more games</summary>
-            <form id="analyze-recent-form" class="row" style="margin-top:10px">
-              <label for="analyze-count" class="sr-only">Number of recent games to analyze</label>
-              <input id="analyze-count" type="number" min="1" max="200" value="10" />
-              <button type="submit" id="analyze-recent-btn">Analyze most recent</button>
-            </form>
-          </details>
-          <p id="analyze-recent-log" class="status-line"></p>
-          <div id="analyze-progress"></div>
-          <p id="background-analyze-log" class="status-line status-ok" style="display:none"></p>
-          <div id="background-analyze-progress"></div>
-        </section>
+        </details>
+        <p id="analyze-recent-log" class="status-line"></p>
+        <div id="analyze-progress"></div>
+        <p id="background-analyze-log" class="status-line status-ok" style="display:none"></p>
+        <div id="background-analyze-progress"></div>
+      </section>
 
+      <div class="studio-left-column">
         <nav class="card studio-nav-card section-nav" id="studio-nav-panel" aria-label="Studio Menu">
           <div class="studio-nav-header">
             <h2>Studio Menu</h2>
@@ -589,7 +589,7 @@ app.innerHTML = `
       </div>
 
       <div class="studio-right-column">
-        <section class="card studio-picker-card" id="picker-section" data-tier="primary">
+        <section class="card studio-picker-card" id="picker-section" data-tier="primary" data-non-collapsible="true">
           <div class="picker-card-header">
             <h2>Previously Played Games</h2>
             <span class="picker-count-badge">5 recent</span>
@@ -2872,20 +2872,17 @@ verifyDb().catch((err) => (dbLog.textContent = `❌ db failed: ${err.message ?? 
 const syncSection = document.querySelector<HTMLElement>("#sync-section")!;
 const syncExpandToggle = document.querySelector<HTMLButtonElement>("#sync-expand-toggle");
 
-function updateSyncExpandWidth() {
-  const rightCol = document.querySelector<HTMLElement>(".studio-right-column");
-  if (!rightCol || !syncSection) return;
-  const syncRect = syncSection.getBoundingClientRect();
-  const rightRect = rightCol.getBoundingClientRect();
-  // Slide across over to the left edge of Previously Played Games
-  const targetWidth = Math.max(320, Math.floor(rightRect.left - syncRect.left - 16));
-  syncSection.style.setProperty("--sync-expanded-width", `${targetWidth}px`);
-}
-
 export function setSyncExpanded(expanded: boolean) {
   if (!syncSection) return;
+  const grid = document.querySelector(".studio-workspace-grid");
+  if (grid) {
+    grid.classList.remove("is-bouncing");
+    // Trigger reflow to restart animation
+    void (grid as HTMLElement).offsetWidth;
+    grid.classList.add("is-bouncing");
+    window.setTimeout(() => grid.classList.remove("is-bouncing"), 550);
+  }
   if (expanded) {
-    updateSyncExpandWidth();
     syncSection.dataset.expanded = "true";
     if (syncExpandToggle) {
       syncExpandToggle.innerHTML = '<span class="sync-toggle-icon">✕</span>';
@@ -2896,8 +2893,8 @@ export function setSyncExpanded(expanded: boolean) {
     delete syncSection.dataset.expanded;
     if (syncExpandToggle) {
       syncExpandToggle.innerHTML = '<span class="sync-toggle-icon">↗</span>';
-      syncExpandToggle.title = "Expand panel across board";
-      syncExpandToggle.setAttribute("aria-label", "Expand connection panel across board");
+      syncExpandToggle.title = "Expand panel";
+      syncExpandToggle.setAttribute("aria-label", "Expand connection panel");
     }
   }
 }
@@ -2923,12 +2920,6 @@ document.addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && syncSection.dataset.expanded === "true") {
     setSyncExpanded(false);
-  }
-});
-
-window.addEventListener("resize", () => {
-  if (syncSection.dataset.expanded === "true") {
-    updateSyncExpandWidth();
   }
 });
 

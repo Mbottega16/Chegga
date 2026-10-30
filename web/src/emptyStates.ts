@@ -225,14 +225,16 @@ export function emptyFor(sectionId: string): boolean {
           </div>
           <div class="game-slider-info">
             <div class="game-card-player">
-              <span class="game-card-vs">vs</span>
-              <strong class="game-card-opponent">${g.opponent}</strong>
+              <div class="game-card-name-group">
+                <span class="game-card-vs">vs</span>
+                <strong class="game-card-opponent">${g.opponent}</strong>
+              </div>
+              <span class="game-slider-badge game-slider-badge-${g.resultClass}">${g.resultBadge}</span>
             </div>
             <div class="game-card-sub">
               <span class="game-card-opening">${g.opening}</span>
-              <span class="game-slider-badge game-slider-badge-${g.resultClass}">${g.resultBadge}</span>
+              <span class="game-card-meta">${g.movesText}</span>
             </div>
-            <div class="game-slider-meta">${g.movesText}</div>
             <button type="button" class="btn btn-primary game-slider-cta" data-empty-cta id="picker-demo-cta-btn" title="Open this game in review">
               Review game
             </button>
