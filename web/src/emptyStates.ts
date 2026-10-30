@@ -216,7 +216,7 @@ export function emptyFor(sectionId: string): boolean {
       const preview = extractPreviewFromPgn(g.pgn);
       const safePgn = g.pgn.replace(/"/g, "&quot;");
       return `
-        <div class="game-slider-card" data-pgn="${safePgn}" data-orientation="${g.orientation}" tabindex="0" role="button" aria-label="Review ${g.opening} against ${g.opponent}">
+        <div class="game-slider-card vertical-game-card" data-pgn="${safePgn}" data-orientation="${g.orientation}" tabindex="0" role="button" aria-label="Review ${g.opening} against ${g.opponent}">
           <div class="game-slider-board-wrapper">
             <div class="game-slider-board-slot">
               ${renderMiniBoardSvg(preview.fen, g.orientation, preview.lastMove)}
@@ -224,11 +224,14 @@ export function emptyFor(sectionId: string): boolean {
             <span class="game-slider-move-tag">Hover to play</span>
           </div>
           <div class="game-slider-info">
-            <div class="game-slider-header">
-              <strong class="game-slider-opening">${g.opening}</strong>
+            <div class="game-card-player">
+              <span class="game-card-vs">vs</span>
+              <strong class="game-card-opponent">${g.opponent}</strong>
+            </div>
+            <div class="game-card-sub">
+              <span class="game-card-opening">${g.opening}</span>
               <span class="game-slider-badge game-slider-badge-${g.resultClass}">${g.resultBadge}</span>
             </div>
-            <div class="game-slider-vs">vs <span>${g.opponent}</span></div>
             <div class="game-slider-meta">${g.movesText}</div>
             <button type="button" class="btn btn-primary game-slider-cta" data-empty-cta id="picker-demo-cta-btn" title="Open this game in review">
               Review game
@@ -240,12 +243,17 @@ export function emptyFor(sectionId: string): boolean {
 
     output.innerHTML = `
       <div class="empty-state empty-state-picker-featured">
+        <div class="picker-filters-row" role="group" aria-label="Game filters">
+          <button type="button" class="picker-filter picker-filter-active" data-picker-filter="all">All <span class="picker-count">5</span></button>
+          <button type="button" class="picker-filter" data-picker-filter="win">Wins <span class="picker-count">2</span></button>
+          <button type="button" class="picker-filter" data-picker-filter="loss">Losses <span class="picker-count">2</span></button>
+          <button type="button" class="picker-filter" data-picker-filter="draw">Draws <span class="picker-count">1</span></button>
+          <button type="button" class="picker-filter" data-picker-filter="analyzed">Analyzed <span class="picker-count">5</span></button>
+        </div>
         <div class="game-slider-wrap">
-          <button type="button" class="game-slider-nav game-slider-prev" data-game-slider-nav="-1" aria-label="Previous games">◀</button>
-          <div class="game-slider-track" id="game-slider-track" tabindex="0" role="region" aria-label="Sample games slider">
+          <div class="game-slider-track vertical-slider-track" id="game-slider-track" tabindex="0" role="region" aria-label="Sample games list">
             ${cardsHtml}
           </div>
-          <button type="button" class="game-slider-nav game-slider-next" data-game-slider-nav="1" aria-label="Next games">▶</button>
         </div>
       </div>
     `;
@@ -297,6 +305,33 @@ export function showEmptyStates(): void {
 /** Wire the CTA buttons once: slider arrows, sample game review, jump to sync form. */
 export function wireEmptyStateCtas(): void {
   document.addEventListener("click", (e) => {
+    const filterBtn = (e.target as HTMLElement).closest<HTMLButtonElement>(".picker-filters-row [data-picker-filter]");
+    if (filterBtn) {
+      e.stopPropagation();
+      const filter = filterBtn.dataset.pickerFilter ?? "all";
+      const filterBtns = document.querySelectorAll(".picker-filters-row [data-picker-filter]");
+      filterBtns.forEach((btn) => btn.classList.remove("picker-filter-active"));
+      filterBtn.classList.add("picker-filter-active");
+
+      const cards = document.querySelectorAll<HTMLElement>("#game-slider-track .vertical-game-card");
+      cards.forEach((card) => {
+        if (filter === "all" || filter === "analyzed") {
+          card.style.display = "";
+        } else {
+          const badge = card.querySelector(".game-slider-badge");
+          const isWin = badge?.classList.contains("game-slider-badge-win");
+          const isLoss = badge?.classList.contains("game-slider-badge-loss");
+          const isDraw = badge?.classList.contains("game-slider-badge-draw");
+          if ((filter === "win" && isWin) || (filter === "loss" && isLoss) || (filter === "draw" && isDraw)) {
+            card.style.display = "";
+          } else {
+            card.style.display = "none";
+          }
+        }
+      });
+      return;
+    }
+
     const navBtn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-game-slider-nav]");
     if (navBtn) {
       const dir = Number(navBtn.dataset.gameSliderNav) || 1;

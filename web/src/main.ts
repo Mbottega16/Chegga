@@ -325,42 +325,13 @@ app.innerHTML = `
     <main id="main-content">
     <div class="studio-workspace-grid">
       <div class="studio-left-column">
-        <nav class="card studio-nav-card section-nav" id="studio-nav-panel" aria-label="Studio Menu">
-          <div class="studio-nav-title">Studio Menu</div>
-          <div class="studio-nav-list">
-            <a href="#sync-section" class="studio-nav-link active">
-              <span class="nav-icon">${iconConnect}</span>
-              <span class="nav-text">Getting Connected.</span>
-            </a>
-            <a href="#play-section" class="studio-nav-link">
-              <span class="nav-icon">${iconStage}</span>
-              <span class="nav-text">Playing</span>
-            </a>
-            <a href="#picker-section" class="studio-nav-link">
-              <span class="nav-icon">${iconGames}</span>
-              <span class="nav-text">Reviewing</span>
-            </a>
-            <a href="#today-section" class="studio-nav-link">
-              <span class="nav-icon">${iconToday}</span>
-              <span class="nav-text">Daily Training</span>
-            </a>
-            <a href="#profile-section" class="studio-nav-link">
-              <span class="nav-icon">${iconProfile}</span>
-              <span class="nav-text">Your Profile</span>
-            </a>
-            <a href="#coming-soon-section" class="studio-nav-link">
-              <span class="nav-icon">${iconLab}</span>
-              <span class="nav-text">What's Coming Soon</span>
-            </a>
-            <a href="#feedback-form-details" class="studio-nav-link">
-              <span class="nav-icon">${iconFeedback}</span>
-              <span class="nav-text">Feedback</span>
-            </a>
+        <section class="card studio-sync-card" id="sync-section" data-tier="primary" data-non-collapsible="true">
+          <div class="sync-card-header">
+            <h2>Get connected.</h2>
+            <button type="button" class="sync-expand-toggle" id="sync-expand-toggle" title="Expand panel across board" aria-label="Expand or collapse connection panel">
+              <span class="sync-toggle-icon">↗</span>
+            </button>
           </div>
-        </nav>
-
-        <section class="card studio-sync-card" id="sync-section" data-tier="primary">
-          <h2>Get connected.</h2>
           <p class="card-teaser" data-card-teaser>Enter your Chess.com or Lichess username to load your recent games and track your progress.</p>
           <form id="sync-form" class="sync-form-grid">
             <div class="sync-inputs-row">
@@ -408,7 +379,43 @@ app.innerHTML = `
           <div id="background-analyze-progress"></div>
         </section>
 
-        <!-- Daily Training Set on left side underneath Get connected -->
+        <nav class="card studio-nav-card section-nav" id="studio-nav-panel" aria-label="Studio Menu">
+          <div class="studio-nav-header">
+            <h2>Studio Menu</h2>
+          </div>
+          <div class="studio-nav-list">
+            <a href="#sync-section" class="studio-nav-link active">
+              <span class="nav-icon">${iconConnect}</span>
+              <span class="nav-text">Getting Connected.</span>
+            </a>
+            <a href="#play-section" class="studio-nav-link">
+              <span class="nav-icon">${iconStage}</span>
+              <span class="nav-text">Playing</span>
+            </a>
+            <a href="#picker-section" class="studio-nav-link">
+              <span class="nav-icon">${iconGames}</span>
+              <span class="nav-text">Reviewing</span>
+            </a>
+            <a href="#today-section" class="studio-nav-link">
+              <span class="nav-icon">${iconToday}</span>
+              <span class="nav-text">Daily Training</span>
+            </a>
+            <a href="#profile-section" class="studio-nav-link">
+              <span class="nav-icon">${iconProfile}</span>
+              <span class="nav-text">Your Profile</span>
+            </a>
+            <a href="#coming-soon-section" class="studio-nav-link">
+              <span class="nav-icon">${iconLab}</span>
+              <span class="nav-text">What's Coming Soon</span>
+            </a>
+            <a href="#feedback-form-details" class="studio-nav-link">
+              <span class="nav-icon">${iconFeedback}</span>
+              <span class="nav-text">Feedback</span>
+            </a>
+          </div>
+        </nav>
+
+        <!-- Daily Training Set on left side underneath Studio Menu -->
         <section class="card studio-today-card" id="today-section" data-tier="primary">
           <h2>Daily Training Set</h2>
           <div id="today-output"></div>
@@ -2862,8 +2869,74 @@ verifyDb().catch((err) => (dbLog.textContent = `❌ db failed: ${err.message ?? 
 
 // --- Phase 1: sync ---
 
+const syncSection = document.querySelector<HTMLElement>("#sync-section")!;
+const syncExpandToggle = document.querySelector<HTMLButtonElement>("#sync-expand-toggle");
+
+function updateSyncExpandWidth() {
+  const rightCol = document.querySelector<HTMLElement>(".studio-right-column");
+  if (!rightCol || !syncSection) return;
+  const syncRect = syncSection.getBoundingClientRect();
+  const rightRect = rightCol.getBoundingClientRect();
+  // Slide across over to the left edge of Previously Played Games
+  const targetWidth = Math.max(320, Math.floor(rightRect.left - syncRect.left - 16));
+  syncSection.style.setProperty("--sync-expanded-width", `${targetWidth}px`);
+}
+
+export function setSyncExpanded(expanded: boolean) {
+  if (!syncSection) return;
+  if (expanded) {
+    updateSyncExpandWidth();
+    syncSection.dataset.expanded = "true";
+    if (syncExpandToggle) {
+      syncExpandToggle.innerHTML = '<span class="sync-toggle-icon">✕</span>';
+      syncExpandToggle.title = "Collapse panel";
+      syncExpandToggle.setAttribute("aria-label", "Collapse connection panel");
+    }
+  } else {
+    delete syncSection.dataset.expanded;
+    if (syncExpandToggle) {
+      syncExpandToggle.innerHTML = '<span class="sync-toggle-icon">↗</span>';
+      syncExpandToggle.title = "Expand panel across board";
+      syncExpandToggle.setAttribute("aria-label", "Expand connection panel across board");
+    }
+  }
+}
+
+syncExpandToggle?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const isExp = syncSection.dataset.expanded === "true";
+  setSyncExpanded(!isExp);
+});
+
+syncSection.addEventListener("click", () => {
+  if (syncSection.dataset.expanded !== "true") {
+    setSyncExpanded(true);
+  }
+});
+
+document.addEventListener("click", (e) => {
+  if (syncSection.dataset.expanded === "true" && !syncSection.contains(e.target as Node)) {
+    setSyncExpanded(false);
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && syncSection.dataset.expanded === "true") {
+    setSyncExpanded(false);
+  }
+});
+
+window.addEventListener("resize", () => {
+  if (syncSection.dataset.expanded === "true") {
+    updateSyncExpandWidth();
+  }
+});
+
 const syncForm = document.querySelector<HTMLFormElement>("#sync-form")!;
 const usernameInput = document.querySelector<HTMLInputElement>("#username")!;
+usernameInput.addEventListener("focus", () => {
+  setSyncExpanded(true);
+});
 const syncBtn = document.querySelector<HTMLButtonElement>("#sync-btn")!;
 const syncLog = document.querySelector<HTMLParagraphElement>("#sync-log")!;
 
