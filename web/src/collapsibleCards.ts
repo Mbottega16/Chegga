@@ -80,11 +80,11 @@ export function expandCard(cardId: string): void {
   if (card.dataset.comingSoon) delete card.dataset.comingSoon;
   const body = card.querySelector<HTMLElement>(".card-body");
   const chevron = card.querySelector<HTMLElement>(".card-chevron");
-  const heading = card.querySelector<HTMLElement>(".card-heading-collapsible");
+  const toggleBtn = card.querySelector<HTMLElement>(".card-heading-toggle");
   if (!body) return;
   body.style.display = "";
   if (chevron) chevron.textContent = "▾";
-  if (heading) heading.setAttribute("aria-expanded", "true");
+  if (toggleBtn) toggleBtn.setAttribute("aria-expanded", "true");
   saveCollapsed(cardId, false);
 }
 
@@ -127,24 +127,26 @@ export function setupCollapsibleCards(): void {
     chevron.className = "card-chevron";
     chevron.textContent = "▾";
     chevron.setAttribute("aria-hidden", "true");
-    heading.appendChild(chevron);
     heading.classList.add("card-heading-collapsible");
 
-    // The heading is the real control: a plain <h2> with a click handler
-    // is invisible to keyboard and screen-reader users, so give it button
-    // semantics, focusability, and Enter/Space activation. `aria-expanded`
-    // + `aria-controls` let a screen reader announce the collapsed state
-    // and what it toggles.
+    // The control is a real <button> inside the <h2>: keyboard focus and
+    // Enter/Space come for free, and the heading keeps its heading role for
+    // screen-reader navigation (role="button" on the <h2> removed it).
+    // `aria-expanded` + `aria-controls` announce the state and the target.
     const bodyId = `${cardId}-body`;
     body.id = bodyId;
-    heading.setAttribute("role", "button");
-    heading.setAttribute("tabindex", "0");
-    heading.setAttribute("aria-controls", bodyId);
+    const toggleBtn = document.createElement("button");
+    toggleBtn.type = "button";
+    toggleBtn.className = "card-heading-toggle";
+    toggleBtn.setAttribute("aria-controls", bodyId);
+    while (heading.firstChild) toggleBtn.appendChild(heading.firstChild);
+    toggleBtn.appendChild(chevron);
+    heading.appendChild(toggleBtn);
 
     function applyState(collapsed: boolean) {
       body.style.display = collapsed ? "none" : "";
       chevron.textContent = collapsed ? "▸" : "▾";
-      heading!.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      toggleBtn.setAttribute("aria-expanded", collapsed ? "false" : "true");
     }
 
     applyState(loadCollapsed(cardId));
@@ -155,12 +157,8 @@ export function setupCollapsibleCards(): void {
       saveCollapsed(cardId, collapsed);
     }
 
+    // On the heading, not the button: a click on the heading's padding
+    // still toggles, and main.ts's own heading listener keeps its order.
     heading.addEventListener("click", toggle);
-    heading.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
-        e.preventDefault(); // Space would otherwise scroll the page
-        toggle();
-      }
-    });
   });
 }

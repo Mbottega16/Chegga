@@ -706,7 +706,7 @@ export class PlayBoard {
         const pieceHtml = piece ? playPieceHtml(piece.color, piece.type, { dim: square === isDraggingFrom }) : "";
         const quality = this.qualityFlash?.square === square ? this.qualityFlash : null;
 
-        const ariaLabel = this.getSquareAriaLabel(
+        const squareLabel = this.getSquareAriaLabel(
           square,
           piece,
           isSelected,
@@ -715,6 +715,9 @@ export class PlayBoard {
           candidate?.tier,
           isLastMove,
         );
+        // The move-quality badge is visible text inside the square, so its
+        // words belong in the square's name too (WCAG 2.5.3, label in name).
+        const ariaLabel = quality?.label ? `${squareLabel}, ${quality.label}` : squareLabel;
 
         const isFocused = this.focusedSquare === square;
         const kbdClass = isFocused && this.isKeyboardActive ? " keyboard-focused" : "";

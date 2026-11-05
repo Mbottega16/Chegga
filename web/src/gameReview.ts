@@ -324,7 +324,7 @@ export function describeStep(review: ReviewGame, index: number): string {
   if (step.clockAlert === "panic" && step.clockRemainingSec !== undefined) {
     parts.push(`⏱️ Panic: only ${Math.round(step.clockRemainingSec)}s left!`);
   } else if (step.clockAlert === "rush" && step.timeSpentSec !== undefined) {
-    parts.push(`⚡ Rushed: played in ${step.timeSpentSec}s.`);
+    parts.push(`Rushed: played in ${step.timeSpentSec}s.`);
   } else if (step.timeSpentSec !== undefined) {
     parts.push(`(${step.timeSpentSec}s)`);
   }

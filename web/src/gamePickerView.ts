@@ -46,12 +46,11 @@ function renderCard(card: PickerCard, busyId: string | null): string {
   const meta = [formatDate(card.endTime), card.timeClass, `as ${card.color === "white" ? "White" : "Black"}`]
     .filter(Boolean)
     .join(" · ");
-  const label = `${RESULT_LABEL[card.result]} against ${card.opponent}, ${meta}`;
   const preview = extractPreviewFromPgn(card.pgn ?? "");
   const miniBoard = renderMiniBoardSvg(preview.fen, card.color, preview.lastMove);
   const statusIcon = card.analyzed ? "✦" : busy ? "◌" : "▶";
 
-  return `<button type="button" class="${classes}" data-game-id="${esc(card.id)}" data-pgn="${esc(card.pgn ?? "")}" data-orientation="${card.color}" ${disabled ? "disabled" : ""} aria-label="${esc(label)}">
+  return `<button type="button" class="${classes}" data-game-id="${esc(card.id)}" data-pgn="${esc(card.pgn ?? "")}" data-orientation="${card.color}" ${disabled ? "disabled" : ""}>
     <div class="picker-card-top">
       <div class="picker-mini-board-wrap">
         <div class="picker-mini-board-svg-wrap">
@@ -104,7 +103,7 @@ export function renderGamePicker(
 export function renderSavedPositions(saved: SavedPuzzleRecord[], solvedIds: Set<string>): string {
   if (!saved.length) return "";
   const dueCount = saved.filter((p) => isDueForReview(p)).length;
-  const dueSummary = dueCount > 0 ? `<span class="saved-due-summary">🔥 ${dueCount} due</span>` : "";
+  const dueSummary = dueCount > 0 ? `<span class="saved-due-summary">${dueCount} due</span>` : "";
 
   const rows = saved
     .map((p) => {

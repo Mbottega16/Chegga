@@ -217,12 +217,12 @@ export function emptyFor(sectionId: string): boolean {
       const preview = extractPreviewFromPgn(g.pgn);
       const safePgn = g.pgn.replace(/"/g, "&quot;");
       return `
-        <div class="game-slider-card vertical-game-card" data-pgn="${safePgn}" data-orientation="${g.orientation}" tabindex="0" role="button" aria-label="Review ${g.opening} against ${g.opponent}">
+        <div class="game-slider-card vertical-game-card" data-pgn="${safePgn}" data-orientation="${g.orientation}">
           <div class="game-slider-board-wrapper">
             <div class="game-slider-board-slot">
               ${renderMiniBoardSvg(preview.fen, g.orientation, preview.lastMove)}
             </div>
-            <span class="game-slider-move-tag">Hover to play</span>
+            <span class="game-slider-move-tag"></span>
           </div>
           <div class="game-slider-info">
             <div class="game-card-player">
@@ -236,8 +236,8 @@ export function emptyFor(sectionId: string): boolean {
               <span class="game-card-opening">${g.opening}</span>
               <span class="game-card-meta">${g.movesText}</span>
             </div>
-            <button type="button" class="btn btn-primary game-slider-cta picker-demo-cta-btn" data-empty-cta title="Open this game in review">
-              Review game
+            <button type="button" class="btn btn-primary game-slider-cta picker-demo-cta-btn" data-empty-cta>
+              Review game<span class="sr-only"> against ${g.opponent}</span>
             </button>
           </div>
         </div>

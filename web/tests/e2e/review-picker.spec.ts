@@ -128,7 +128,7 @@ test.describe("game picker and review", () => {
     await expect(page.locator("#try-show")).toBeVisible();
     await page.locator("#try-again").click();
     await playMove(page, strongUci!.slice(0, 2), strongUci!.slice(2, 4));
-    await expect(page.locator("#try-status")).toContainText("✅");
+    await expect(page.locator("#try-status")).toContainText("✓");
 
     // --- leaving the try goes back to the review ---
     await page.locator("#try-done").click();
@@ -147,7 +147,7 @@ test.describe("game picker and review", () => {
     await expect(page.locator("#try-panel")).toBeVisible();
     await expect(page.locator("#review-panel")).toBeHidden();
     await playMove(page, "a2", "a3");
-    await expect(page.locator("#try-status")).toContainText(/Not quite|✅/);
+    await expect(page.locator("#try-status")).toContainText(/Not quite|✓/);
     await page.locator("#try-done").click();
     await expect(page.locator("#try-panel")).toBeHidden();
 

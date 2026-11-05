@@ -48,8 +48,8 @@ export function renderToday(state: TodayState, streak: TodayStreak): string {
     .join("");
 
   const header = complete
-    ? `<div class="today-summary-bar">${ringSvg}<div class="today-summary-copy"><p class="today-complete">Today's set complete ✓ &nbsp;<span class="status-line">🔥 ${streak.current}-day Today streak (best ${streak.best})</span></p><p class="status-line"><button type="button" id="today-keep-going" class="today-start-btn">Keep training ↓</button></p></div></div>`
-    : `<div class="today-summary-bar">${ringSvg}<div class="today-summary-copy"><p class="status-line">${doneCount}/${state.items.length} done · 🔥 ${streak.current}-day Today streak</p></div></div>`;
+    ? `<div class="today-summary-bar">${ringSvg}<div class="today-summary-copy"><p class="today-complete">Today's set complete ✓ &nbsp;<span class="status-line">${streak.current}-day streak (best ${streak.best})</span></p><p class="status-line"><button type="button" id="today-keep-going" class="today-start-btn">Keep training ↓</button></p></div></div>`
+    : `<div class="today-summary-bar">${ringSvg}<div class="today-summary-copy"><p class="status-line">${doneCount}/${state.items.length} done · ${streak.current}-day streak</p></div></div>`;
 
   return `
     ${header}

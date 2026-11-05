@@ -302,6 +302,22 @@ textarea:focus-visible,
   border: 0;
 }
 
+/* The browser's default placeholder grey is 4.3:1 on the dark panels. */
+::placeholder {
+  color: var(--muted-dim);
+  opacity: 1;
+}
+
+/* No single word stranded on a paragraph's last line; even heading lines. */
+p {
+  text-wrap: pretty;
+}
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
 /* Skip link: hidden until focused, then pinned top-left so a keyboard
    user can jump past the header straight into the cards. */
 .skip-link {
@@ -1602,7 +1618,7 @@ input[type="range"] {
   border-radius: 0;
   background: var(--chip-color);
   cursor: pointer;
-  transition: transform 0.12s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.12s ease;
+  transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.12s ease;
   position: relative;
   overflow: visible;
 }
@@ -1803,6 +1819,24 @@ input[type="range"] {
 }
 .card-heading-collapsible:hover {
   color: var(--accent-strong);
+}
+/* The toggle is a real <button> inside the <h2>, so the heading keeps its role. */
+.card-heading-toggle,
+.card-heading-toggle:hover,
+.card-heading-toggle:active {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  white-space: normal;
+  transform: none;
 }
 .card-chevron {
   color: var(--muted);
@@ -2112,15 +2146,9 @@ input[type="range"] {
 .pk-node-card {
   background: var(--bg);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--border-strong);
   border-radius: var(--radius-sm);
   padding: 10px 11px 9px;
 }
-.pk-node-card[data-domain="BV"] { border-left-color: var(--pk-bv); }
-.pk-node-card[data-domain="TC"] { border-left-color: var(--pk-tc); }
-.pk-node-card[data-domain="EG"] { border-left-color: var(--pk-eg); }
-.pk-node-card[data-domain="ST"] { border-left-color: var(--pk-st); }
-.pk-node-card[data-domain="OP"] { border-left-color: var(--pk-op); }
 
 .pk-node-top {
   display: flex;
@@ -2213,7 +2241,7 @@ input[type="range"] {
 .rival-since {
   margin: 0 0 14px;
   padding: 8px 12px;
-  border-left: 3px solid var(--accent);
+  border: 1px solid var(--border);
   background: var(--bg);
   border-radius: 4px;
   font-size: 0.92rem;
@@ -2734,6 +2762,7 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
 }
 .site-footer p {
   color: var(--muted-dim);
+  max-width: 60ch; /* about 75 characters of Inter at this size */
   font-size: 0.75rem;
   line-height: 1.6;
   margin: 0;
@@ -2936,7 +2965,6 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
   line-height: 1.45;
   color: var(--text);
   background: var(--accent-wash);
-  border-left: 3px solid var(--accent);
   border-radius: var(--radius-sm);
   padding: 8px 10px;
   margin: 0 0 10px;
@@ -2963,7 +2991,7 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
   border-radius: 0;
   font-size: 0.8rem;
   font-weight: 500;
-  transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.1s ease, border-color 0.1s ease;
+  transition: transform 0.1s cubic-bezier(0.22, 1, 0.36, 1), background 0.1s ease, border-color 0.1s ease;
 }
 .candidate-chip:hover {
   background: var(--panel-hover);
@@ -3036,6 +3064,16 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
 .btn-quiet:disabled {
   opacity: 0.55;
   cursor: default;
+}
+/* Secondary actions are outlined, so one filled button leads each group. */
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+}
+.btn-ghost:hover {
+  border-color: var(--accent);
+  background: var(--accent-wash);
 }
 #try-panel {
   border: 1px solid var(--accent);
@@ -3131,14 +3169,7 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
   background: var(--bg);
   color: var(--text);
   border: 1px solid var(--border-strong);
-  border-top: 3px solid var(--draw);
   border-radius: var(--radius-md);
-}
-.picker-card-win {
-  border-top-color: var(--win);
-}
-.picker-card-loss {
-  border-top-color: var(--loss);
 }
 .picker-card:hover:not(:disabled) {
   background: var(--panel-hover);
@@ -3246,7 +3277,7 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
   flex-wrap: wrap;
 }
 .saved-row.is-due {
-  border-left: 3px solid var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--border-strong));
 }
 .saved-due-summary {
   font-size: 0.76rem;
@@ -3622,7 +3653,7 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1), background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 .review-export-actions button:hover,
 .post-game-actions button:hover {
@@ -4070,6 +4101,7 @@ section.card {
 .studio-nav-card.section-nav,
 .studio-nav-card {
   position: static;
+  backdrop-filter: none; /* inherited from .section-nav; this card sits on nothing */
   padding: 16px 18px;
   background: var(--panel);
   border: 1px solid var(--border);
@@ -4520,7 +4552,6 @@ section.card {
   border-radius: 10px;
   background: color-mix(in srgb, var(--review-tier-color, var(--accent)) 11%, rgba(15, 20, 30, 0.92));
   border: 1px solid color-mix(in srgb, var(--review-tier-color, var(--accent)) 38%, var(--border));
-  border-left: 4px solid var(--review-tier-color, var(--accent));
   transition: border-color 0.25s ease, background 0.25s ease;
 }
 
@@ -4598,6 +4629,27 @@ section.card {
   gap: 3px;
   min-width: 0;
   flex: 1;
+}
+
+/* In the card details the result reads as text beside the opponent, as on
+   the sample cards. The absolute position here was meant for the old
+   overlay on the mini board and dropped the badge outside the card. */
+/* Results and counts never break mid-score ("Loss 0-" / "1"). */
+.game-slider-badge,
+.game-card-player .picker-result-badge,
+.studio-right-column .picker-count-badge {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.game-card-player .picker-result-badge {
+  position: static;
+  padding: 0;
+  background: none;
+  backdrop-filter: none;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.9rem;
 }
 
 .picker-card-info .picker-vs,
@@ -5365,7 +5417,7 @@ section.card {
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .sync-expand-toggle:hover {
@@ -5801,6 +5853,11 @@ section.card {
   flex: 0 0 auto;
   width: 100%;
   height: auto;
+}
+
+/* The tag only shows the move while the board replays on hover. */
+.game-slider-move-tag:empty {
+  display: none;
 }
 
 .game-slider-move-tag {

@@ -324,7 +324,7 @@ app.innerHTML = `
 
     <p id="demo-banner" class="demo-banner" role="status" style="display:none">
       <span>You're viewing <strong>sample data</strong> — a made-up player, not a real account. Connect your own to see your games.</span>
-      <button type="button" id="demo-clear-btn">Clear sample data</button>
+      <button type="button" id="demo-clear-btn" class="btn-quiet">Clear sample data</button>
     </p>
 
     <main id="main-content">
@@ -483,8 +483,8 @@ app.innerHTML = `
                 <label class="play-checkbox-label review-before-label"><input type="checkbox" id="review-before" /> Show position before move + best candidates</label>
                 <div id="review-candidates"></div>
                 <div class="review-buttons review-practice">
-                  <button type="button" id="review-punishment" class="btn-quiet punishment-btn" style="display:none" title="Watch opponent's refutation move on the board">⚡ Show Refutation</button>
-                  <button type="button" id="review-threat-radar" class="btn-quiet threat-radar-btn" style="display:none" title="Highlight tactical tension web on the board">🎯 Threat Radar</button>
+                  <button type="button" id="review-punishment" class="btn-quiet punishment-btn" style="display:none" title="Watch opponent's refutation move on the board">Show Refutation</button>
+                  <button type="button" id="review-threat-radar" class="btn-quiet threat-radar-btn" style="display:none" title="Highlight tactical tension web on the board">Threat Radar</button>
                   <button type="button" id="review-try" class="btn-quiet" style="display:none">Try this position</button>
                   <button type="button" id="review-save" class="btn-quiet" style="display:none">Save this position</button>
                   <button type="button" id="review-save-key" class="btn-quiet" style="display:none">Save key moments</button>
@@ -538,7 +538,7 @@ app.innerHTML = `
                 <option value="black">Black</option>
               </select>
               <button type="button" id="bot-new-game-btn">New game</button>
-              <button type="button" id="bot-undo-btn">Undo</button>
+              <button type="button" id="bot-undo-btn" class="btn-quiet">Undo</button>
               <details class="studio-settings-drawer">
                 <summary class="btn-quiet studio-settings-btn">${iconTools} Settings</summary>
                 <div class="studio-settings-popover">
@@ -577,10 +577,10 @@ app.innerHTML = `
                   <div class="settings-theme-block">
                     <div class="settings-block-title">Display Mode</div>
                     <div class="theme-mode-pills" role="radiogroup" aria-label="Display Mode">
-                      <button type="button" class="theme-mode-pill" data-mode="dark">🌙 Dark</button>
-                      <button type="button" class="theme-mode-pill" data-mode="light">☀️ Light</button>
-                      <button type="button" class="theme-mode-pill" data-mode="oled">🖤 OLED</button>
-                      <button type="button" class="theme-mode-pill" data-mode="system">⚙ Auto</button>
+                      <button type="button" class="theme-mode-pill" data-mode="dark">Dark</button>
+                      <button type="button" class="theme-mode-pill" data-mode="light">Light</button>
+                      <button type="button" class="theme-mode-pill" data-mode="oled">OLED</button>
+                      <button type="button" class="theme-mode-pill" data-mode="system">Auto</button>
                     </div>
 
                     <div class="settings-block-title" style="margin-top: 12px;">Studio Accent</div>
@@ -727,7 +727,7 @@ app.innerHTML = `
         </div>
         <div class="play-fullscreen-controls">
           <button type="button" id="fullscreen-new-game-btn">New game</button>
-          <button type="button" id="fullscreen-undo-btn">Undo</button>
+          <button type="button" id="fullscreen-undo-btn" class="btn-quiet">Undo</button>
         </div>
         <p class="tagline" style="margin:0">Drag to rotate, scroll or pinch to zoom, click a piece then a square to move.</p>
         <div id="fullscreen-promotion" class="fullscreen-promotion" style="display:none">
@@ -894,7 +894,7 @@ app.innerHTML = `
           <summary>${iconStorage} Data &amp; Storage</summary>
           <div class="studio-tool-body">
             <div class="play-controls">
-              <button type="button" id="export-data-btn">Export data</button>
+              <button type="button" id="export-data-btn" class="btn-quiet">Export data</button>
               <label for="import-data-input" class="button-like">Import backup</label>
               <input type="file" id="import-data-input" accept="application/json" style="display:none" />
             </div>
@@ -905,13 +905,13 @@ app.innerHTML = `
             </div>
             <div class="storage-evict">
               <div class="play-controls">
-                <button type="button" id="evict-btn">Free up space…</button>
+                <button type="button" id="evict-btn" class="btn-quiet">Free up space…</button>
               </div>
               <div id="evict-confirm" class="storage-evict-confirm" hidden>
                 <p id="evict-confirm-text" class="status-line"></p>
                 <div class="play-controls">
                   <button type="button" id="evict-yes-btn">Remove games</button>
-                  <button type="button" id="evict-cancel-btn">Cancel</button>
+                  <button type="button" id="evict-cancel-btn" class="btn-quiet">Cancel</button>
                 </div>
               </div>
               <label class="storage-evict-auto">
@@ -1690,7 +1690,7 @@ function updateReviewActions(step: ReviewStep | null) {
   const punishment = review && reviewIndex >= 0 ? getPunishmentForStep(review, reviewIndex) : null;
   if (punishment && !reviewShowBefore) {
     reviewPunishmentBtn.style.display = "";
-    reviewPunishmentBtn.textContent = `⚡ Show Refutation (${punishment.punishmentSan})`;
+    reviewPunishmentBtn.textContent = `Show Refutation (${punishment.punishmentSan})`;
   } else {
     reviewPunishmentBtn.style.display = "none";
   }
@@ -1698,7 +1698,7 @@ function updateReviewActions(step: ReviewStep | null) {
   const hasTacticalLines = !reviewShowBefore && !!step?.blunderDna?.tacticalLines?.length;
   if (hasTacticalLines) {
     reviewThreatRadarBtn.style.display = "";
-    reviewThreatRadarBtn.textContent = "🎯 Threat Radar";
+    reviewThreatRadarBtn.textContent = "Threat Radar";
   } else {
     reviewThreatRadarBtn.style.display = "none";
   }
@@ -2080,12 +2080,12 @@ async function handleExportReviewCard(targetBtn: HTMLButtonElement, statusEl: HT
     const copied = await copyReviewCardImage(canvas);
     if (copied) {
       playCopySound();
-      floatText(targetBtn, "Copied card! 📸", "gold");
+      floatText(targetBtn, "Copied card!", "gold");
       statusEl.textContent = "Copied high-res review card to clipboard!";
     } else {
       const fname = review.gameId ? `chegga-review-${review.gameId}.png` : `chegga-review-${Date.now()}.png`;
       downloadReviewCardImage(canvas, fname);
-      floatText(targetBtn, "Downloaded card! 📸", "good");
+      floatText(targetBtn, "Downloaded card!", "good");
       statusEl.textContent = "Downloaded high-res review card (PNG)!";
     }
     statusEl.style.display = "";
@@ -2109,7 +2109,7 @@ reviewShareSummaryBtn.addEventListener("click", async () => {
   const ok = await copyToClipboard(summary);
   if (ok) {
     playCopySound();
-    floatText(reviewShareSummaryBtn, "Copied! ✨", "gold");
+    floatText(reviewShareSummaryBtn, "Copied!", "gold");
     reviewExportStatus.textContent = "Copied game review summary to clipboard!";
     reviewExportStatus.style.display = "";
     window.setTimeout(() => {
@@ -2124,7 +2124,7 @@ reviewCopyPgnBtn.addEventListener("click", async () => {
   const ok = await copyToClipboard(annotated);
   if (ok) {
     playCopySound();
-    floatText(reviewCopyPgnBtn, "Copied PGN! 📋", "good");
+    floatText(reviewCopyPgnBtn, "Copied PGN!", "good");
     reviewExportStatus.textContent = "Copied annotated PGN to clipboard!";
     reviewExportStatus.style.display = "";
     window.setTimeout(() => {
@@ -2139,7 +2139,7 @@ reviewDownloadPgnBtn.addEventListener("click", () => {
   const filename = review.gameId ? `chegga-game-${review.gameId}.pgn` : `chegga-game-${Date.now()}.pgn`;
   const ok = downloadTextFile(filename, annotated);
   if (ok) {
-    floatText(reviewDownloadPgnBtn, "Downloaded! 💾", "good");
+    floatText(reviewDownloadPgnBtn, "Downloaded!", "good");
   } else {
     reviewExportStatus.textContent = "Download blocked by browser. PGN copied to clipboard instead.";
     reviewExportStatus.style.display = "";
@@ -2281,10 +2281,10 @@ function onTryMove(uci: string, san: string) {
   const correct = isBest || alsoStrong;
   const reason = explainMove(explainInputFromPuzzle(p)).join(" ");
   const verdict = isBest
-    ? `✅ Yes — ${p.bestMoveSan} was the move.`
+    ? `✓ Yes — ${p.bestMoveSan} was the move.`
     : correct
-      ? `✅ ${san} is also one of the engine's top moves. Its first choice was ${p.bestMoveSan}.`
-      : `❌ Not quite — ${san} isn't what the engine wanted. It preferred ${p.bestMoveSan}.`;
+      ? `✓ ${san} is also one of the engine's top moves. Its first choice was ${p.bestMoveSan}.`
+      : `✗ Not quite — ${san} isn't what the engine wanted. It preferred ${p.bestMoveSan}.`;
   tryStatus.textContent = `${verdict} In the game you played ${p.playedSan}. ${reason}`.trim();
   tryAgainBtn.style.display = "";
   tryShowBtn.style.display = correct ? "none" : "";
@@ -2372,7 +2372,7 @@ reviewPunishmentBtn.addEventListener("click", () => {
     reviewPunishmentBtn.textContent = "↩ Back to Played Move";
     playBoard.showPosition(punishment.fenAfterPunishment, { from: punishment.from, to: punishment.to });
     playBoard.showArrows([{ from: punishment.from, to: punishment.to, color: "rgba(244, 63, 94, 0.95)", width: 3.2 }]);
-    reviewCaption.innerHTML = `<span class="punishment-caption-badge">💥 Refutation (${punishment.source}):</span> <strong>${punishment.punishmentSan}</strong> punishes the error.`;
+    reviewCaption.innerHTML = `<span class="punishment-caption-badge">Refutation (${punishment.source}):</span> <strong>${punishment.punishmentSan}</strong> punishes the error.`;
   } else {
     reviewPunishmentBtn.classList.remove("active");
     showReviewStep(reviewIndex);
@@ -2387,7 +2387,7 @@ reviewThreatRadarBtn.addEventListener("click", () => {
   isViewingThreatRadar = !isViewingThreatRadar;
   if (isViewingThreatRadar) {
     reviewThreatRadarBtn.classList.add("active");
-    reviewThreatRadarBtn.textContent = "👁️ Hide Tension Web";
+    reviewThreatRadarBtn.textContent = "Hide Tension Web";
     const arrows = step.blunderDna.tacticalLines.map((line) => ({
       from: line.from,
       to: line.to,
@@ -2397,7 +2397,7 @@ reviewThreatRadarBtn.addEventListener("click", () => {
     playBoard.showArrows(arrows, { animate: true });
   } else {
     reviewThreatRadarBtn.classList.remove("active");
-    reviewThreatRadarBtn.textContent = "🎯 Threat Radar";
+    reviewThreatRadarBtn.textContent = "Threat Radar";
     if (step && shouldShowBetterMove(step) && step.bestMoveUci && betterMoveArrowFitsAfterBoard(step)) {
       playBoard.showArrow(step.bestMoveUci.slice(0, 2) as Square, step.bestMoveUci.slice(2, 4) as Square);
     } else {
@@ -2673,7 +2673,7 @@ downloadPgnBtn.addEventListener("click", () => {
     // back to showing the PGN as selectable text instead of failing silently.
     postGameReportOutput.innerHTML += `<pre class="log">${lastAnnotatedPgn.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c]!)}</pre>`;
   } else {
-    floatText(downloadPgnBtn, "Downloaded! 💾", "good");
+    floatText(downloadPgnBtn, "Downloaded!", "good");
   }
 });
 
@@ -2683,7 +2683,7 @@ postGameShareBtn.addEventListener("click", async () => {
   const ok = await copyToClipboard(summary);
   if (ok) {
     playCopySound();
-    floatText(postGameShareBtn, "Copied! ✨", "gold");
+    floatText(postGameShareBtn, "Copied!", "gold");
     postGameExportStatus.textContent = "Copied game review summary to clipboard!";
     postGameExportStatus.style.display = "";
     window.setTimeout(() => {
@@ -2697,7 +2697,7 @@ postGameCopyPgnBtn.addEventListener("click", async () => {
   const ok = await copyToClipboard(lastAnnotatedPgn);
   if (ok) {
     playCopySound();
-    floatText(postGameCopyPgnBtn, "Copied PGN! 📋", "good");
+    floatText(postGameCopyPgnBtn, "Copied PGN!", "good");
     postGameExportStatus.textContent = "Copied annotated PGN to clipboard!";
     postGameExportStatus.style.display = "";
     window.setTimeout(() => {
@@ -2775,7 +2775,7 @@ function checkHangWarning(board: PlayBoard) {
   // Checked right after the human's own move commits: is the mover's own
   // color (them) now leaving something hanging for the opponent to grab?
   if (hasHangingPiece(chess, humanColor === "white" ? "w" : "b", currentHangMinValue())) {
-    playHangWarning.textContent = "⚠️ Heads up — that move may have left something hanging.";
+    playHangWarning.textContent = "Heads up — that move may have left something hanging.";
     playHangWarning.style.display = "";
   }
 }
@@ -2907,7 +2907,7 @@ async function verifyEngine() {
   await engine.waitFor("isready", (line) => line.trim() === "readyok");
   engine.send("position startpos");
   const best = await engine.waitFor("go depth 10", (line) => line.startsWith("bestmove"), 20000);
-  engineLog.textContent = `✅ engine ok — ${best}`;
+  engineLog.textContent = `✓ engine ok — ${best}`;
   engine.terminate();
 }
 
@@ -2917,13 +2917,13 @@ async function verifyDb() {
   const expected = ["games", "moveAnalysis", "syncState"].sort();
   dbLog.textContent =
     JSON.stringify(stores) === JSON.stringify(expected)
-      ? `✅ db ok — stores: ${stores.join(", ")}`
-      : `❌ store mismatch: ${stores.join(", ")}`;
+      ? `✓ db ok — stores: ${stores.join(", ")}`
+      : `✗ store mismatch: ${stores.join(", ")}`;
   db.close();
 }
 
-verifyEngine().catch((err) => (engineLog.textContent = `❌ engine failed: ${err.message ?? err}`));
-verifyDb().catch((err) => (dbLog.textContent = `❌ db failed: ${err.message ?? err}`));
+verifyEngine().catch((err) => (engineLog.textContent = `✗ engine failed: ${err.message ?? err}`));
+verifyDb().catch((err) => (dbLog.textContent = `✗ db failed: ${err.message ?? err}`));
 
 // --- Phase 1: sync ---
 
@@ -4343,7 +4343,7 @@ function renderInsights(
   if (opening) {
     const worstPos = worstPositionInOpening(games, ownMoves, opening.openingName);
     const actions = [
-      `<button type="button" data-practice-opening="${escAttr(opening.openingName)}">Practice this line ⚔️</button>`,
+      `<button type="button" data-practice-opening="${escAttr(opening.openingName)}">Practice this line</button>`,
       `<button type="button" data-open-games-opening="${escAttr(opening.openingName)}">See these games ↓</button>`,
       worstPos
         ? `<button type="button" data-review-worst-game="${escAttr(worstPos.gameId)}" data-review-worst-ply="${worstPos.ply}">Review the key position ↓</button>`
@@ -4453,7 +4453,7 @@ function updatePuzzleStreakDisplay() {
   const streak = getStreak(currentUsername);
   const progress = getProgress(currentUsername);
   const solvedCount = Object.values(progress).filter((p) => p.solved).length;
-  puzzleStreakEl.textContent = `🔥 ${streak.currentStreak}-day streak (best ${streak.bestStreak}) — ${solvedCount}/${currentPuzzles.length} solved`;
+  puzzleStreakEl.textContent = `${streak.currentStreak}-day streak (best ${streak.bestStreak}) — ${solvedCount}/${currentPuzzles.length} solved`;
 }
 
 function pickPuzzle(): Puzzle | null {
@@ -4519,8 +4519,8 @@ function loadPuzzle() {
       setStatus(
         puzzleProgressEl,
         correct
-          ? `✅ Correct — ${activePuzzle.bestMoveSan} was the move.${puzzleWhy(activePuzzle)}`
-          : `❌ Not quite. You played ${activePuzzle.playedSan}; the engine's move was ${activePuzzle.bestMoveSan}.${puzzleWhy(activePuzzle)}`,
+          ? `✓ Correct — ${activePuzzle.bestMoveSan} was the move.${puzzleWhy(activePuzzle)}`
+          : `✗ Not quite. You played ${activePuzzle.playedSan}; the engine's move was ${activePuzzle.bestMoveSan}.${puzzleWhy(activePuzzle)}`,
         correct ? "ok" : "error",
       );
       if (correct) {
@@ -4595,7 +4595,7 @@ function lcUser(): string {
 
 function updateLichessStreakDisplay() {
   const s = getStreak(lcUser());
-  lichessStreakEl.textContent = `🔥 ${s.currentStreak}-day streak (best ${s.bestStreak})`;
+  lichessStreakEl.textContent = `${s.currentStreak}-day streak (best ${s.bestStreak})`;
 }
 
 function parseRatingBand(): [number, number] {
@@ -4729,7 +4729,7 @@ function onLichessMove(uci: string) {
     playFailSound();
     floatText(lichessRatingReadout, `${st.rating - before}`, "bad");
     const wantSan = sanForLine(lcPuzzle.fen, moves.slice(0, lcSolIdx), expected);
-    setStatus(lichessProgressEl, `❌ ${wantSan} was the move. Puzzle rating ${st.rating}.${describeThemes(lcPuzzle.themes) ? ` (${describeThemes(lcPuzzle.themes)})` : ""}`, "error");
+    setStatus(lichessProgressEl, `✗ ${wantSan} was the move. Puzzle rating ${st.rating}.${describeThemes(lcPuzzle.themes) ? ` (${describeThemes(lcPuzzle.themes)})` : ""}`, "error");
     onThemedPuzzleResolved(false);
     return;
   }
@@ -4753,7 +4753,7 @@ function onLichessMove(uci: string) {
     if (lcCombo === 3 || lcCombo === 5 || lcCombo === 10) {
       floatText(lcBoardWrapEl, `${lcCombo} in a row!`, "gold");
     }
-    setStatus(lichessProgressEl, `✅ Solved! Puzzle rating ${st.rating}.${lcCombo >= 2 ? ` 🔥 ${lcCombo} in a row.` : ""}${describeThemes(lcPuzzle.themes) ? ` (${describeThemes(lcPuzzle.themes)})` : ""}`, "ok");
+    setStatus(lichessProgressEl, `✓ Solved! Puzzle rating ${st.rating}.${lcCombo >= 2 ? ` ${lcCombo} in a row.` : ""}${describeThemes(lcPuzzle.themes) ? ` (${describeThemes(lcPuzzle.themes)})` : ""}`, "ok");
     onThemedPuzzleResolved(true);
     return;
   }
@@ -4832,7 +4832,7 @@ async function onRedemptionMove(uci: string) {
       shake(redemptionWrapEl);
       flash(redemptionWrapEl, "bad");
       playFailSound();
-      setStatus(redemptionProgressEl, `❌ Not the move — the engine played ${p.bestMoveSan}. Load it again to retry.`, "error");
+      setStatus(redemptionProgressEl, `✗ Not the move — the engine played ${p.bestMoveSan}. Load it again to retry.`, "error");
       return;
     }
     redemptionFirstMoveDone = true;
@@ -4852,7 +4852,7 @@ async function onRedemptionMove(uci: string) {
       flash(redemptionWrapEl, "good");
       playSuccessSound();
     }
-    setStatus(redemptionProgressEl, `✅ Redeemed — ${p.bestMoveSan}. Now play it out against the bot.`, "ok");
+    setStatus(redemptionProgressEl, `✓ Redeemed — ${p.bestMoveSan}. Now play it out against the bot.`, "ok");
     renderRedemptionSection();
     await maybePlayRedemptionBot();
     return;
@@ -5051,7 +5051,7 @@ function renderTodaySection() {
     refreshAchievements();
     celebrate(document.getElementById("today-section"));
     playFanfareSound();
-    showToast(`Today complete — 🔥 ${streak.current}-day streak`);
+    showToast(`Today complete — ${streak.current}-day streak`);
   }
   todayOutput.innerHTML = renderToday(state, getTodayStreak(user));
 }

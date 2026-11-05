@@ -253,14 +253,14 @@ export function renderPunishmentAction(opts: {
   const btnClass = opts.isViewingPunishment ? "punishment-toggle-btn active" : "punishment-toggle-btn";
   const btnText = opts.isViewingPunishment
     ? `↩ Back to Played Move`
-    : `⚡ Show Refutation (${opts.punishmentSan || "Punishment"})`;
+    : `Show Refutation (${opts.punishmentSan || "Punishment"})`;
   return `<button type="button" class="${btnClass}" id="review-punishment-btn" title="Watch opponent's refutation move on the board">${btnText}</button>`;
 }
 
 export function renderThreatRadarAction(opts: { hasThreats: boolean; isActive: boolean }): string {
   if (!opts.hasThreats) return "";
   const btnClass = opts.isActive ? "threat-radar-toggle-btn active" : "threat-radar-toggle-btn";
-  const label = opts.isActive ? "👁️ Hide Tension Web" : "🎯 Threat Radar";
+  const label = opts.isActive ? "Hide Tension Web" : "Threat Radar";
   return `<button type="button" class="${btnClass}" id="review-threat-radar-btn" title="Highlight attacking lasers and victim pieces">${label}</button>`;
 }
 
@@ -289,7 +289,7 @@ export function renderStorylineBar(review: ReviewGame, currentIndex: number): st
   return `
     <div class="review-storyline-container" role="region" aria-label="Key turning points and story moments">
       <div class="storyline-header">
-        <span class="storyline-title"><span class="storyline-icon">⚡</span> Key Turning Points</span>
+        <span class="storyline-title">Key Turning Points</span>
         <span class="storyline-hint">Tap moment to jump</span>
       </div>
       <div class="storyline-track">

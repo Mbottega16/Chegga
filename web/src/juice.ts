@@ -226,7 +226,10 @@ export function achievementBanner(title: string, subtitle: string): void {
   if (!host) {
     host = document.createElement("div");
     host.id = "juice-banner-host";
-    document.body.appendChild(host);
+    // Announced to screen readers, and inside <main> so it sits in a landmark
+    // (it is position: fixed, so where it lives in the DOM doesn't move it).
+    host.setAttribute("role", "status");
+    (document.querySelector("main") ?? document.body).appendChild(host);
   }
   const el = document.createElement("div");
   el.className = "juice-banner";

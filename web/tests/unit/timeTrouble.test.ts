@@ -110,7 +110,7 @@ describe("rush: a quick mistake or blunder by the reviewer", () => {
     const r = review(["0:02:59", "0:02:58", "0:02:57"], grades({ 3: "blunder" }));
     expect(r.steps[2].timeSpentSec).toBe(2);
     expect(r.steps[2].clockAlert).toBe("rush");
-    expect(describeStep(r, 2)).toContain("⚡ Rushed: played in 2s.");
+    expect(describeStep(r, 2)).toContain("Rushed: played in 2s.");
   });
 
   it("fires for a mistake too", () => {
