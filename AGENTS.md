@@ -99,16 +99,14 @@ To prevent multi-megabyte data blobs and archived legacy apps from slowing down 
 
 *Overwrite this at the end of every session; move the previous handoff into `HISTORY.md` first.*
 
-- **Last Worked On:** **1-Click Graphic Review Card Generator, WCAG 2.1 AA Screen-Reader Live Review & Export Actions** (2026-11-04):
-  - Implemented **1-Click Shareable Game Review Card Generator** (`web/src/shareCard.ts`): renders a 1200x675 (16:9) broadcast graphic badge with match metadata, player ratings, opening, large accuracy %, centipawn loss, move quality breakdown, advantage flow curve, and highlighted key turning point.
-  - Added Export Card buttons to both `#review-panel` and `#post-game-report` with automated PNG image clipboard copy (`copyReviewCardImage` via `ClipboardItem`) and fallback instant file download (`downloadReviewCardImage`).
-  - Added review keyboard shortcut <kbd>G</kbd> for instant review card export alongside <kbd>S</kbd> (text summary), <kbd>C</kbd> (PGN), and <kbd>D</kbd> (download).
-  - Added bespoke `iconImage` vector SVG to `web/src/icons.ts`.
-  - Implemented **WCAG 2.1 AA Screen-Reader Accessibility** on review steps: enhanced `#review-caption` with `aria-live="polite" aria-atomic="true"`, with dynamic auditory `aria-label` announcing move notation, tactical motif, root cause, and material impact on blunders.
-  - Added unit test suite in `web/tests/unit/shareCard.test.ts` (5 tests), expanding unit test count to 357 passing tests (100%).
-- **Current State (2026-11-04):**
-  - `main` builds cleanly (`tsc && vite build` in 1.07s), 357 unit tests across 31 files passing (`npm test`), Playwright mobile & desktop smoke tests 100% green (12/12 desktop, 12/12 mobile), and pre-push hook active.
+- **Last Worked On (2026-11-05, PC, Claude):** two passes, two commits.
+  - `4d68bc5` WAVE pass: empty evict button, SVGs `aria-hidden` on the `<svg>`, no redundant titles; `--muted-dim` lifted in all themes; 0.75rem font floor; light/OLED no longer repainted dark by the studio `:root`; synced game cards use the big-board layout; Studio Menu folds (desktop rail, sticky; drawer at 1040px and below, `studioMenu.ts`); stage board shrinks to fit (container units).
+  - `eeb24d2` anti-slop pass from Impeccable 4.8.0, axe-core 4 and the AI-slop catalogs: side-tab stripes and picker top stripe removed, bounce easing off routine controls, emoji out of controls and status text, secondary buttons outlined, nested-interactive and label-in-name fixes, picker result badge back inside its card.
+- **Current State:** 357 unit tests pass; build clean; Playwright desktop + mobile 92 passed, 3 skipped, 1 failed. axe: 0 violations (desktop + Pixel 7, empty + demo). Playwright now blocks the service worker (`serviceWorkers: "block"`), which fixed the flaky Featurebase test.
 - **Next Up:**
-  1. Real-device mobile validation (test touch swipe gestures, 3D board pinch-zoom, and eval-curve scrubbing on physical iOS/Android screens).
-  2. High-volume account sync validation on Safari/WebKit IndexedDB (1,000+ game sync batches + background Stockfish queue).
-  3. Optional Vercel project/domain rename from `chegga-web.vercel.app` to `chegga.vercel.app`.
+  1. Fix the mobile `review-picker` e2e failure (fails on the old HEAD too): on a phone the review buttons and banner cover the `#review-before` checkbox.
+  2. Fix the phone board clip: mobile.css sizes squares as `(100vw - 44px) / 8`, but the real chrome is about 72px, so the h-file is cut off at 390px (also on the live site).
+  3. Light theme: accent text (`--accent`, `--accent-strong`, `--win`) is 1.5–1.9:1 on white; it needs dark text variants per accent.
+  4. Owner calls left open by the anti-slop pass: Inter for everything (Impeccable "overused font"; unified on purpose in `2c7b9e1`), the jello connect panel and move-quality pops (bounce easing, kept), motif emoji in `blunderTagger.ts`/`gamePatterns.ts`, Title Case headings.
+  5. Install WebKit for Playwright (`npx playwright install webkit`); the `webkit` project could not run on this PC.
+  6. Earlier: real-device mobile check; Safari/WebKit IndexedDB at 1,000+ games; optional Vercel rename.
