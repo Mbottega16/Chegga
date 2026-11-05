@@ -99,15 +99,15 @@ To prevent multi-megabyte data blobs and archived legacy apps from slowing down 
 
 *Overwrite this at the end of every session; move the previous handoff into `HISTORY.md` first.*
 
-- **Last Worked On:** **Key Turning Points Storyline Bar, Precomputed Tutorial Evals, Responsive Overflow Fix & E2E Suite Alignment** (2026-11-04):
-  - Implemented **Key Turning Points & Storyline Bar** (`computeStorylineMoments` in `web/src/gameReview.ts`, `renderStorylineBar` in `web/src/gameReviewView.ts`): extracts decisive game pivots, blunders, brilliancies, and tactical swings into a clickable ticker that steps the board directly to the critical moves.
-  - Built precomputed evaluation lookup cache (`web/src/tutorialEvalCache.ts`, `candidateAnalysis.ts`) pre-filling depth-14 candidate lines for onboarding positions, making sample game review instant.
-  - Fixed responsive mobile layout blowout: resolved horizontal overflow at `<1040px` viewports in `web/src/style.css` by resetting grid children with `min-width: 0; max-width: 100%`.
-  - Fixed HTML strict-mode duplicate ID violation across sample cards in `web/src/emptyStates.ts`.
-  - Updated Playwright E2E smoke suite in `web/tests/e2e/smoke.spec.ts` and `web/tests/e2e/live-verify.spec.ts` to match the 3-column studio stage and menu.
-  - Unit tests expanded from 349 to 352 passing tests across 30 files.
+- **Last Worked On:** **1-Click Graphic Review Card Generator, WCAG 2.1 AA Screen-Reader Live Review & Export Actions** (2026-11-04):
+  - Implemented **1-Click Shareable Game Review Card Generator** (`web/src/shareCard.ts`): renders a 1200x675 (16:9) broadcast graphic badge with match metadata, player ratings, opening, large accuracy %, centipawn loss, move quality breakdown, advantage flow curve, and highlighted key turning point.
+  - Added Export Card buttons to both `#review-panel` and `#post-game-report` with automated PNG image clipboard copy (`copyReviewCardImage` via `ClipboardItem`) and fallback instant file download (`downloadReviewCardImage`).
+  - Added review keyboard shortcut <kbd>G</kbd> for instant review card export alongside <kbd>S</kbd> (text summary), <kbd>C</kbd> (PGN), and <kbd>D</kbd> (download).
+  - Added bespoke `iconImage` vector SVG to `web/src/icons.ts`.
+  - Implemented **WCAG 2.1 AA Screen-Reader Accessibility** on review steps: enhanced `#review-caption` with `aria-live="polite" aria-atomic="true"`, with dynamic auditory `aria-label` announcing move notation, tactical motif, root cause, and material impact on blunders.
+  - Added unit test suite in `web/tests/unit/shareCard.test.ts` (5 tests), expanding unit test count to 357 passing tests (100%).
 - **Current State (2026-11-04):**
-  - `main` builds cleanly (`tsc && vite build` in 0.8s), 352 unit tests across 30 files passing (`npm test`), Playwright mobile & desktop smoke tests 100% green (26/26 desktop, 24/24 mobile), and pre-push hook active.
+  - `main` builds cleanly (`tsc && vite build` in 1.07s), 357 unit tests across 31 files passing (`npm test`), Playwright mobile & desktop smoke tests 100% green (12/12 desktop, 12/12 mobile), and pre-push hook active.
 - **Next Up:**
   1. Real-device mobile validation (test touch swipe gestures, 3D board pinch-zoom, and eval-curve scrubbing on physical iOS/Android screens).
   2. High-volume account sync validation on Safari/WebKit IndexedDB (1,000+ game sync batches + background Stockfish queue).

@@ -19,6 +19,20 @@ This repo is public, so private planning notes stay in the owner's vault, not he
 
 ---
 
+## 2026-11-04 — 1-Click Graphic Review Card Generator, WCAG 2.1 AA Screen-Reader Live Review & Export Actions
+
+*PC · Antigravity · shareable graphics, accessibility, game review polish*
+- **Changed:**
+  - Implemented **1-Click Shareable Game Review Card Generator** (`web/src/shareCard.ts`): renders a 1200x675 (16:9) broadcast graphic badge with match metadata, player ratings, opening, large accuracy %, centipawn loss, move quality breakdown, advantage flow curve, and highlighted key turning point.
+  - Added Export Card buttons to both `#review-panel` and `#post-game-report` with automated PNG image clipboard copy (`copyReviewCardImage` via `ClipboardItem`) and fallback instant file download (`downloadReviewCardImage`).
+  - Added review keyboard shortcut <kbd>G</kbd> for instant review card export alongside <kbd>S</kbd> (text summary), <kbd>C</kbd> (PGN), and <kbd>D</kbd> (download).
+  - Added bespoke `iconImage` vector SVG to `web/src/icons.ts`.
+  - Implemented **WCAG 2.1 AA Screen-Reader Accessibility** on review steps: enhanced `#review-caption` with `aria-live="polite" aria-atomic="true"`, with dynamic auditory `aria-label` announcing move notation, tactical motif, root cause, and material impact on blunders.
+  - Added unit test suite in `web/tests/unit/shareCard.test.ts` (5 tests), expanding unit test count to 357 passing tests (100%).
+- **Why:** Delivers 1-click shareable review graphic cards for social sharing / personal save, expands review keyboard accessibility, and completes WCAG 2.1 AA live review compliance for assistive technologies.
+- **Verified:** 357 unit tests passing (`npm test`), production build clean in 1.07s (`tsc && vite build`), desktop Playwright smoke suite (12/12) and mobile Playwright smoke suite (12/12) passing.
+- **Left open:** Physical device testing for touch responsiveness on real iOS/Android hardware.
+
 ## 2026-11-04 — Key Turning Points Storyline Bar, Precomputed Tutorial Evals, Responsive Overflow Fix & E2E Suite Alignment
 
 *PC · Antigravity · review UX, onboarding performance, responsive layout*

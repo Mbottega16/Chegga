@@ -39,7 +39,9 @@ import {
   iconShare,
   iconCopy,
   iconDownload,
+  iconImage,
 } from "./icons";
+import { renderReviewCardCanvas, copyReviewCardImage, downloadReviewCardImage } from "./shareCard";
 import {
   openDb,
   putGame,
@@ -440,7 +442,7 @@ app.innerHTML = `
                 </div>
                 <div id="review-strip-host"></div>
                 <div class="review-broadcast-banner">
-                  <p id="review-caption" class="review-caption"></p>
+                  <p id="review-caption" class="review-caption" aria-live="polite" aria-atomic="true"></p>
                   <p id="review-why" class="review-why" style="display:none"></p>
                   <div id="review-blunder-dna-host" style="display:none"></div>
                 </div>
@@ -464,6 +466,7 @@ app.innerHTML = `
                     <div><kbd>B</kbd></div><div>Toggle "Before" view &amp; candidates</div>
                     <div><kbd>W</kbd></div><div>Jump to your worst move</div>
                     <div><kbd>T</kbd></div><div>Try this position</div>
+                    <div><kbd>G</kbd></div><div>Export graphic review card</div>
                     <div><kbd>S</kbd></div><div>Copy shareable summary card</div>
                     <div><kbd>C</kbd></div><div>Copy annotated PGN</div>
                     <div><kbd>D</kbd></div><div>Download .pgn file</div>
@@ -481,6 +484,7 @@ app.innerHTML = `
                 </div>
                 <div id="review-tally"></div>
                 <div class="review-export-actions">
+                  <button type="button" id="review-share-card-btn" class="btn-quiet" title="Export high-res graphic game review card">${iconImage} Export card</button>
                   <button type="button" id="review-share-summary-btn" class="btn-quiet" title="Copy shareable summary card">${iconShare} Share summary</button>
                   <button type="button" id="review-copy-pgn-btn" class="btn-quiet" title="Copy annotated PGN to clipboard">${iconCopy} Copy PGN</button>
                   <button type="button" id="review-download-pgn-btn" class="btn-quiet" title="Download annotated .pgn file">${iconDownload} Download .pgn</button>
@@ -504,6 +508,7 @@ app.innerHTML = `
                 <h3>Game report</h3>
                 <div id="post-game-report-output"></div>
                 <div class="post-game-actions">
+                  <button type="button" id="post-game-card-btn" class="btn-quiet" title="Export high-res graphic review card">${iconImage} Export card</button>
                   <button type="button" id="post-game-share-btn" class="btn-quiet" title="Copy shareable summary card">${iconShare} Share summary</button>
                   <button type="button" id="post-game-copy-pgn-btn" class="btn-quiet" title="Copy annotated PGN to clipboard">${iconCopy} Copy PGN</button>
                   <button type="button" id="download-pgn-btn" class="btn-quiet" title="Download annotated .pgn file">${iconDownload} Download .pgn</button>
@@ -1093,6 +1098,7 @@ const postGameReportSection = document.querySelector<HTMLDivElement>("#post-game
 const playSidebar = postGameReportSection.parentElement!;
 const postGameReportOutput = document.querySelector<HTMLDivElement>("#post-game-report-output")!;
 const downloadPgnBtn = document.querySelector<HTMLButtonElement>("#download-pgn-btn")!;
+const postGameCardBtn = document.querySelector<HTMLButtonElement>("#post-game-card-btn")!;
 const postGameShareBtn = document.querySelector<HTMLButtonElement>("#post-game-share-btn")!;
 const postGameCopyPgnBtn = document.querySelector<HTMLButtonElement>("#post-game-copy-pgn-btn")!;
 const postGameExportStatus = document.querySelector<HTMLParagraphElement>("#post-game-export-status")!;
@@ -1532,6 +1538,7 @@ const reviewThreatRadarBtn = document.querySelector<HTMLButtonElement>("#review-
 const reviewTryBtn = document.querySelector<HTMLButtonElement>("#review-try")!;
 const reviewSaveBtn = document.querySelector<HTMLButtonElement>("#review-save")!;
 const reviewSaveKeyBtn = document.querySelector<HTMLButtonElement>("#review-save-key")!;
+const reviewShareCardBtn = document.querySelector<HTMLButtonElement>("#review-share-card-btn")!;
 const reviewShareSummaryBtn = document.querySelector<HTMLButtonElement>("#review-share-summary-btn")!;
 const reviewCopyPgnBtn = document.querySelector<HTMLButtonElement>("#review-copy-pgn-btn")!;
 const reviewDownloadPgnBtn = document.querySelector<HTMLButtonElement>("#review-download-pgn-btn")!;
@@ -1757,6 +1764,14 @@ function showReviewStep(index: number) {
   board3dInstance?.setPosition(playBoard.getFen());
 
   reviewCaption.textContent = beforeView ? describeBefore(review, clamped) : describeStep(review, clamped);
+  if (step?.isHuman && step.blunderDna) {
+    reviewCaption.setAttribute(
+      "aria-label",
+      `${reviewCaption.textContent}. Tactical motif: ${step.blunderDna.motifLabel}. Cause: ${step.blunderDna.rootCauseLabel}. Impact: ${step.blunderDna.damageLabel}.`
+    );
+  } else {
+    reviewCaption.removeAttribute("aria-label");
+  }
   const why = step && step.isHuman ? explainMove(explainInputFromStep(step)) : [];
   if (step && step.isHuman && step.classification) {
     const effectiveTier =
@@ -1931,6 +1946,9 @@ document.addEventListener("keydown", (e) => {
     const step = currentReviewStep();
     const p = step ? puzzleFromStep(review, step, reviewOpening) : null;
     if (p) startTry(p);
+  } else if (e.key === "g" || e.key === "G") {
+    e.preventDefault();
+    reviewShareCardBtn.click();
   } else if (e.key === "s" || e.key === "S") {
     e.preventDefault();
     reviewShareSummaryBtn.click();
@@ -2045,6 +2063,37 @@ reviewCandidatesHost.addEventListener("click", (e) => {
   reviewPreviewUci = reviewPreviewUci === uci ? null : uci;
   renderCandidates(step);
 });
+
+async function handleExportReviewCard(targetBtn: HTMLButtonElement, statusEl: HTMLElement) {
+  if (!review) return;
+  targetBtn.disabled = true;
+  try {
+    const canvas = renderReviewCardCanvas(review, { opening: reviewOpening });
+    const copied = await copyReviewCardImage(canvas);
+    if (copied) {
+      playCopySound();
+      floatText(targetBtn, "Copied card! 📸", "gold");
+      statusEl.textContent = "Copied high-res review card to clipboard!";
+    } else {
+      const fname = review.gameId ? `chegga-review-${review.gameId}.png` : `chegga-review-${Date.now()}.png`;
+      downloadReviewCardImage(canvas, fname);
+      floatText(targetBtn, "Downloaded card! 📸", "good");
+      statusEl.textContent = "Downloaded high-res review card (PNG)!";
+    }
+    statusEl.style.display = "";
+    window.setTimeout(() => {
+      statusEl.style.display = "none";
+    }, 3500);
+  } catch (err: any) {
+    statusEl.textContent = `Could not generate review card: ${err.message ?? err}`;
+    statusEl.style.display = "";
+  } finally {
+    targetBtn.disabled = false;
+  }
+}
+
+reviewShareCardBtn.addEventListener("click", () => handleExportReviewCard(reviewShareCardBtn, reviewExportStatus));
+postGameCardBtn.addEventListener("click", () => handleExportReviewCard(postGameCardBtn, postGameExportStatus));
 
 reviewShareSummaryBtn.addEventListener("click", async () => {
   if (!review) return;
