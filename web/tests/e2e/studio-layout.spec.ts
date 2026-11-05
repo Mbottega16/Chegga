@@ -55,6 +55,18 @@ test.describe("Studio Menu fold", () => {
   });
 });
 
+test("a menu click moves the highlight and flashes its target", async ({ page }) => {
+  await page.goto("/");
+  const toggle = page.locator("#studio-nav-toggle");
+  if ((await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
+  const link = page.locator('.studio-nav-link[href="#play-section"]');
+  await link.click();
+  await expect(link).toHaveClass(/active/);
+  await expect(link).toHaveAttribute("aria-current", "location");
+  await expect(page.locator('.studio-nav-link[href="#sync-section"]')).not.toHaveClass(/active/);
+  await expect(page.locator("#play-section")).toHaveClass(/nav-target-flash/);
+});
+
 test("synced game cards keep their details inside the card", async ({ page }) => {
   await page.goto("/");
   await page.locator("#demo-load-btn").click();

@@ -60,11 +60,29 @@ export function setupStudioMenu(): void {
   toggle.addEventListener("click", () => setStudioMenuCollapsed(!isStudioMenuCollapsed()));
 
   // A rail link to a folded-away card (Get connected, Daily Training) opens
-  // the menu before the browser's own anchor jump runs.
-  document.querySelectorAll<HTMLAnchorElement>(".studio-nav-link").forEach((link) => {
+  // the menu before the browser's own anchor jump runs. Every click also
+  // moves the highlight and flashes the target: the first three targets are
+  // already on screen, so without this a click looked like it did nothing.
+  const links = document.querySelectorAll<HTMLAnchorElement>(".studio-nav-link");
+  links.forEach((link) => {
     link.addEventListener("click", () => {
       const id = link.hash.slice(1);
-      if (id) revealSection(id);
+      const target = id ? revealSection(id) : null;
+      links.forEach((l) => {
+        l.classList.toggle("active", l === link);
+        if (l === link) l.setAttribute("aria-current", "location");
+        else l.removeAttribute("aria-current");
+      });
+      if (!target) return;
+      if (target instanceof HTMLDetailsElement) target.open = true;
+      flashTarget(target);
     });
   });
+}
+
+function flashTarget(el: HTMLElement): void {
+  el.classList.remove("nav-target-flash");
+  void el.offsetWidth; // restart the animation on a repeat click
+  el.classList.add("nav-target-flash");
+  window.setTimeout(() => el.classList.remove("nav-target-flash"), 1200);
 }
