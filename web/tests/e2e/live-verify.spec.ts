@@ -62,6 +62,10 @@ test.describe("jump nav", () => {
       await page.goto("/");
       const nav = page.locator("nav.section-nav");
 
+      // On narrow screens the Studio Menu starts as a closed drawer.
+      const menuToggle = page.locator("#studio-nav-toggle");
+      if ((await menuToggle.getAttribute("aria-expanded")) === "false") await menuToggle.click();
+
       await page.locator(`nav.section-nav a[href="${id}"]`).click();
       // native anchor jump is instant; give layout + the sticky-pin a tick to settle
       await page.waitForTimeout(300);

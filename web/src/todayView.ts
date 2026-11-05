@@ -20,7 +20,7 @@ export function renderToday(state: TodayState, streak: TodayStreak): string {
 
   const ringSvg = `
     <div class="today-ring-wrap" aria-hidden="true">
-      <svg class="today-ring-svg" viewBox="0 0 44 44" width="44" height="44">
+      <svg class="today-ring-svg" viewBox="0 0 44 44" width="44" height="44" aria-hidden="true" focusable="false">
         <circle cx="22" cy="22" r="${radius}" fill="none" stroke="#222a3a" stroke-width="4" />
         <circle cx="22" cy="22" r="${radius}" fill="none" stroke="${complete ? "#4ade80" : "#e3a857"}" stroke-width="4"
           stroke-linecap="round" stroke-dasharray="${circum.toFixed(1)}" stroke-dashoffset="${dashOffset.toFixed(1)}"

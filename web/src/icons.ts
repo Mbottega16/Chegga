@@ -112,3 +112,8 @@ export const iconCheck = svgIcon(
 export const iconArrowRight = svgIcon(
   `<line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline>`
 );
+
+// Points down; CSS rotates it to show which way a panel will fold.
+export const iconChevron = svgIcon(
+  `<polyline points="6 9 12 15 18 9"></polyline>`
+);

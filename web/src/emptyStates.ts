@@ -5,6 +5,7 @@
 // hollow or 1/4-filled.
 
 import { extractPreviewFromPgn, renderMiniBoardSvg } from "./miniBoardSvg";
+import { revealSection } from "./studioMenu";
 
 export type SkeletonKind = "report" | "bars" | "board" | "chart" | "rows" | "lines";
 
@@ -268,7 +269,7 @@ export function emptyFor(sectionId: string): boolean {
         : "Connect your games to unlock move-quality rings, phase metrics, and opening diagnostics.";
     output.innerHTML = `<div class="empty-state">
       <div class="empty-state-graphic" aria-hidden="true">
-        <svg viewBox="0 0 120 48" width="110" height="44" fill="none">
+        <svg viewBox="0 0 120 48" width="110" height="44" fill="none" aria-hidden="true" focusable="false">
           <rect x="4" y="4" width="40" height="40" rx="6" fill="#141b27" stroke="#2a3548" stroke-width="1.4"/>
           <circle cx="24" cy="24" r="12" stroke="#22d3ee" stroke-width="3" stroke-dasharray="48 28" stroke-linecap="round"/>
           <rect x="54" y="10" width="56" height="7" rx="3.5" fill="#232c3d"/>
@@ -352,7 +353,7 @@ export function wireEmptyStateCtas(): void {
     }
     const btn = (e.target as HTMLElement).closest("[data-empty-cta]");
     if (!btn) return;
-    document.getElementById("sync-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    revealSection("sync-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
     window.setTimeout(() => document.getElementById("username")?.focus(), 400);
   });
 }

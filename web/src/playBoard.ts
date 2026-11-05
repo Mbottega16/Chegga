@@ -1063,7 +1063,7 @@ export class PlayBoard {
     const tier = this.moveFlowTrail.tier;
     const isBrilliant = tier === "brilliant";
     return `
-      <svg class="play-flow-layer" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <svg class="play-flow-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
         <defs>
           <filter id="flow-glow-${this.uid}" x="-20%" y="-20%" width="140%" height="140%">
             <feDropShadow dx="0" dy="0" stdDeviation="0.8" flood-color="${color}" flood-opacity="0.8"/>
@@ -1148,7 +1148,7 @@ export class PlayBoard {
               vector-effect="non-scaling-stroke"/>`;
     });
     return `
-      <svg class="play-trail-layer${this.animateTrailsOnce ? " play-trail-layer-in" : ""}" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <svg class="play-trail-layer${this.animateTrailsOnce ? " play-trail-layer-in" : ""}" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
         <defs>${gradients.join("")}</defs>
         ${lines.join("")}
       </svg>`;
@@ -1183,7 +1183,7 @@ export class PlayBoard {
               marker-end="url(#${markerId})" vector-effect="non-scaling-stroke"/>`);
     });
     return `
-      <svg class="play-arrow-layer${this.animateArrowsOnce ? " play-arrow-layer-in" : ""}" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <svg class="play-arrow-layer${this.animateArrowsOnce ? " play-arrow-layer-in" : ""}" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
         <defs>${defs.join("")}</defs>${lines.join("")}
       </svg>`;
   }

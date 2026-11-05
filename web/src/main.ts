@@ -40,7 +40,9 @@ import {
   iconCopy,
   iconDownload,
   iconImage,
+  iconChevron,
 } from "./icons";
+import { setupStudioMenu, revealSection } from "./studioMenu";
 import { renderReviewCardCanvas, copyReviewCardImage, downloadReviewCardImage } from "./shareCard";
 import {
   openDb,
@@ -348,7 +350,7 @@ app.innerHTML = `
           <div class="sync-actions-row">
             <button type="submit" id="sync-btn">${iconConnect} Sync games</button>
             <div class="demo-square-wrap">
-              <button type="button" id="demo-load-btn" class="demo-square-btn" title="Try demo" aria-label="Try demo">
+              <button type="button" id="demo-load-btn" class="demo-square-btn" aria-label="Try demo">
                 ${iconPlay}
               </button>
               <div class="demo-popover-panel" role="tooltip">
@@ -384,9 +386,14 @@ app.innerHTML = `
       <div class="studio-left-column">
         <nav class="card studio-nav-card section-nav" id="studio-nav-panel" aria-label="Studio Menu">
           <div class="studio-nav-header">
-            <h2>Studio Menu</h2>
+            <h2 class="studio-nav-heading">
+              <button type="button" class="studio-nav-toggle" id="studio-nav-toggle" aria-expanded="true" aria-controls="studio-nav-list">
+                <span class="studio-nav-heading-text">Studio Menu</span>
+                <span class="studio-nav-chevron">${iconChevron}</span>
+              </button>
+            </h2>
           </div>
-          <div class="studio-nav-list">
+          <div class="studio-nav-list" id="studio-nav-list">
             <a href="#sync-section" class="studio-nav-link active">
               <span class="nav-icon">${iconConnect}</span>
               <span class="nav-text">Getting Connected.</span>
@@ -580,7 +587,7 @@ app.innerHTML = `
                     <div class="theme-accent-swatches" role="radiogroup" aria-label="Studio Accent Color">
                       ${ACCENT_OPTIONS.map(
                         (a) =>
-                          `<button type="button" class="theme-accent-swatch" data-accent="${a.id}" title="${a.label}" aria-label="${a.label}" style="--swatch-hex: ${a.hex};">
+                          `<button type="button" class="theme-accent-swatch" data-accent="${a.id}" style="--swatch-hex: ${a.hex};">
                             <span class="swatch-color" style="background: ${a.hex};"></span>
                             <span class="swatch-name">${a.label}</span>
                           </button>`
@@ -903,7 +910,7 @@ app.innerHTML = `
               <div id="evict-confirm" class="storage-evict-confirm" hidden>
                 <p id="evict-confirm-text" class="status-line"></p>
                 <div class="play-controls">
-                  <button type="button" id="evict-yes-btn"></button>
+                  <button type="button" id="evict-yes-btn">Remove games</button>
                   <button type="button" id="evict-cancel-btn">Cancel</button>
                 </div>
               </div>
@@ -955,6 +962,7 @@ app.innerHTML = `
 `;
 
 setupCollapsibleCards();
+setupStudioMenu();
 setupMobileTaglines();
 wireEmptyStateCtas();
 wireMiniBoardReplay(document);
@@ -995,7 +1003,7 @@ setupFeedbackForm(); // Tally form — loads on first open of the "Send feedback
 
 // Hero CTAs: scroll to the relevant card and put the cursor where it's needed.
 document.getElementById("hero-analyze-btn")?.addEventListener("click", () => {
-  document.getElementById("sync-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  revealSection("sync-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
   window.setTimeout(() => document.getElementById("username")?.focus(), 400);
 });
 document.getElementById("hero-play-btn")?.addEventListener("click", () => {
@@ -1008,7 +1016,7 @@ document.getElementById("hero-play-btn")?.addEventListener("click", () => {
 document.getElementById("post-game-report")?.addEventListener("click", (e) => {
   if (!(e.target as HTMLElement).closest("#post-game-connect-link")) return;
   e.preventDefault();
-  document.getElementById("sync-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  revealSection("sync-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
   window.setTimeout(() => document.getElementById("username")?.focus(), 400);
 });
 wireTaxonomyBrowser(document.querySelector<HTMLElement>("#pk-taxonomy-root")!, (_code, themes, nodeName) => {

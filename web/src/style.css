@@ -12,7 +12,7 @@
   --border-strong: #2e3542;
   --text: #edeff3;
   --muted: #9aa4b6; /* lifted from #8a93a6 for AA contrast on the near-black bg */
-  --muted-dim: #6b7386;
+  --muted-dim: #8a93a6; /* lifted from #6b7386: 5.2:1 on the lightest dark panel, still a step below --muted */
 
   --accent: #e3a857;
   --accent-strong: #f0be73;
@@ -61,7 +61,7 @@
   --border-strong: #cbd5e1;
   --text: #0f172a;
   --muted: #475569;
-  --muted-dim: #64748b;
+  --muted-dim: #556274; /* lifted from #64748b: 5:1 on #e2e8f0 */
   --accent-wash: rgba(227, 168, 87, 0.16);
   --board-frame: #4a6842;
 }
@@ -171,7 +171,7 @@
   --border-strong: #272d3a;
   --text: #f8fafc;
   --muted: #94a3b8;
-  --muted-dim: #64748b;
+  --muted-dim: #7c8aa0; /* lifted from #64748b: 4.8:1 on #1a1e27 */
   --board-frame: #364932;
 }
 
@@ -756,7 +756,7 @@ pre.log {
 }
 .stat-label {
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   margin-top: 4px;
 }
 
@@ -773,8 +773,8 @@ pre.log {
   align-items: center;
   justify-content: center;
   min-width: 2px;
-  color: #10121a;
-  font-size: 0.68rem;
+  color: #000000; /* black, not #10121a: keeps 4.5:1 on the red blunder segment */
+  font-size: 0.75rem;
   font-family: var(--font-mono);
   font-weight: 600;
   white-space: nowrap;
@@ -803,7 +803,7 @@ td {
 th {
   color: var(--muted);
   font-weight: 600;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -887,7 +887,7 @@ td {
 }
 .opening-legend-label {
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-family: var(--font-mono);
 }
 .opening-legend-ramp {
@@ -902,7 +902,7 @@ td {
 
 .opening-legend-quality {
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-family: var(--font-mono);
   gap: 4px 10px;
 }
@@ -1396,6 +1396,22 @@ input[type="range"] {
   flex: 1;
   min-width: 200px;
 }
+
+/* The stage board shrinks to fit its column instead of spilling under the
+   games column (84px squares need a stage about 710px wide). Container
+   units follow the stage, so the size also tracks the Studio Menu rail. */
+@media (min-width: 601px) {
+  .studio-stage-card .play-layout {
+    container-type: inline-size;
+  }
+  .studio-stage-card .play-board {
+    grid-template-columns: repeat(8, min(84px, calc((100cqi - 34px) / 8)));
+    grid-template-rows: repeat(8, min(84px, calc((100cqi - 34px) / 8)));
+  }
+  .studio-stage-card .play-piece {
+    font-size: min(58px, calc((100cqi - 34px) / 8 * 0.69));
+  }
+}
 .play-move-list {
   font-family: var(--font-mono);
   font-size: 0.82rem;
@@ -1433,7 +1449,7 @@ input[type="range"] {
 }
 .storyline-title {
   font-family: var(--font-sans);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1447,7 +1463,7 @@ input[type="range"] {
   font-size: 0.85rem;
 }
 .storyline-hint {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 .storyline-track {
@@ -1489,7 +1505,7 @@ input[type="range"] {
   justify-content: center;
   font-family: "JetBrains Mono", monospace;
   font-weight: 900;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--chip-accent);
   background: rgba(255, 255, 255, 0.06);
   padding: 1px 4px;
@@ -1502,7 +1518,7 @@ input[type="range"] {
   color: var(--text);
 }
 .storyline-headline {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--muted);
 }
@@ -1521,7 +1537,7 @@ input[type="range"] {
   justify-content: space-between;
   align-items: center;
   font-family: monospace;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   color: var(--muted);
   margin-bottom: 4px;
 }
@@ -1532,7 +1548,7 @@ input[type="range"] {
   color: var(--text);
 }
 .eval-graph-legend {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
 }
 .legend-white {
   color: var(--text);
@@ -1674,7 +1690,7 @@ input[type="range"] {
   cursor: default;
 }
 .review-hint {
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   margin: 0 0 10px;
 }
 .quality-tally {
@@ -1708,7 +1724,7 @@ input[type="range"] {
   color: #14170f;
   font-family: monospace;
   font-weight: 800;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   line-height: 1;
   padding: 2px 4px;
   border: 1px solid #14170f;
@@ -1719,7 +1735,7 @@ input[type="range"] {
   font-weight: 900;
 }
 .quality-pixel-badge .pixel-count {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 .tally-label {
@@ -1818,7 +1834,7 @@ input[type="range"] {
   align-items: center;
   justify-content: center;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--accent-ink);
   text-shadow: 0 0 4px rgba(255, 255, 255, 0.6);
@@ -1961,7 +1977,7 @@ input[type="range"] {
   top: 50%;
   transform: translateY(-50%);
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   color: var(--text);
 }
 .skill-bar-empty {
@@ -2078,7 +2094,7 @@ input[type="range"] {
 .pk-domain-count {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   color: var(--muted-dim);
 }
 .pk-domain-note {
@@ -2115,12 +2131,12 @@ input[type="range"] {
 }
 .pk-node-code {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   color: var(--muted-dim);
 }
 .pk-node-level {
   font-family: var(--font-mono);
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 4px;
@@ -2142,7 +2158,7 @@ input[type="range"] {
 }
 .pk-pill {
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   color: var(--muted);
   background: transparent;
   border: 1px solid var(--border-strong);
@@ -2164,7 +2180,7 @@ input[type="range"] {
 }
 .pk-practice-btn {
   margin-top: 8px;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-family: var(--font-display);
   color: var(--accent-strong);
   background: transparent;
@@ -2365,7 +2381,7 @@ input[type="range"] {
   color: var(--text);
 }
 .achv-desc {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
@@ -2549,7 +2565,7 @@ input[type="range"] {
   color: #14170f;
   font-family: monospace;
   font-weight: 800;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   line-height: 1;
   padding: 2px 5px;
   border: 2px solid #14170f;
@@ -2565,11 +2581,11 @@ input[type="range"] {
 }
 .play-quality-pixel-badge .pixel-glyph {
   font-weight: 900;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   letter-spacing: -0.5px;
 }
 .play-quality-pixel-badge .pixel-label {
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   letter-spacing: -0.2px;
 }
 .play-quality-pixel-badge-brilliant {
@@ -2652,7 +2668,7 @@ input[type="range"] {
   color: #14170f;
   font-family: monospace;
   font-weight: 900;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   line-height: 1;
   padding: 1px 3px;
   border: 1px solid #14170f;
@@ -2718,7 +2734,7 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
 }
 .site-footer p {
   color: var(--muted-dim);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   line-height: 1.6;
   margin: 0;
 }
@@ -2971,7 +2987,7 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
   color: #14170f;
   font-family: monospace;
   font-weight: 900;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   border: 1px solid #14170f;
   box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.7);
   line-height: 1;
@@ -2984,10 +3000,10 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
 .cand-eval {
   font-family: var(--font-mono);
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
 }
 .cand-tag {
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -3071,7 +3087,7 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
 }
 .picker-count {
   font-family: var(--font-mono);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   opacity: 0.85;
 }
 .picker-carousel {
@@ -3217,7 +3233,7 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
   color: var(--muted);
 }
 .saved-solved {
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--win);
@@ -3239,7 +3255,7 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
   margin-left: 8px;
 }
 .saved-due-tag {
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   font-weight: 700;
   padding: 1px 5px;
   border-radius: 3px;
@@ -3250,7 +3266,7 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
   letter-spacing: 0.03em;
 }
 .saved-box-badge {
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   font-weight: 700;
   padding: 1px 6px;
   border-radius: 3px;
@@ -3570,7 +3586,7 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
   position: absolute;
   top: 3px;
   left: 3px;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   color: #22d3ee;
   text-shadow: 0 0 6px rgba(34, 211, 238, 0.9), 0 0 2px rgba(0, 0, 0, 0.6);
   pointer-events: none;
@@ -3622,7 +3638,7 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
 /* ---- Opening Repertoire & Leak Diagnostic ---- */
 .opening-leak-badge {
   display: inline-block;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -3635,7 +3651,7 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
   vertical-align: middle;
 }
 .opening-review-jump {
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   padding: 3px 8px;
 }
 .opening-actions-group {
@@ -3644,7 +3660,7 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
   flex-wrap: wrap;
 }
 .opening-practice-btn {
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   padding: 3px 8px;
   border-color: var(--accent);
   color: var(--accent-strong);
@@ -3664,7 +3680,7 @@ kbd {
   display: inline-block;
   padding: 1px 5px;
   font-family: monospace;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 1.2;
   color: var(--accent-strong);
@@ -3683,7 +3699,7 @@ kbd {
   height: 18px;
   padding: 0;
   border-radius: 50%;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   background: var(--panel-hover);
   border: 1px solid var(--border-strong);
@@ -3743,7 +3759,9 @@ kbd {
    BROADCAST CHESS STUDIO — FRONT-END OVERHAUL
    ========================================================================== */
 
-:root {
+/* Dark theme only: a bare :root here came later than [data-theme="light"]
+   and [data-theme="oled"], so it repainted both of them dark. */
+:root:not([data-theme="light"]):not([data-theme="oled"]) {
   --bg: #080b11;
   --panel: rgba(17, 22, 32, 0.86);
   --panel-hover: rgba(24, 31, 45, 0.94);
@@ -3794,7 +3812,7 @@ body {
 }
 
 .brand-badge {
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   padding: 3px 8px;
@@ -3865,7 +3883,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   color: var(--muted);
   padding: 5px 11px;
   border-radius: var(--radius);
@@ -4079,7 +4097,7 @@ section.card {
 
 .studio-nav-title {
   font-family: var(--font-display);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -4127,6 +4145,155 @@ section.card {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+/* ---- Studio Menu fold: icon rail on desktop, drawer on narrow screens (studioMenu.ts) ---- */
+.studio-nav-toggle,
+.studio-nav-toggle:hover,
+.studio-nav-toggle:active {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  transform: none;
+}
+
+.studio-nav-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  transition: transform 0.2s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.studio-nav-toggle:hover .studio-nav-chevron {
+  color: var(--accent-strong);
+  border-color: var(--accent);
+}
+
+@media (min-width: 1041px) {
+  /* Sticky: the menu stays in reach while the stage scrolls. */
+  .studio-left-column {
+    position: sticky;
+    top: 16px;
+    align-self: start;
+    height: auto;
+    z-index: 5;
+  }
+
+  .studio-nav-chevron {
+    transform: rotate(90deg); /* points left: fold into the rail */
+  }
+
+  .studio-workspace-grid.menu-collapsed {
+    grid-template-columns: 64px minmax(0, 3fr) minmax(280px, 1.08fr);
+  }
+
+  .studio-workspace-grid.menu-collapsed .studio-left-column {
+    grid-row: 1 / 3;
+  }
+
+  .studio-workspace-grid.menu-collapsed:has(#sync-section[data-expanded="true"]) .studio-left-column {
+    grid-row: 2;
+  }
+
+  /* The rail's own links open these again (revealSection in studioMenu.ts). */
+  .studio-workspace-grid.menu-collapsed #sync-section:not([data-expanded="true"]),
+  .studio-workspace-grid.menu-collapsed #today-section {
+    display: none;
+  }
+
+  .menu-collapsed .studio-nav-card {
+    padding: 12px 7px;
+  }
+
+  /* The wider stage centres the board instead of leaving a gap on its right. */
+  .menu-collapsed .play-layout {
+    justify-content: center;
+  }
+
+  .menu-collapsed .studio-nav-header {
+    margin-bottom: 10px;
+  }
+
+  .menu-collapsed .studio-nav-toggle {
+    justify-content: center;
+  }
+
+  .menu-collapsed .studio-nav-chevron {
+    transform: rotate(-90deg); /* points right: open the menu */
+  }
+
+  .menu-collapsed .studio-nav-link {
+    position: relative;
+    justify-content: center;
+    padding: 10px 0;
+  }
+
+  .menu-collapsed .studio-nav-heading-text,
+  .menu-collapsed .studio-nav-link .nav-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* On hover or keyboard focus, the hidden label shows as a tooltip beside the rail. */
+  .menu-collapsed .studio-nav-link:hover .nav-text,
+  .menu-collapsed .studio-nav-link:focus-visible .nav-text {
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    width: auto;
+    height: auto;
+    margin: 0;
+    padding: 5px 9px;
+    overflow: visible;
+    clip: auto;
+    z-index: 20;
+    background: var(--panel);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+    color: var(--text);
+    font-size: 0.8rem;
+    pointer-events: none;
+  }
+}
+
+@media (max-width: 1040px) {
+  .studio-nav-chevron {
+    transform: rotate(180deg); /* points up: close the drawer */
+  }
+
+  .menu-collapsed .studio-nav-chevron {
+    transform: none; /* points down: open the drawer */
+  }
+
+  .menu-collapsed .studio-nav-header {
+    margin-bottom: 0;
+  }
+
+  .menu-collapsed .studio-nav-list {
+    display: none;
+  }
 }
 
 /* ---- Reactive Board Stage Atmosphere (#play-section) ---- */
@@ -4238,7 +4405,7 @@ section.card {
 
 .settings-block-title {
   font-family: var(--font-display);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -4344,7 +4511,7 @@ section.card {
   height: auto;
   border-radius: 6px;
   padding: 3px 8px;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
 }
 
 .review-broadcast-banner {
@@ -4415,7 +4582,7 @@ section.card {
   position: absolute;
   left: 4px;
   bottom: 4px;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -4775,7 +4942,7 @@ section.card {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -4875,7 +5042,7 @@ section.card {
 }
 
 .sweet-spot-label {
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--text);
   text-align: center;
@@ -4883,7 +5050,7 @@ section.card {
 }
 
 .sweet-spot-sub {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   color: var(--muted-dim);
   font-family: var(--font-mono);
 }
@@ -4954,7 +5121,7 @@ section.card {
 }
 
 .quality-tier-meta {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   color: var(--muted-dim);
   font-family: var(--font-mono);
 }
@@ -5386,7 +5553,7 @@ section.card {
 }
 
 .demo-popover-desc {
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   color: var(--muted);
   line-height: 1.35;
 }
@@ -5501,7 +5668,7 @@ section.card {
 }
 
 .studio-right-column .picker-count-badge {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 600;
   padding: 2px 7px;
   border-radius: 999px;
@@ -5601,12 +5768,47 @@ section.card {
   display: block;
 }
 
+/* Synced games use the same card as the sample games: big board on top,
+   details under it, in one vertical list. The older horizontal-carousel
+   rules (.picker-carousel, .picker-card min-width) would otherwise squeeze
+   the details out of the narrow right column. */
+.studio-right-column .picker-carousel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+
+.studio-right-column .picker-nav {
+  display: none;
+}
+
+.studio-right-column .picker-card {
+  min-width: 0;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.studio-right-column .picker-card .picker-card-top {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+}
+
+.studio-right-column .picker-card .picker-mini-board-wrap {
+  flex: 0 0 auto;
+  width: 100%;
+  height: auto;
+}
+
 .game-slider-move-tag {
   position: absolute;
   bottom: 8px;
   left: 8px;
   z-index: 10;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   padding: 2px 7px;
@@ -5654,7 +5856,7 @@ section.card {
 }
 
 .game-card-vs {
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--muted);
   text-transform: lowercase;
@@ -5681,7 +5883,7 @@ section.card {
 .game-slider-meta,
 .game-card-meta,
 .picker-meta {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   color: var(--muted-dim);
   white-space: nowrap;
   flex-shrink: 0;
@@ -5852,7 +6054,7 @@ section.card {
 }
 
 .lab-drawer-action {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--accent);
 }
@@ -5901,6 +6103,23 @@ section.card {
     overflow-y: hidden;
   }
   .studio-right-column .game-slider-card {
+    flex: 0 0 250px;
+  }
+  .studio-right-column .picker-carousel {
+    flex-direction: row;
+    align-items: center;
+  }
+  .studio-right-column .picker-nav {
+    display: inline-block;
+  }
+  .studio-right-column .picker-track {
+    flex-direction: row;
+    min-height: 0;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .studio-right-column .picker-card {
     flex: 0 0 250px;
   }
   .hero-grid {

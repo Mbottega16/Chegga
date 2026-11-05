@@ -24,6 +24,9 @@ export default defineConfig({
   use: {
     baseURL: SMOKE_URL ?? "http://localhost:5174",
     trace: "on-first-retry",
+    // The production build registers sw.js. Once it controls the page, its
+    // fetches skip page.route(), so the network stubs would race it.
+    serviceWorkers: "block",
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },

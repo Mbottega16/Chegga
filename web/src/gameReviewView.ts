@@ -118,7 +118,7 @@ export function renderEvalGraph(review: ReviewGame, currentIndex: number): strin
         <span class="eval-graph-label">Evaluation Flow</span>
         <span class="eval-graph-legend"><span class="legend-white">▲ White</span> <span class="legend-black">▼ Black</span></span>
       </div>
-      <svg class="eval-graph-svg" viewBox="0 0 100 40" preserveAspectRatio="none">
+      <svg class="eval-graph-svg" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true" focusable="false">
         <defs>
           <linearGradient id="white-eval-grad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.34"/>
