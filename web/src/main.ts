@@ -201,6 +201,7 @@ import {
 } from "./gameReview";
 import {
   renderEvalGraph,
+  renderStorylineBar,
   renderReviewStrip,
   renderQualityTally,
   renderCandidateList,
@@ -1784,7 +1785,7 @@ function showReviewStep(index: number) {
     reviewBlunderDnaHost.style.display = "none";
   }
   updateReviewActions(step);
-  reviewStripHost.innerHTML = renderEvalGraph(review, clamped) + renderReviewStrip(review, clamped);
+  reviewStripHost.innerHTML = renderEvalGraph(review, clamped) + renderStorylineBar(review, clamped) + renderReviewStrip(review, clamped);
   const atStart = clamped < 0;
   const atEnd = clamped >= review.steps.length - 1;
   reviewFirstBtn.disabled = atStart;

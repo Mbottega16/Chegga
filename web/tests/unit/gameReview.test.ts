@@ -6,8 +6,9 @@ import {
   shouldShowBetterMove,
   tallyHumanQuality,
   worstHumanStepIndex,
+  computeStorylineMoments,
 } from "../../src/gameReview";
-import { renderEvalGraph } from "../../src/gameReviewView";
+import { renderEvalGraph, renderStorylineBar } from "../../src/gameReviewView";
 import { move } from "./_factories";
 
 // 1. e4 e5 2. Nf3 Nc6 3. Bb5 — five half-moves, three of them White's.
@@ -233,5 +234,31 @@ describe("clock alerts in review", () => {
     const review = buildReview(CLOCK_PGN, CLOCK_GRADES, "white");
     expect(review.steps[2].clockAlert).toBe("panic");
     expect(describeStep(review, 2)).toContain("⏱️ Panic");
+  });
+});
+
+describe("computeStorylineMoments & renderStorylineBar", () => {
+  const review = buildReview(PGN, GRADES, "white");
+
+  it("extracts turning points and blunders into storyline moments", () => {
+    const moments = computeStorylineMoments(review);
+    expect(moments.length).toBeGreaterThan(0);
+    const blunder = moments.find((m) => m.san === "Nc6");
+    expect(blunder).toBeDefined();
+    expect(blunder!.moveNumber).toBe(2);
+  });
+
+  it("renders storyline bar markup with moment chips", () => {
+    const html = renderStorylineBar(review, 2);
+    expect(html).toContain("review-storyline-container");
+    expect(html).toContain("Key Turning Points");
+    expect(html).toContain("storyline-chip");
+    expect(html).toContain("data-review-index");
+  });
+
+  it("returns empty string when review has no steps", () => {
+    const emptyReview = buildReview(PGN, [], "white");
+    emptyReview.steps = [];
+    expect(renderStorylineBar(emptyReview, -1)).toBe("");
   });
 });

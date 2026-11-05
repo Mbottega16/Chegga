@@ -99,20 +99,16 @@ To prevent multi-megabyte data blobs and archived legacy apps from slowing down 
 
 *Overwrite this at the end of every session; move the previous handoff into `HISTORY.md` first.*
 
-- **Last Worked On:** **Tactical Motif Engine, Blunder DNA, Punishment Refutation & Habit Mirror** (2026-10-29):
-  - Tactical motif detection in `web/src/blunderTagger.ts` (`fork`, `pin`, `skewer`, `back_rank`, `trapped_piece`, `hung_material`).
-  - Structured **Blunder DNA** extraction (`motif`, `rootCause`, `damageLabel`, `tacticalLines`) with visual capsule (`.blunder-dna-capsule`, `.dna-pill`) in game review.
-  - Interactive **Punishment Refutation Trail** (`#review-punishment`) letting players toggle between played moves and the opponent's refutation sequence on the board.
-  - **Geometric Threat Radar** (`#review-threat-radar`) rendering tactical tension laser arrows between attackers and victims.
-  - **The Thinking Sweet Spot** (`computeThinkingSweetSpot` in `gamePatterns.ts`, visual pace chart in `profileView.ts`) correlating move accuracy and blunder rates across clock-time intervals.
-  - **The Mirror of Habits & Error Spiral Index** (`computeTiltIndex`, `computeMirrorOfHabits`) surfacing recurring tactical leaks, endangered pieces, tilt spirals, and 1-click **Train This Leak ⚔️** action into the Leitner trainer.
-  - Unit test suite expanded to 349 tests across 30 files (`blunderTagger.test.ts` and `gamePatterns.test.ts` added).
-- **Current State (2026-10-29):**
-  - `main` builds cleanly (`tsc && vite build`), 349 unit tests across 30 files passing (`npm test`), Playwright mobile & desktop smoke tests 100% green (24/24 tests), and pre-push hook active.
+- **Last Worked On:** **Key Turning Points Storyline Bar, Precomputed Tutorial Evals, Responsive Overflow Fix & E2E Suite Alignment** (2026-11-04):
+  - Implemented **Key Turning Points & Storyline Bar** (`computeStorylineMoments` in `web/src/gameReview.ts`, `renderStorylineBar` in `web/src/gameReviewView.ts`): extracts decisive game pivots, blunders, brilliancies, and tactical swings into a clickable ticker that steps the board directly to the critical moves.
+  - Built precomputed evaluation lookup cache (`web/src/tutorialEvalCache.ts`, `candidateAnalysis.ts`) pre-filling depth-14 candidate lines for onboarding positions, making sample game review instant.
+  - Fixed responsive mobile layout blowout: resolved horizontal overflow at `<1040px` viewports in `web/src/style.css` by resetting grid children with `min-width: 0; max-width: 100%`.
+  - Fixed HTML strict-mode duplicate ID violation across sample cards in `web/src/emptyStates.ts`.
+  - Updated Playwright E2E smoke suite in `web/tests/e2e/smoke.spec.ts` and `web/tests/e2e/live-verify.spec.ts` to match the 3-column studio stage and menu.
+  - Unit tests expanded from 349 to 352 passing tests across 30 files.
+- **Current State (2026-11-04):**
+  - `main` builds cleanly (`tsc && vite build` in 0.8s), 352 unit tests across 30 files passing (`npm test`), Playwright mobile & desktop smoke tests 100% green (26/26 desktop, 24/24 mobile), and pre-push hook active.
 - **Next Up:**
   1. Real-device mobile validation (test touch swipe gestures, 3D board pinch-zoom, and eval-curve scrubbing on physical iOS/Android screens).
   2. High-volume account sync validation on Safari/WebKit IndexedDB (1,000+ game sync batches + background Stockfish queue).
   3. Optional Vercel project/domain rename from `chegga-web.vercel.app` to `chegga.vercel.app`.
-
-
-

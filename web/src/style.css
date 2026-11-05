@@ -1417,6 +1417,96 @@ input[type="range"] {
    The timeline is the shape of one game's quality: one chip per
    half-move, the reviewer's own moves tall and colored by tier, the
    opponent's short and neutral, so the reviewer's own run reads first. */
+/* ---- Review Storyline & Key Turning Points Ticker ---- */
+.review-storyline-container {
+  margin: 0 0 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+.storyline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.storyline-title {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.storyline-icon {
+  color: var(--accent);
+  font-size: 0.85rem;
+}
+.storyline-hint {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+.storyline-track {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 2px 4px;
+  scrollbar-width: thin;
+}
+.storyline-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: all 0.15s ease;
+  position: relative;
+}
+.storyline-chip:hover {
+  border-color: var(--chip-accent);
+  background: var(--panel-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.storyline-chip-active {
+  border-color: var(--chip-accent) !important;
+  background: var(--panel-hover) !important;
+  box-shadow: 0 0 0 1px var(--chip-accent), 0 0 10px rgba(227, 168, 87, 0.2) !important;
+}
+.storyline-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 900;
+  font-size: 0.7rem;
+  color: var(--chip-accent);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+.storyline-move {
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: var(--text);
+}
+.storyline-headline {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
 /* ---- Evaluation Advantage Curve (gameReviewView.ts) ---- */
 .eval-graph-container {
   margin: 0 0 10px;
@@ -3671,7 +3761,9 @@ body {
 }
 
 .wrap {
-  max-width: min(1740px, 98vw);
+  max-width: min(1740px, 100%);
+  width: 100%;
+  box-sizing: border-box;
   margin: 0 auto;
   padding: 10px 14px 80px;
 }
@@ -5779,6 +5871,22 @@ section.card {
 @media (max-width: 1040px) {
   .studio-workspace-grid {
     grid-template-columns: 1fr;
+    min-width: 0;
+    max-width: 100%;
+  }
+  #sync-section,
+  .studio-left-column,
+  .studio-stage-column,
+  .studio-right-column {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .studio-right-column .game-slider-wrap {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
   }
   .studio-right-column .game-slider-wrap {
     flex-direction: row;

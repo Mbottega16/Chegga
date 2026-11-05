@@ -235,7 +235,7 @@ export function emptyFor(sectionId: string): boolean {
               <span class="game-card-opening">${g.opening}</span>
               <span class="game-card-meta">${g.movesText}</span>
             </div>
-            <button type="button" class="btn btn-primary game-slider-cta" data-empty-cta id="picker-demo-cta-btn" title="Open this game in review">
+            <button type="button" class="btn btn-primary game-slider-cta picker-demo-cta-btn" data-empty-cta title="Open this game in review">
               Review game
             </button>
           </div>
@@ -344,7 +344,7 @@ export function wireEmptyStateCtas(): void {
       return;
     }
 
-    const sampleBtn = (e.target as HTMLElement).closest("#picker-demo-cta-btn, .game-slider-card");
+    const sampleBtn = (e.target as HTMLElement).closest(".picker-demo-cta-btn, .game-slider-card");
     if (sampleBtn) {
       const demoBtn = document.getElementById("demo-load-btn") as HTMLButtonElement | null;
       if (demoBtn) demoBtn.click();

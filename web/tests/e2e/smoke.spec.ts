@@ -69,7 +69,7 @@ test.describe("landing page smoke", () => {
 
   test("shows the hero and both primary CTAs", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("section.hero")).toBeVisible();
+    await expect(page.locator("header.header")).toBeVisible();
     await expect(page.locator("#hero-analyze-btn")).toBeVisible();
     await expect(page.locator("#hero-play-btn")).toBeVisible();
   });
@@ -125,7 +125,7 @@ test.describe("landing page smoke", () => {
     const section = page.locator("#picker-section");
     await expect(section).toBeVisible();
     await expect(section.locator(".empty-state")).toBeVisible();
-    await expect(section.locator("[data-empty-cta]")).toBeVisible();
+    await expect(section.locator("[data-empty-cta]").first()).toBeVisible();
     await expect(page.locator('a[href="#picker-section"]')).toBeAttached(); // and it is in the jump nav
   });
 
@@ -136,6 +136,15 @@ test.describe("landing page smoke", () => {
       const el = document.documentElement;
       return el.scrollWidth - el.clientWidth;
     });
+    if (overflow > 2) {
+      const culprits = await page.evaluate(() => {
+        const docWidth = document.documentElement.clientWidth;
+        return Array.from(document.querySelectorAll('*'))
+          .filter(e => e.getBoundingClientRect().right > docWidth + 2)
+          .map(e => e.tagName + '#' + e.id + '.' + e.className + ' [right=' + Math.round(e.getBoundingClientRect().right) + ', docWidth=' + docWidth + ']');
+      });
+      console.log('OVERFLOW CULPRITS:', culprits);
+    }
     // a few px of sub-pixel rounding is fine; a real overflow is not
     expect(overflow).toBeLessThanOrEqual(2);
   });

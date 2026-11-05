@@ -9,7 +9,7 @@
 //   - the tally: how many of their moves landed in each tier.
 
 import { getClassColor, getClassGlyph } from "./classificationColors";
-import { moveLabel, tallyHumanQuality, REVIEW_QUALITY_LABELS, type ReviewGame } from "./gameReview";
+import { moveLabel, tallyHumanQuality, REVIEW_QUALITY_LABELS, computeStorylineMoments, type ReviewGame } from "./gameReview";
 import { formatCandidateEval, isShadedTier, type Candidate } from "./candidateMoves";
 import type { BlunderDna } from "./blunderTagger";
 
@@ -264,3 +264,37 @@ export function renderThreatRadarAction(opts: { hasThreats: boolean; isActive: b
   return `<button type="button" class="${btnClass}" id="review-threat-radar-btn" title="Highlight attacking lasers and victim pieces">${label}</button>`;
 }
 
+
+
+/** Renders an interactive storyline ticker of the game's turning points and critical blunders/brilliancies. */
+export function renderStorylineBar(review: ReviewGame, currentIndex: number): string {
+  const moments = computeStorylineMoments(review);
+  if (!moments.length) return "";
+
+  const items = moments
+    .map((m) => {
+      const isCurrent = currentIndex === m.index;
+      const moveStr = `${m.moveNumber}${m.side === "white" ? "." : "..."} ${m.san}`;
+      const color = m.classification ? getClassColor(m.classification) : "var(--accent)";
+      return `
+        <button type="button" class="storyline-chip ${isCurrent ? "storyline-chip-active" : ""}" data-review-index="${m.index}" style="--chip-accent:${color}" title="Jump to move ${moveStr}: ${escapeAttr(m.headline)}">
+          <span class="storyline-badge">${m.badge}</span>
+          <span class="storyline-move">${moveStr}</span>
+          <span class="storyline-headline">${escapeAttr(m.headline)}</span>
+        </button>
+      `;
+    })
+    .join("");
+
+  return `
+    <div class="review-storyline-container" role="region" aria-label="Key turning points and story moments">
+      <div class="storyline-header">
+        <span class="storyline-title"><span class="storyline-icon">⚡</span> Key Turning Points</span>
+        <span class="storyline-hint">Tap moment to jump</span>
+      </div>
+      <div class="storyline-track">
+        ${items}
+      </div>
+    </div>
+  `;
+}

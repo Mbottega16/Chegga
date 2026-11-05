@@ -19,6 +19,20 @@ This repo is public, so private planning notes stay in the owner's vault, not he
 
 ---
 
+## 2026-11-04 — Key Turning Points Storyline Bar, Precomputed Tutorial Evals, Responsive Overflow Fix & E2E Suite Alignment
+
+*PC · Antigravity · review UX, onboarding performance, responsive layout*
+- **Changed:**
+  - Implemented **Key Turning Points & Storyline Bar** (`computeStorylineMoments` in `web/src/gameReview.ts`, `renderStorylineBar` in `web/src/gameReviewView.ts`, styled in `web/src/style.css`): automatically identifies the decisive game pivot, blunders, brilliancies, and major tactical swings. Renders a chronological chip bar (`.review-storyline-container`, `.storyline-chip`) below the eval graph where clicking any moment jumps the board and timeline directly to that critical move.
+  - Built precomputed evaluation and candidate lookup cache (`web/src/tutorialEvalCache.ts`, seeded into `candidateAnalysis.ts`) pre-filling depth-14 candidate lines for onboarding and sample positions, making example game review load instantaneously.
+  - Fixed responsive mobile viewport layout blowout: resolved 210px horizontal overflow at `<1040px` viewports in `web/src/style.css` by resetting grid children to `grid-column: 1 !important; grid-row: auto !important;` with `min-width: 0; max-width: 100%`.
+  - Fixed HTML strict-mode duplicate ID bug across 5 sample game cards in `web/src/emptyStates.ts`.
+  - Updated Playwright E2E smoke tests in `web/tests/e2e/smoke.spec.ts` and `web/tests/e2e/live-verify.spec.ts` for the 3-column studio layout, getting 100% of desktop (26/26) and mobile (24/24) checks green.
+  - Configured Vite `chunkSizeWarningLimit: 650` for lazy-loaded Three.js `board3d.ts`.
+- **Why:** Full push across Chegga: aligning E2E smoke verification with the recent studio overhaul, resolving mobile scroll overflow, accelerating onboarding, and delivering interactive game turning points for game review.
+- **Verified:** 352 unit tests passing (`npm test`), production build clean (`tsc && vite build`), Playwright desktop smoke suite passing (26/26), and Playwright mobile smoke suite passing (24/24).
+- **Left open:** Physical device testing for touch responsiveness on real iOS/Android hardware.
+
 ## 2026-10-29 — Tactical Motif Engine, Blunder DNA, Punishment Refutation & Habit Mirror
 
 *PC · Antigravity · analytics & cognitive UX*

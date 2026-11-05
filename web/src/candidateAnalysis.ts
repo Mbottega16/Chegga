@@ -11,6 +11,8 @@
 import { Chess } from "chess.js";
 import { getAnalysisEngine } from "./analysisPanel";
 import type { AnalysisLine } from "./engine";
+import { EXAMPLE_CANDIDATE_LINES } from "./tutorialEvalCache";
+import { EXAMPLE_MOMENT } from "./tutorialExample";
 
 // A heatmap needs the near-best moves, not all thirty. 8 lines at this
 // budget reach a depth where the ranking is stable enough to shade.
@@ -19,6 +21,7 @@ const CANDIDATE_DEPTH = 13;
 const CANDIDATE_MOVETIME_MS = 1600;
 
 const cache = new Map<string, AnalysisLine[]>();
+cache.set(EXAMPLE_MOMENT.fenBefore, EXAMPLE_CANDIDATE_LINES);
 let latestRequested = "";
 let chain: Promise<unknown> = Promise.resolve();
 

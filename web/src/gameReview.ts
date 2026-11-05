@@ -348,3 +348,128 @@ export function describeBefore(review: ReviewGame, index: number): string {
   }
   return parts.join(" ");
 }
+
+
+export interface StorylineMoment {
+  index: number;
+  ply: number;
+  moveNumber: number;
+  side: "white" | "black";
+  isHuman: boolean;
+  san: string;
+  classification?: string;
+  kind: "turning_point" | "blunder" | "brilliant" | "great" | "mistake" | "missed_mate";
+  badge: string;
+  headline: string;
+  scoreSwingCp: number;
+}
+
+/** Extracts the 3-6 critical turning points and narrative moments across the game. */
+export function computeStorylineMoments(review: ReviewGame): StorylineMoment[] {
+  if (!review.steps.length) return [];
+  const moments: StorylineMoment[] = [];
+  let maxSwing = 0;
+  let maxSwingIndex = -1;
+
+  for (let i = 0; i < review.steps.length; i++) {
+    const step = review.steps[i];
+    const tier = step.classification;
+    const loss = step.centipawnLoss ?? 0;
+
+    const prevCp = i > 0 ? (review.steps[i - 1].evalAfterCp ?? 0) : 0;
+    const curCp = step.evalAfterCp ?? 0;
+    const swing = Math.abs(curCp - prevCp);
+
+    if (swing > maxSwing && (loss >= 150 || Math.abs(curCp) >= 200)) {
+      maxSwing = swing;
+      maxSwingIndex = i;
+    }
+
+    if (tier === "brilliant") {
+      moments.push({
+        index: i,
+        ply: step.ply,
+        moveNumber: step.moveNumber,
+        side: step.side,
+        isHuman: step.isHuman,
+        san: step.san,
+        classification: tier,
+        kind: "brilliant",
+        badge: "!!",
+        headline: "Brilliant Move",
+        scoreSwingCp: swing,
+      });
+    } else if (tier === "blunder") {
+      const motif = step.blunderDna?.motif ? step.blunderDna.motif.replace(/_/g, " ") : step.blunderTag?.replace(/_/g, " ");
+      const tag = motif ? ` (${motif})` : "";
+      moments.push({
+        index: i,
+        ply: step.ply,
+        moveNumber: step.moveNumber,
+        side: step.side,
+        isHuman: step.isHuman,
+        san: step.san,
+        classification: tier,
+        kind: step.blunderTag === "missed_mate" ? "missed_mate" : "blunder",
+        badge: step.blunderTag === "missed_mate" ? "♚" : "??",
+        headline: step.blunderTag === "missed_mate" ? "Missed Mate" : `Blunder${tag}`,
+        scoreSwingCp: loss,
+      });
+    } else if (tier === "mistake" && loss >= 200) {
+      moments.push({
+        index: i,
+        ply: step.ply,
+        moveNumber: step.moveNumber,
+        side: step.side,
+        isHuman: step.isHuman,
+        san: step.san,
+        classification: tier,
+        kind: "mistake",
+        badge: "?",
+        headline: `Mistake (-${(loss / 100).toFixed(1)})`,
+        scoreSwingCp: loss,
+      });
+    } else if (tier === "great" && step.isHuman) {
+      moments.push({
+        index: i,
+        ply: step.ply,
+        moveNumber: step.moveNumber,
+        side: step.side,
+        isHuman: step.isHuman,
+        san: step.san,
+        classification: tier,
+        kind: "great",
+        badge: "!",
+        headline: "Great Move",
+        scoreSwingCp: swing,
+      });
+    }
+  }
+
+  if (maxSwingIndex >= 0) {
+    const existing = moments.find((m) => m.index === maxSwingIndex);
+    if (existing) {
+      existing.kind = "turning_point";
+      existing.badge = "⚡";
+      existing.headline = `Turning Point (${existing.headline})`;
+    } else {
+      const step = review.steps[maxSwingIndex];
+      moments.push({
+        index: maxSwingIndex,
+        ply: step.ply,
+        moveNumber: step.moveNumber,
+        side: step.side,
+        isHuman: step.isHuman,
+        san: step.san,
+        classification: step.classification,
+        kind: "turning_point",
+        badge: "⚡",
+        headline: `Turning Point (${(maxSwing / 100).toFixed(1)} pawns)`,
+        scoreSwingCp: maxSwing,
+      });
+    }
+  }
+
+  moments.sort((a, b) => a.ply - b.ply);
+  return moments.length > 6 ? moments.slice(0, 6) : moments;
+}
