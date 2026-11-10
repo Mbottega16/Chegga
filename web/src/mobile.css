@@ -541,23 +541,28 @@ body {
     width: fit-content;
   }
 
+  /* The allowance is the real horizontal chrome around the grid, not a
+     guess: 24px page padding (.wrap) + 28px card padding + 12px frame
+     padding (.play-board-wrap) + ~6px board border ≈ 70px. The old 44px
+     allowance made the tracks ~26px wider than the box they sit in, so
+     the h-file painted past the frame and clipped on a 390px phone. */
   .play-board {
-    grid-template-columns: repeat(8, min(calc((100vw - 44px) / 8), 52px)) !important;
-    grid-template-rows: repeat(8, min(calc((100vw - 44px) / 8), 52px)) !important;
+    grid-template-columns: repeat(8, min(calc((100vw - 72px) / 8), 52px)) !important;
+    grid-template-rows: repeat(8, min(calc((100vw - 72px) / 8), 52px)) !important;
   }
 
   .play-piece {
-    font-size: min(calc((100vw - 44px) / 8 * 0.74), 38px) !important;
+    font-size: min(calc((100vw - 72px) / 8 * 0.74), 38px) !important;
   }
 
   /* Small phone tightening (iPhone SE, 360-380px) */
   @media (max-width: 380px) {
     .play-board {
-      grid-template-columns: repeat(8, calc((100vw - 32px) / 8)) !important;
-      grid-template-rows: repeat(8, calc((100vw - 32px) / 8)) !important;
+      grid-template-columns: repeat(8, calc((100vw - 72px) / 8)) !important;
+      grid-template-rows: repeat(8, calc((100vw - 72px) / 8)) !important;
     }
     .play-piece {
-      font-size: calc((100vw - 32px) / 8 * 0.72) !important;
+      font-size: calc((100vw - 72px) / 8 * 0.72) !important;
     }
   }
 
@@ -586,12 +591,30 @@ body {
     }
   }
 
-  /* Stepper review buttons: minimum 44px thumb-friendly touch targets */
+  /* Stepper review buttons: minimum 44px thumb-friendly touch targets.
+     minmax(0, 1fr), not plain 1fr: a 1fr track's minimum is its content,
+     so the wide text buttons ("Play it back", "Your worst move") blew
+     the grid out to ~423px inside a ~332px sidebar and its rows spilled
+     over the controls below — the banner/buttons covering the
+     #review-before checkbox is the mobile review-picker e2e failure. */
   .review-buttons {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
     margin: 12px 0 8px;
+  }
+
+  /* The "show position before move" checkbox gets the same 44px thumb
+     target as the other review controls, clearance from the button rows
+     around it, and the same scroll-margin the cards use, so a
+     scroll-into-view never parks it under the nav strip. */
+  .review-before-label {
+    position: relative;
+    z-index: 1;
+    min-height: 44px;
+    align-items: center;
+    margin: 8px 0 12px;
+    scroll-margin-top: 68px;
   }
 
   .review-buttons button {

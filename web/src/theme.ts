@@ -13,15 +13,23 @@ export interface AccentOption {
   hex: string;
   strongHex: string;
   inkHex: string;
+  /* Dark variants painted instead while the light theme is active: the
+     bright hues measure 1.6–4.0:1 as text on white (under WCAG AA),
+     while these hold >= 4.8:1 on both light surfaces. lightInkHex is
+     white — the near-black inks read at 8.7:1 on the bright fills but
+     would drop to ~3.7:1 on these deeper ones; white holds >= 5:1. */
+  lightHex: string;
+  lightStrongHex: string;
+  lightInkHex: string;
 }
 
 export const ACCENT_OPTIONS: AccentOption[] = [
-  { id: "amber", label: "Studio Gold", hex: "#e3a857", strongHex: "#f0be73", inkHex: "#1c1305" },
-  { id: "emerald", label: "Emerald", hex: "#10b981", strongHex: "#34d399", inkHex: "#022c22" },
-  { id: "sapphire", label: "Sapphire", hex: "#3b82f6", strongHex: "#60a5fa", inkHex: "#0f172a" },
-  { id: "ruby", label: "Ruby", hex: "#f43f5e", strongHex: "#fb7185", inkHex: "#1f0207" },
-  { id: "amethyst", label: "Amethyst", hex: "#a855f7", strongHex: "#c084fc", inkHex: "#1e0538" },
-  { id: "cyan", label: "Cyber Cyan", hex: "#06b6d4", strongHex: "#22d3ee", inkHex: "#042f2e" },
+  { id: "amber", label: "Studio Gold", hex: "#e3a857", strongHex: "#f0be73", inkHex: "#1c1305", lightHex: "#b45309", lightStrongHex: "#92400e", lightInkHex: "#ffffff" },
+  { id: "emerald", label: "Emerald", hex: "#10b981", strongHex: "#34d399", inkHex: "#022c22", lightHex: "#047857", lightStrongHex: "#065f46", lightInkHex: "#ffffff" },
+  { id: "sapphire", label: "Sapphire", hex: "#3b82f6", strongHex: "#60a5fa", inkHex: "#0f172a", lightHex: "#1d4ed8", lightStrongHex: "#1e40af", lightInkHex: "#ffffff" },
+  { id: "ruby", label: "Ruby", hex: "#f43f5e", strongHex: "#fb7185", inkHex: "#1f0207", lightHex: "#be123c", lightStrongHex: "#9f1239", lightInkHex: "#ffffff" },
+  { id: "amethyst", label: "Amethyst", hex: "#a855f7", strongHex: "#c084fc", inkHex: "#1e0538", lightHex: "#7e22ce", lightStrongHex: "#6b21a8", lightInkHex: "#ffffff" },
+  { id: "cyan", label: "Cyber Cyan", hex: "#06b6d4", strongHex: "#22d3ee", inkHex: "#042f2e", lightHex: "#0e7490", lightStrongHex: "#155e75", lightInkHex: "#ffffff" },
 ];
 
 export const THEME_MODES: { id: ThemeMode; label: string; icon: string }[] = [
@@ -70,6 +78,7 @@ export function applyThemeMode(mode: ThemeMode): void {
 
   document.documentElement.setAttribute("data-theme", resolved);
   updateMetaThemeColor(resolved);
+  paintAccent();
 
   try {
     localStorage.setItem(STORAGE_MODE_KEY, mode);
@@ -90,6 +99,7 @@ export function applyThemeMode(mode: ThemeMode): void {
           const sysResolved = e.matches ? "dark" : "light";
           document.documentElement.setAttribute("data-theme", sysResolved);
           updateMetaThemeColor(sysResolved);
+          paintAccent();
           dispatchThemeChange();
         }
       };
@@ -100,6 +110,21 @@ export function applyThemeMode(mode: ThemeMode): void {
   dispatchThemeChange();
 }
 
+/** Paint the active accent's custom properties for the resolved theme.
+    The light theme gets each accent's dark variants (see AccentOption);
+    dark and OLED get the bright studio hues. No storage write and no
+    event — callers own those, so applyThemeMode can repaint on a mode
+    switch without double-firing. */
+function paintAccent(): void {
+  if (typeof document === "undefined") return;
+  const opt = ACCENT_OPTIONS.find((a) => a.id === activeAccent) ?? ACCENT_OPTIONS[0];
+  const light = document.documentElement.getAttribute("data-theme") === "light";
+  document.documentElement.setAttribute("data-accent", opt.id);
+  document.documentElement.style.setProperty("--accent", light ? opt.lightHex : opt.hex);
+  document.documentElement.style.setProperty("--accent-strong", light ? opt.lightStrongHex : opt.strongHex);
+  document.documentElement.style.setProperty("--accent-ink", light ? opt.lightInkHex : opt.inkHex);
+}
+
 /** Apply studio accent color */
 export function applyAccentColor(accent: AccentColor): void {
   const opt = ACCENT_OPTIONS.find((a) => a.id === accent) ?? ACCENT_OPTIONS[0];
@@ -107,10 +132,7 @@ export function applyAccentColor(accent: AccentColor): void {
 
   if (typeof document === "undefined") return;
 
-  document.documentElement.setAttribute("data-accent", opt.id);
-  document.documentElement.style.setProperty("--accent", opt.hex);
-  document.documentElement.style.setProperty("--accent-strong", opt.strongHex);
-  document.documentElement.style.setProperty("--accent-ink", opt.inkHex);
+  paintAccent();
 
   try {
     localStorage.setItem(STORAGE_ACCENT_KEY, opt.id);

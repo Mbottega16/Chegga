@@ -223,6 +223,56 @@
   --accent-wash: rgba(6, 182, 212, 0.14);
 }
 
+/* ---- Light theme: dark accent variants ----
+   The accent hues above are tuned as text/glows for the dark studio. On
+   the light theme's white they sit at 1.6–4.0:1 (the default amber pair
+   and --win at 1.7–2.1:1) — under WCAG AA for text. So in the light
+   theme each accent swaps to a darker variant of the same hue: every
+   value below measures >= 4.8:1 on both light surfaces (#ffffff panel,
+   #f8fafc bg). --accent-ink flips to white to match: the near-black ink
+   that reads at 8.7:1 on the bright fills would drop to ~3.7:1 on these
+   deeper ones, while white holds >= 5:1. Dark and OLED keep the bright
+   accents untouched.
+   Runtime source of truth is theme.ts (ACCENT_OPTIONS' light* fields,
+   painted inline by paintAccent); these rules mirror the same values
+   for first paint, and carry --win, which JS never paints. */
+[data-theme="light"] {
+  --accent: #b45309;
+  --accent-strong: #92400e;
+  --accent-ink: #ffffff;
+  --win: #15803d;
+}
+
+[data-theme="light"][data-accent="emerald"] {
+  --accent: #047857;
+  --accent-strong: #065f46;
+  --accent-ink: #ffffff;
+}
+
+[data-theme="light"][data-accent="sapphire"] {
+  --accent: #1d4ed8;
+  --accent-strong: #1e40af;
+  --accent-ink: #ffffff;
+}
+
+[data-theme="light"][data-accent="ruby"] {
+  --accent: #be123c;
+  --accent-strong: #9f1239;
+  --accent-ink: #ffffff;
+}
+
+[data-theme="light"][data-accent="amethyst"] {
+  --accent: #7e22ce;
+  --accent-strong: #6b21a8;
+  --accent-ink: #ffffff;
+}
+
+[data-theme="light"][data-accent="cyan"] {
+  --accent: #0e7490;
+  --accent-strong: #155e75;
+  --accent-ink: #ffffff;
+}
+
 * {
   box-sizing: border-box;
 }
