@@ -3047,6 +3047,13 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
   background: var(--panel-hover);
   transform: translateY(-1px);
 }
+.candidate-chip:focus,
+.candidate-chip:focus-visible {
+  outline: 2px solid var(--accent, #e3a857);
+  outline-offset: 2px;
+  box-shadow: 0 0 6px rgba(227, 168, 87, 0.6);
+  z-index: 2;
+}
 .candidate-chip-played {
   border-color: var(--chip-color);
   box-shadow: 0 0 0 1px var(--chip-color);

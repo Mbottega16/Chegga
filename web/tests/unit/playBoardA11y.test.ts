@@ -205,12 +205,19 @@ class MockContainer extends MockNode {
   }
 }
 
-function createKeyboardEvent(key: string): any {
+function createKeyboardEvent(
+  key: string,
+  opts: { shiftKey?: boolean; altKey?: boolean; ctrlKey?: boolean; metaKey?: boolean } = {},
+): any {
   let prevented = false;
   let stopped = false;
   return {
     type: "keydown",
     key,
+    shiftKey: !!opts.shiftKey,
+    altKey: !!opts.altKey,
+    ctrlKey: !!opts.ctrlKey,
+    metaKey: !!opts.metaKey,
     preventDefault: () => {
       prevented = true;
     },
@@ -534,6 +541,130 @@ describe("PlayBoard WCAG 2.1 AA Accessibility Pass", () => {
       expect(promoButtons[1].getAttribute("aria-label")).toBe("Promote to rook");
       expect(promoButtons[2].getAttribute("aria-label")).toBe("Promote to bishop");
       expect(promoButtons[3].getAttribute("aria-label")).toBe("Promote to knight");
+    });
+  });
+
+  describe("Candidate Moves Keyboard Cycling and Live Announcements", () => {
+    it("reports active candidate squares when a piece is selected", () => {
+      // White pawn on e2 has candidate moves e3, e4
+      const e2 = container.querySelector('[data-square="e2"]')!;
+      e2.focus();
+      e2.dispatchEvent(createKeyboardEvent("Enter"));
+
+      const candidates = board.getActiveCandidateSquares();
+      expect(candidates).toEqual(["e3", "e4"]);
+    });
+
+    it("cycles candidate destination squares using Tab and Shift+Tab", () => {
+      const e2 = container.querySelector('[data-square="e2"]')!;
+      e2.focus();
+      e2.dispatchEvent(createKeyboardEvent("Enter"));
+
+      // Press Tab to jump to first candidate move (e3)
+      const tabEvent1 = createKeyboardEvent("Tab");
+      e2.dispatchEvent(tabEvent1);
+      expect(tabEvent1.defaultPrevented).toBe(true);
+      expect(container.querySelector('[data-square="e3"]')!.tabIndex).toBe(0);
+
+      // Press Tab again to jump to next candidate move (e4)
+      const e3 = container.querySelector('[data-square="e3"]')!;
+      const tabEvent2 = createKeyboardEvent("Tab");
+      e3.dispatchEvent(tabEvent2);
+      expect(container.querySelector('[data-square="e4"]')!.tabIndex).toBe(0);
+
+      // Tab again wraps around to e3
+      const e4 = container.querySelector('[data-square="e4"]')!;
+      e4.dispatchEvent(createKeyboardEvent("Tab"));
+      expect(container.querySelector('[data-square="e3"]')!.tabIndex).toBe(0);
+
+      // Shift+Tab cycles backwards to e4
+      const curE3 = container.querySelector('[data-square="e3"]')!;
+      curE3.dispatchEvent(createKeyboardEvent("Tab", { shiftKey: true }));
+      expect(container.querySelector('[data-square="e4"]')!.tabIndex).toBe(0);
+    });
+
+    it("cycles candidate moves using Alt+Arrow keys, 'c', and bracket keys", () => {
+      const e2 = container.querySelector('[data-square="e2"]')!;
+      e2.focus();
+      e2.dispatchEvent(createKeyboardEvent("Enter"));
+
+      // Alt+ArrowDown cycles to next candidate
+      e2.dispatchEvent(createKeyboardEvent("ArrowDown", { altKey: true }));
+      expect(container.querySelector('[data-square="e3"]')!.tabIndex).toBe(0);
+
+      // 'c' cycles to next candidate (e4)
+      const curE3 = container.querySelector('[data-square="e3"]')!;
+      curE3.dispatchEvent(createKeyboardEvent("c"));
+      expect(container.querySelector('[data-square="e4"]')!.tabIndex).toBe(0);
+
+      // ']' cycles forward (wraps to e3)
+      const curE4 = container.querySelector('[data-square="e4"]')!;
+      curE4.dispatchEvent(createKeyboardEvent("]"));
+      expect(container.querySelector('[data-square="e3"]')!.tabIndex).toBe(0);
+
+      // '[' cycles backward (to e4)
+      const curE3Again = container.querySelector('[data-square="e3"]')!;
+      curE3Again.dispatchEvent(createKeyboardEvent("["));
+      expect(container.querySelector('[data-square="e4"]')!.tabIndex).toBe(0);
+    });
+
+    it("cycles candidate squares when candidate heatmap tints are active without piece selection", () => {
+      board.setCandidateTints([
+        { square: "e4" as Square, color: "rgba(34,211,238,0.7)", opacity: 0.7, tier: "best" },
+        { square: "d4" as Square, color: "rgba(107,178,82,0.5)", opacity: 0.5, tier: "excellent" },
+        { square: "f3" as Square, color: "rgba(91,141,239,0.38)", opacity: 0.38, tier: "good" },
+      ]);
+
+      expect(board.getActiveCandidateSquares()).toEqual(["e4", "d4", "f3"]);
+
+      // Start on e2
+      const e2 = container.querySelector('[data-square="e2"]')!;
+      e2.focus();
+
+      // Press Tab to cycle into candidate heatmap moves
+      e2.dispatchEvent(createKeyboardEvent("Tab"));
+      expect(container.querySelector('[data-square="e4"]')!.tabIndex).toBe(0);
+
+      const e4 = container.querySelector('[data-square="e4"]')!;
+      e4.dispatchEvent(createKeyboardEvent("Tab"));
+      expect(container.querySelector('[data-square="d4"]')!.tabIndex).toBe(0);
+
+      const d4 = container.querySelector('[data-square="d4"]')!;
+      d4.dispatchEvent(createKeyboardEvent("Tab"));
+      expect(container.querySelector('[data-square="f3"]')!.tabIndex).toBe(0);
+    });
+
+    it("announces candidate move options in live region when piece is selected", async () => {
+      vi.useFakeTimers();
+      const e2 = container.querySelector('[data-square="e2"]')!;
+      e2.focus();
+      e2.dispatchEvent(createKeyboardEvent("Enter"));
+
+      vi.advanceTimersByTime(100);
+      const live = container.querySelector(".play-board-live");
+      expect(live).not.toBeNull();
+      expect(live!.textContent).toContain("Selected white pawn on e2");
+      expect(live!.textContent).toContain("2 candidate moves");
+      expect(live!.textContent).toContain("e3, e4");
+      vi.useRealTimers();
+    });
+
+    it("allows committing a move via Space/Enter once navigated to a candidate square", () => {
+      const e2 = container.querySelector('[data-square="e2"]')!;
+      e2.focus();
+      e2.dispatchEvent(createKeyboardEvent("Enter"));
+
+      // Cycle to e4 via Tab twice
+      e2.dispatchEvent(createKeyboardEvent("Tab")); // to e3
+      const e3 = container.querySelector('[data-square="e3"]')!;
+      e3.dispatchEvent(createKeyboardEvent("Tab")); // to e4
+
+      const e4 = container.querySelector('[data-square="e4"]')!;
+      expect(e4.tabIndex).toBe(0);
+
+      // Press Enter on e4 to commit e2e4
+      e4.dispatchEvent(createKeyboardEvent("Enter"));
+      expect(onPlayerMove).toHaveBeenCalledWith("e2e4", "e4");
     });
   });
 });

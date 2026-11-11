@@ -586,10 +586,19 @@ export class PlayBoard {
       if (piece && piece.color === this.chess.turn()) {
         this.selected = square;
         this.render();
+        const color = piece.color === "w" ? "white" : "black";
+        const name = PIECE_NAMES[piece.type] ?? piece.type;
+        const moves = this.chess.moves({ square, verbose: true });
+        const targets = moves.map((m) => m.to).join(", ");
+        const announcement = moves.length > 0
+          ? `Selected ${color} ${name} on ${square}. ${moves.length} candidate move${moves.length === 1 ? "" : "s"}: ${targets}. Press Tab or arrow keys to navigate.`
+          : `Selected ${color} ${name} on ${square}. No legal moves available.`;
+        this.liveAnnounce(announcement);
         return;
       }
       this.selected = null;
       this.render();
+      this.liveAnnounce("Selection cleared.");
       return;
     }
 
@@ -597,6 +606,14 @@ export class PlayBoard {
     if (piece && piece.color === this.chess.turn()) {
       this.selected = square;
       this.render();
+      const color = piece.color === "w" ? "white" : "black";
+      const name = PIECE_NAMES[piece.type] ?? piece.type;
+      const moves = this.chess.moves({ square, verbose: true });
+      const targets = moves.map((m) => m.to).join(", ");
+      const announcement = moves.length > 0
+        ? `Selected ${color} ${name} on ${square}. ${moves.length} candidate move${moves.length === 1 ? "" : "s"}: ${targets}. Press Tab or arrow keys to navigate.`
+        : `Selected ${color} ${name} on ${square}. No legal moves available.`;
+      this.liveAnnounce(announcement);
     }
   }
 
@@ -856,6 +873,33 @@ export class PlayBoard {
 
     let nextSquare: Square | null = null;
 
+    const activeCandidates = this.getActiveCandidateSquares();
+    if (activeCandidates.length > 0) {
+      const isNext =
+        (e.key === "Tab" && !e.shiftKey) ||
+        (e.altKey && (e.key === "ArrowRight" || e.key === "ArrowDown")) ||
+        e.key === "]" ||
+        (e.key === "c" && !e.ctrlKey && !e.metaKey && !e.shiftKey);
+      const isPrev =
+        (e.key === "Tab" && e.shiftKey) ||
+        (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowUp")) ||
+        e.key === "[" ||
+        (e.key === "C" && !e.ctrlKey && !e.metaKey);
+
+      if (isNext) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.cycleCandidateMoves("next");
+        return;
+      }
+      if (isPrev) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.cycleCandidateMoves("prev");
+        return;
+      }
+    }
+
     switch (e.key) {
       case "ArrowUp": {
         e.preventDefault();
@@ -939,11 +983,11 @@ export class PlayBoard {
         if (this.selected) {
           e.preventDefault();
           e.stopPropagation();
+          const prevSelected = this.selected;
           this.selected = null;
           this.render();
-          if (this.focusedSquare) {
-            this.focusSquare(this.focusedSquare);
-          }
+          this.liveAnnounce("Move selection cleared.");
+          this.focusSquare(this.focusedSquare ?? prevSelected);
           return;
         }
         break;
@@ -998,6 +1042,51 @@ export class PlayBoard {
         focusedEl.classList.remove("keyboard-focused");
       }
     }
+  }
+
+  /** Returns active candidate squares: legal moves if a piece is selected,
+   * or shaded candidate squares if the candidate heatmap is on. */
+  getActiveCandidateSquares(): Square[] {
+    if (this.selected) {
+      return this.chess.moves({ square: this.selected, verbose: true }).map((m) => m.to as Square);
+    }
+    if (this.candidateTints.size > 0) {
+      return Array.from(this.candidateTints.keys());
+    }
+    return [];
+  }
+
+  /** Cycles keyboard focus through the currently available candidate moves.
+   * If a piece is selected, cycles through its legal moves.
+   * If candidate heatmap tints are displayed, cycles through the candidate destination squares.
+   * Returns the newly focused Square, or null if no candidates are active. */
+  cycleCandidateMoves(direction: "next" | "prev" = "next"): Square | null {
+    const candidates = this.getActiveCandidateSquares();
+    if (!candidates.length) return null;
+    const curIdx = this.focusedSquare ? candidates.indexOf(this.focusedSquare) : -1;
+    const nextIdx =
+      direction === "next"
+        ? (curIdx + 1) % candidates.length
+        : (curIdx - 1 + candidates.length) % candidates.length;
+    const nextSquare = candidates[nextIdx];
+    this.isKeyboardActive = true;
+    this.moveFocusTo(nextSquare);
+    this.announceSquareFocus(nextSquare);
+    return nextSquare;
+  }
+
+  private announceSquareFocus(square: Square): void {
+    const piece = this.chess.get(square);
+    const isSelected = this.selected === square;
+    const legalTargets = this.selected
+      ? new Set(this.chess.moves({ square: this.selected, verbose: true }).map((m) => m.to))
+      : new Set<string>();
+    const isLegal = legalTargets.has(square);
+    const isKingInCheck = this.chess.inCheck() ? this.findKingSquare(this.chess.turn()) === square : false;
+    const candidate = this.candidateTints.get(square);
+    const isLastMove = !!(this.lastMove && (this.lastMove.from === square || this.lastMove.to === square));
+    const label = this.getSquareAriaLabel(square, piece, isSelected, isLegal, isKingInCheck, candidate?.tier, isLastMove);
+    this.liveAnnounce(label);
   }
 
   private getSquareAriaLabel(

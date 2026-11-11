@@ -468,6 +468,7 @@ app.innerHTML = `
                   </div>
                   <div class="shortcuts-grid">
                     <div><kbd>←</kbd> / <kbd>→</kbd></div><div>Previous / Next move</div>
+                    <div><kbd>↓</kbd> / <kbd>↑</kbd></div><div>Cycle candidate moves (in Before view)</div>
                     <div><kbd>Home</kbd> / <kbd>End</kbd></div><div>First / Last move</div>
                     <div><kbd>Space</kbd></div><div>Play back game (autoplay)</div>
                     <div><kbd>B</kbd></div><div>Toggle "Before" view &amp; candidates</div>
@@ -1929,6 +1930,23 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     stopReviewAutoplay();
     showReviewStep(reviewIndex + (e.key === "ArrowRight" ? 1 : -1));
+  } else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && reviewShowBefore && reviewCandidates.length > 0) {
+    e.preventDefault();
+    stopReviewAutoplay();
+    const step = currentReviewStep();
+    if (step) {
+      const curIdx = reviewCandidates.findIndex((c) => c.uci === reviewPreviewUci);
+      let nextIdx: number;
+      if (e.key === "ArrowDown") {
+        nextIdx = curIdx < 0 ? 0 : (curIdx + 1) % reviewCandidates.length;
+      } else {
+        nextIdx = curIdx < 0 ? reviewCandidates.length - 1 : (curIdx - 1 + reviewCandidates.length) % reviewCandidates.length;
+      }
+      reviewPreviewUci = reviewCandidates[nextIdx].uci;
+      renderCandidates(step);
+      const chipEl = reviewCandidatesHost.querySelector<HTMLElement>(`[data-candidate="${reviewPreviewUci}"]`);
+      if (chipEl) chipEl.focus();
+    }
   } else if (e.key === "Home") {
     e.preventDefault();
     stopReviewAutoplay();
@@ -2070,6 +2088,34 @@ reviewCandidatesHost.addEventListener("click", (e) => {
   const uci = chip.dataset.candidate!;
   reviewPreviewUci = reviewPreviewUci === uci ? null : uci;
   renderCandidates(step);
+});
+
+reviewCandidatesHost.addEventListener("keydown", (e) => {
+  const chips = Array.from(reviewCandidatesHost.querySelectorAll<HTMLButtonElement>(".candidate-chip"));
+  if (!chips.length) return;
+  const currentChip = (e.target as HTMLElement).closest<HTMLButtonElement>(".candidate-chip");
+  if (!currentChip) return;
+  const curIdx = chips.indexOf(currentChip);
+
+  if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+    e.preventDefault();
+    const next = chips[(curIdx + 1) % chips.length];
+    next?.focus();
+    next?.click();
+  } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const prev = chips[(curIdx - 1 + chips.length) % chips.length];
+    prev?.focus();
+    prev?.click();
+  } else if (e.key === "Home") {
+    e.preventDefault();
+    chips[0]?.focus();
+    chips[0]?.click();
+  } else if (e.key === "End") {
+    e.preventDefault();
+    chips[chips.length - 1]?.focus();
+    chips[chips.length - 1]?.click();
+  }
 });
 
 async function handleExportReviewCard(targetBtn: HTMLButtonElement, statusEl: HTMLElement) {

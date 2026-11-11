@@ -223,7 +223,7 @@ export function renderCandidateList(
       const label = REVIEW_QUALITY_LABELS[c.tier] ?? c.tier;
       const title = `${c.san}: ${label}${c.gapCp > 0 ? `, ${c.gapCp}cp behind the best move` : ""}${played ? " — the move you played" : ""}`;
       const glyph = getClassGlyph(c.tier);
-      return `<button type="button" class="${classes}" data-candidate="${escapeAttr(c.uci)}" data-tier="${c.tier}" style="--chip-color:${color}" title="${escapeAttr(title)}" aria-label="${escapeAttr(title)}"><span class="cand-pixel-glyph" style="background:${color}">${glyph}</span><span class="cand-san">${escapeAttr(c.san)}</span><span class="cand-eval">${escapeAttr(formatCandidateEval(c))}</span>${played ? `<span class="cand-tag cand-tag-played">played</span>` : ""}</button>`;
+      return `<button type="button" class="${classes}" data-candidate="${escapeAttr(c.uci)}" data-tier="${c.tier}" style="--chip-color:${color}" title="${escapeAttr(title)}" aria-label="${escapeAttr(title)}" aria-pressed="${c.uci === opts.previewUci ? "true" : "false"}"><span class="cand-pixel-glyph" style="background:${color}">${glyph}</span><span class="cand-san">${escapeAttr(c.san)}</span><span class="cand-eval">${escapeAttr(formatCandidateEval(c))}</span>${played ? `<span class="cand-tag cand-tag-played">played</span>` : ""}</button>`;
     })
     .join("");
   const playedListed = opts.playedUci ? candidates.some((c) => c.uci === opts.playedUci) : true;
