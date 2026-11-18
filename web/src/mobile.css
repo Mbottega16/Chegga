@@ -626,6 +626,23 @@ body {
     justify-content: center;
   }
 
+  /* The try panel's buttons keep the flex row they have on desktop.
+     Their labels are long ("Show the best move") and can never fit a
+     quarter-width grid cell on a phone: centred in a ~70px cell, the
+     label spills ~40px over both neighbours, and the spill swallows
+     taps meant for them — WebKit hit-tests the overflow, so "Show
+     the best move" intercepted every "Try again" tap and the
+     review-picker e2e timed out; Chromium ate the tap the same way
+     and the practice board then sat locked on the shown answer.
+     Sized to their content, the buttons wrap instead of spilling. */
+  #try-panel .review-buttons {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  #try-panel .review-buttons button {
+    flex: 1 1 auto;
+  }
+
   /* Advantage curve touch scrubbing */
   .eval-advantage-curve {
     touch-action: pan-y;
