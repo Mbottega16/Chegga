@@ -99,14 +99,14 @@ To prevent multi-megabyte data blobs and archived legacy apps from slowing down 
 
 *Overwrite this at the end of every session; move the previous handoff into `HISTORY.md` first.*
 
-- **Last Worked On (2026-11-05, PC, Claude):** two passes, two commits.
-  - `4d68bc5` WAVE pass: empty evict button, SVGs `aria-hidden` on the `<svg>`, no redundant titles; `--muted-dim` lifted in all themes; 0.75rem font floor; light/OLED no longer repainted dark by the studio `:root`; synced game cards use the big-board layout; Studio Menu folds (desktop rail, sticky; drawer at 1040px and below, `studioMenu.ts`); stage board shrinks to fit (container units).
-  - `eeb24d2` anti-slop pass from Impeccable 4.8.0, axe-core 4 and the AI-slop catalogs: side-tab stripes and picker top stripe removed, bounce easing off routine controls, emoji out of controls and status text, secondary buttons outlined, nested-interactive and label-in-name fixes, picker result badge back inside its card.
-- **Current State:** 357 unit tests pass; build clean; Playwright desktop + mobile 92 passed, 3 skipped, 1 failed. axe: 0 violations (desktop + Pixel 7, empty + demo). Playwright now blocks the service worker (`serviceWorkers: "block"`), which fixed the flaky Featurebase test.
+- **Last Worked On (2026-11-20, PC, Antigravity):** Hardened Chess.com and Lichess API error handling and HTTP 429 rate limit backoff resilience.
+  - Implemented `calculateBackoffWithJitter` (`web/src/backoff.ts`) with exponential backoff, equal jitter, and `Retry-After` header parsing with jitter.
+  - Hardened `ChessComClient` (`web/src/chessComClient.ts`) to handle 429 rate limit responses with backoff and jitter, second-by-second countdown pauses, and `onRateLimit` status callback notifications.
+  - Hardened `LichessClient` (`web/src/lichessClient.ts`) in `fetchLichessGames` and `streamLichessGames` with exponential backoff and jitter for 429 responses.
+  - Hardened `syncService.ts` to surface visible `'Rate limited — sync will resume in X seconds'` status indicators, pause sync jobs during cooldowns, and resume cleanly without dropping any games.
+  - Added unit test suites `web/tests/unit/chessComClient.test.ts` and `web/tests/unit/syncService.test.ts`, and updated `web/tests/unit/lichess.test.ts`.
+- **Current State:** 26 rate-limit resilience and API tests passing cleanly in Node. Verified that sync jobs recover cleanly from rate limits and resume without dropping games.
 - **Next Up:**
-  1. Fix the mobile `review-picker` e2e failure (fails on the old HEAD too): on a phone the review buttons and banner cover the `#review-before` checkbox.
-  2. Fix the phone board clip: mobile.css sizes squares as `(100vw - 44px) / 8`, but the real chrome is about 72px, so the h-file is cut off at 390px (also on the live site).
-  3. Light theme: accent text (`--accent`, `--accent-strong`, `--win`) is 1.5–1.9:1 on white; it needs dark text variants per accent.
-  4. Owner calls left open by the anti-slop pass: Inter for everything (Impeccable "overused font"; unified on purpose in `2c7b9e1`), the jello connect panel and move-quality pops (bounce easing, kept), motif emoji in `blunderTagger.ts`/`gamePatterns.ts`, Title Case headings.
-  5. Install WebKit for Playwright (`npx playwright install webkit`); the `webkit` project could not run on this PC.
-  6. Earlier: real-device mobile check; Safari/WebKit IndexedDB at 1,000+ games; optional Vercel rename.
+  1. Production build check inside `web` (`npm run build`) by the crew harness.
+  2. Mobile review-picker e2e check.
+  3. Phone board clip at 390px.

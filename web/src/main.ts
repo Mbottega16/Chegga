@@ -3080,8 +3080,12 @@ async function runSync(username: string, site: Site = currentSite) {
     setStatus(syncLog, isFirstEverSync ? `syncing ${username} for the first time…` : `You have ${alreadySynced} months already synced — checking for updates…`);
 
     const client = new ChessComClient(`chegga-web visitor sync for ${username}`);
-    const onProgress = (progress: { monthsProcessed: number; totalMonths: number; gamesAdded: number; currentMonth?: string }) => {
-      syncProgressBar.update(progress.monthsProcessed, progress.totalMonths, `Checking ${progress.currentMonth ?? "…"} — ${progress.gamesAdded} new games so far`);
+    const onProgress = (progress: { monthsProcessed: number; totalMonths: number; gamesAdded: number; currentMonth?: string; statusText?: string }) => {
+      const label = progress.statusText ?? `Checking ${progress.currentMonth ?? "…"} — ${progress.gamesAdded} new games so far`;
+      syncProgressBar.update(progress.monthsProcessed, progress.totalMonths, label);
+      if (progress.statusText) {
+        setStatus(syncLog, progress.statusText);
+      }
     };
 
     currentUsername = username;
@@ -3159,7 +3163,11 @@ fullSyncBtn.addEventListener("click", async () => {
     const db = await openDb();
     const client = new ChessComClient(`chegga-web visitor sync for ${currentUsername}`);
     const result = await syncGames(db, client, currentUsername, (progress) => {
-      syncProgressBar.update(progress.monthsProcessed, progress.totalMonths, `Checking ${progress.currentMonth ?? "…"} — ${progress.gamesAdded} new games so far`);
+      const label = progress.statusText ?? `Checking ${progress.currentMonth ?? "…"} — ${progress.gamesAdded} new games so far`;
+      syncProgressBar.update(progress.monthsProcessed, progress.totalMonths, label);
+      if (progress.statusText) {
+        setStatus(syncLog, progress.statusText);
+      }
     });
     db.close();
     syncProgressBar.hide();

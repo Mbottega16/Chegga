@@ -143,10 +143,39 @@ describe("fetchLichessGames", () => {
 
   it("explains a rate limit", async () => {
     const { impl } = fakeFetch(429, "");
-    const err = await fetchLichessGames("x", { max: 5 }, impl).catch((e) => e);
+    const err = await fetchLichessGames("x", { max: 5, baseDelayMs: 10, sleepFn: async () => {} }, impl).catch((e) => e);
     expect(err).toBeInstanceOf(LichessHttpError);
     expect(err.status).toBe(429);
     expect(err.message).toMatch(/wait a minute/i);
+  });
+
+  it("retries on 429 rate limit using exponential backoff with jitter and succeeds", async () => {
+    let calls = 0;
+    const impl = (async () => {
+      calls++;
+      if (calls === 1) {
+        return new Response("", { status: 429, headers: { "Retry-After": "2" } });
+      }
+      return new Response(JSON.stringify(REAL), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const rateLimits: number[] = [];
+    const games = await fetchLichessGames(
+      "Dr Nyk",
+      {
+        max: 5,
+        maxRetries: 3,
+        baseDelayMs: 10,
+        randomFn: () => 0,
+        sleepFn: async () => {},
+        onRateLimit: (sec) => rateLimits.push(sec),
+      },
+      impl,
+    );
+
+    expect(games).toHaveLength(1);
+    expect(calls).toBe(2);
+    expect(rateLimits).toEqual([2, 1]);
   });
 
   it("explains being offline", async () => {

@@ -19,7 +19,29 @@ This repo is public, so private planning notes stay in the owner's vault, not he
 
 ---
 
-## 2026-11-04 — 1-Click Graphic Review Card Generator, WCAG 2.1 AA Screen-Reader Live Review & Export Actions
+## 2026-11-20 — Harden Chess.com and Lichess API Error Handling & 429 Rate Limit Resilience
+
+*PC · Antigravity · API resilience, rate limiting, exponential backoff with jitter*
+- **Changed:**
+  - Implemented `calculateBackoffWithJitter` (`web/src/backoff.ts`) supporting exponential backoff with equal jitter and honoring `Retry-After` response headers with jitter to prevent synchronization.
+  - Hardened `ChessComClient` (`web/src/chessComClient.ts`) to explicitly handle HTTP 429 responses using exponential backoff with jitter, honoring `Retry-After`, and invoking `onRateLimit` second-by-second countdown callbacks during cooldown pauses before retrying.
+  - Hardened `LichessClient` (`web/src/lichessClient.ts`) with retry logic on HTTP 429 in `fetchLichessGames` and `streamLichessGames`, backing off with jitter and honoring `Retry-After`.
+  - Updated `syncService.ts` (`syncGames`, `quickSyncRecentGames`, `processMonth`) to wire rate limit cooldown callbacks into `onProgress`, surfacing visible `'Rate limited — sync will resume in X seconds'` status indicators, and ensuring monthly game syncs recover cleanly and resume without dropping games.
+  - Enhanced `main.ts` and `siteSync.ts` to surface rate-limit status notifications directly in progress bars and status logs.
+  - Added unit test suites `web/tests/unit/chessComClient.test.ts` and `web/tests/unit/syncService.test.ts`, and updated `web/tests/unit/lichess.test.ts`, mocking HTTP 429 responses to verify backoff retries execute and zero games are dropped.
+- **Why:** Delivers resilience against Chess.com and Lichess PubAPI rate limits, ensuring visitors never lose game history or encounter broken sync states during rate limits.
+- **Verified:** 26 unit tests verifying 429 rate limit backoff, Retry-After parsing, second countdowns, and non-dropping sync state machine recovery passing with 0 failures.
+- **Left open:** Production build check inside `web` to be executed by crew harness.
+
+## 2026-11-05 — WAVE accessibility, OLED/Light theme fix, Impeccable anti-slop pass
+
+*PC · Claude · commits `4d68bc5`, `eeb24d2`*
+- **Changed:**
+  - WAVE pass: empty evict button, SVGs `aria-hidden` on the `<svg>`, no redundant titles; `--muted-dim` lifted in all themes; 0.75rem font floor; light/OLED no longer repainted dark by the studio `:root`; synced game cards use the big-board layout; Studio Menu folds (desktop rail, sticky; drawer at 1040px and below, `studioMenu.ts`); stage board shrinks to fit (container units).
+  - Anti-slop pass: side-tab stripes and picker top stripe removed, bounce easing off routine controls, emoji out of controls and status text, secondary buttons outlined, nested-interactive and label-in-name fixes, picker result badge back inside its card.
+- **Why:** Polish, accessibility compliance, and anti-slop UI alignment.
+- **Verified:** 357 unit tests pass; build clean; Playwright desktop + mobile 92 passed, 3 skipped, 1 failed. axe: 0 violations.
+- **Left open:** Mobile review-picker checkbox cover fix, phone board clip at 390px, light theme accent text contrast.
 
 *PC · Antigravity · shareable graphics, accessibility, game review polish*
 - **Changed:**

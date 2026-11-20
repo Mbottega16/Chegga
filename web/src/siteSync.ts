@@ -74,7 +74,7 @@ async function syncChessCom(
   const client = new ChessComClient(`chegga-web visitor sync for ${username}`);
   try {
     const result = await quickSyncRecentGames(db, client, username, target, (p) =>
-      onProgress?.({ text: `Reading ${p.currentMonth ?? "your games"}…`, done: p.monthsProcessed, total: p.totalMonths }),
+      onProgress?.({ text: p.statusText ?? `Reading ${p.currentMonth ?? "your games"}…`, done: p.monthsProcessed, total: p.totalMonths }),
     );
     return { gamesAdded: result.gamesAdded, fullyCaughtUp: result.fullyCaughtUp };
   } catch (err) {
@@ -94,6 +94,7 @@ export async function syncLichess(
   username: string,
   opts: { max: number; incremental?: boolean },
   fetchImpl?: typeof fetch,
+  onRateLimit?: (secondsRemaining: number) => void,
 ): Promise<SiteSyncResult> {
   let sinceMs: number | undefined;
   if (opts.incremental) {
@@ -103,7 +104,7 @@ export async function syncLichess(
 
   let raws;
   try {
-    raws = await fetchLichessGames(username, { max: opts.max, sinceMs }, fetchImpl);
+    raws = await fetchLichessGames(username, { max: opts.max, sinceMs, onRateLimit }, fetchImpl);
   } catch (err) {
     if (err instanceof LichessHttpError) throw new SiteSyncError(err.message);
     throw err;
@@ -139,7 +140,9 @@ export async function syncRecentGames(
 ): Promise<SiteSyncResult> {
   if (site === "lichess") {
     onProgress?.({ text: "Asking Lichess for your newest games…" });
-    return syncLichess(db, username, { max: target, incremental: false });
+    return syncLichess(db, username, { max: target, incremental: false }, undefined, (sec) => {
+      onProgress?.({ text: `Rate limited — sync will resume in ${sec} seconds` });
+    });
   }
   return syncChessCom(db, username, target, onProgress);
 }

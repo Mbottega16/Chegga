@@ -4,9 +4,13 @@
 // contract: only the official read-only `api.chess.com/pub/...`
 // endpoints, serial requests only (never parallel — that's what
 // triggers 429s), a minimum spacing enforced client-side, exponential
-// backoff honoring `Retry-After` on 429/5xx. A browser hitting the same
+// backoff with jitter honoring `Retry-After` on 429/5xx. A browser hitting the same
 // public GET endpoint is exactly what Chess.com's PubAPI is meant for —
 // no proxy, no server-side key.
+
+import { calculateBackoffWithJitter } from "./backoff";
+
+export { calculateBackoffWithJitter };
 
 const CHESS_COM_API_BASE = "https://api.chess.com/pub";
 
@@ -42,23 +46,68 @@ export class ChessComHttpError extends Error {
   }
 }
 
+export interface ChessComClientOptions {
+  minIntervalSeconds?: number;
+  maxRetries?: number;
+  baseDelayMs?: number;
+  maxDelayMs?: number;
+  fetchImpl?: typeof fetch;
+  randomFn?: () => number;
+  sleepFn?: (ms: number) => Promise<void>;
+  onRateLimit?: (secondsRemaining: number) => void;
+}
+
 export class ChessComClient {
   private minIntervalMs: number;
   private maxRetries: number;
+  private baseDelayMs: number;
+  private maxDelayMs: number;
   private lastRequestAt = 0;
+  private fetchImpl: typeof fetch;
+  private randomFn?: () => number;
+  private sleepFn?: (ms: number) => Promise<void>;
+  public onRateLimit?: (secondsRemaining: number) => void;
 
   // `contact` no longer has anywhere to go (see the note on `get()` below
   // about why no custom header is sent) — kept as a required param so call
   // sites still read as "who's using this instance," but it's unused.
-  constructor(_contact: string, opts: { minIntervalSeconds?: number; maxRetries?: number } = {}) {
+  constructor(_contact: string, opts: ChessComClientOptions = {}) {
     this.minIntervalMs = (opts.minIntervalSeconds ?? 1.0) * 1000;
     this.maxRetries = opts.maxRetries ?? 5;
+    this.baseDelayMs = opts.baseDelayMs ?? 1000;
+    this.maxDelayMs = opts.maxDelayMs ?? 60_000;
+    this.fetchImpl = opts.fetchImpl ?? globalThis.fetch;
+    this.randomFn = opts.randomFn;
+    this.sleepFn = opts.sleepFn;
+    this.onRateLimit = opts.onRateLimit;
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return (this.sleepFn ?? defaultSleep)(ms);
   }
 
   private async throttle(): Promise<void> {
     const elapsed = performance.now() - this.lastRequestAt;
     const wait = this.minIntervalMs - elapsed;
-    if (wait > 0) await sleep(wait);
+    if (wait > 0) await this.sleep(wait);
+  }
+
+  private async pauseCooldown(delayMs: number): Promise<void> {
+    const totalSeconds = Math.max(1, Math.ceil(delayMs / 1000));
+    if (delayMs <= 1000) {
+      this.onRateLimit?.(totalSeconds);
+      await this.sleep(delayMs);
+      return;
+    }
+
+    let remainingMs = delayMs;
+    while (remainingMs > 0) {
+      const secondsLeft = Math.ceil(remainingMs / 1000);
+      this.onRateLimit?.(secondsLeft);
+      const step = Math.min(1000, remainingMs);
+      await this.sleep(step);
+      remainingMs -= step;
+    }
   }
 
   private async get<T>(url: string): Promise<T> {
@@ -72,7 +121,7 @@ export class ChessComClient {
       // no real equivalent to Python's requests-level UA string from here.
       let response: Response;
       try {
-        response = await fetch(url);
+        response = await this.fetchImpl(url);
       } catch (err) {
         // A thrown fetch (offline, DNS hiccup, transient CORS/network
         // blip) used to propagate straight out and abort an entire
@@ -80,25 +129,57 @@ export class ChessComClient {
         // back off and retry up to maxRetries, only giving up (rethrow)
         // once the attempts are exhausted.
         if (attempt >= this.maxRetries) throw err;
-        const delayMs = Math.min(2 ** attempt, 60) * 1000;
+        const delayMs = calculateBackoffWithJitter(attempt, {
+          baseDelayMs: this.baseDelayMs,
+          maxDelayMs: this.maxDelayMs,
+          randomFn: this.randomFn,
+        });
         console.warn(
           `Chess.com API network error on ${url} (attempt ${attempt}/${this.maxRetries}) — backing off ${delayMs}ms`,
           err,
         );
-        await sleep(delayMs);
+        await this.sleep(delayMs);
         continue;
       }
       this.lastRequestAt = performance.now();
 
       if (response.ok) return (await response.json()) as T;
 
-      if (response.status === 429 || response.status >= 500) {
-        const retryAfter = response.headers.get("Retry-After");
-        const delayMs = retryAfter ? parseFloat(retryAfter) * 1000 : Math.min(2 ** attempt, 60) * 1000;
+      if (response.status === 429) {
+        if (attempt >= this.maxRetries) {
+          throw new ChessComHttpError(429, url);
+        }
+        const retryAfterHeader = response.headers?.get?.("Retry-After");
+        const retryAfterSec = retryAfterHeader ? parseFloat(retryAfterHeader) : null;
+        const delayMs = calculateBackoffWithJitter(attempt, {
+          baseDelayMs: this.baseDelayMs,
+          maxDelayMs: this.maxDelayMs,
+          retryAfterSeconds: Number.isFinite(retryAfterSec) && (retryAfterSec ?? 0) > 0 ? retryAfterSec : null,
+          randomFn: this.randomFn,
+        });
+        console.warn(
+          `Chess.com API 429 on ${url} (attempt ${attempt}/${this.maxRetries}) — backing off ${delayMs}ms`,
+        );
+        await this.pauseCooldown(delayMs);
+        continue;
+      }
+
+      if (response.status >= 500) {
+        if (attempt >= this.maxRetries) {
+          throw new ChessComHttpError(response.status, url);
+        }
+        const retryAfterHeader = response.headers?.get?.("Retry-After");
+        const retryAfterSec = retryAfterHeader ? parseFloat(retryAfterHeader) : null;
+        const delayMs = calculateBackoffWithJitter(attempt, {
+          baseDelayMs: this.baseDelayMs,
+          maxDelayMs: this.maxDelayMs,
+          retryAfterSeconds: Number.isFinite(retryAfterSec) && (retryAfterSec ?? 0) > 0 ? retryAfterSec : null,
+          randomFn: this.randomFn,
+        });
         console.warn(
           `Chess.com API ${response.status} on ${url} (attempt ${attempt}/${this.maxRetries}) — backing off ${delayMs}ms`,
         );
-        await sleep(delayMs);
+        await this.sleep(delayMs);
         continue;
       }
 
@@ -121,6 +202,6 @@ export class ChessComClient {
   }
 }
 
-function sleep(ms: number): Promise<void> {
+function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
