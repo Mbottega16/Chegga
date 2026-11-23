@@ -26,6 +26,7 @@ const CLASS_COLOR_DEFAULT: Record<string, string> = {
   inaccuracy: "#ffb300",
   mistake: "#fb8c00",
   blunder: "#e53935",
+  miss: "#ec4899", // pink -- a gift from the opponent left on the board (review-only, see gameReview.ts missedChance)
   book: "#a855f7", // vivid purple
 };
 
@@ -37,6 +38,7 @@ const CLASS_COLOR_COLORBLIND: Record<string, string> = {
   inaccuracy: "#f2c14e", // gold (deliberately between the two hue families, reads as neutral-caution either way)
   mistake: "#e8842c", // orange
   blunder: "#b23a00", // deep burnt orange
+  miss: "#c026d3", // magenta -- its own hue, off both the blue and the orange ramp
   book: "#9333ea",
 };
 
@@ -50,6 +52,7 @@ export const MOVE_QUALITY_GLYPHS: Record<string, string> = {
   inaccuracy: "?!",
   mistake: "?",
   blunder: "??",
+  miss: "✗",
   book: "📖",
 };
 
@@ -62,6 +65,7 @@ export const MOVE_QUALITY_TITLES: Record<string, string> = {
   inaccuracy: "Inaccuracy",
   mistake: "Mistake",
   blunder: "Blunder",
+  miss: "Miss",
   book: "Book Move",
 };
 
@@ -73,6 +77,7 @@ export const ALL_CLASSIFICATIONS = [
   "inaccuracy",
   "mistake",
   "blunder",
+  "miss",
   "book",
 ];
 

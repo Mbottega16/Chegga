@@ -99,14 +99,13 @@ To prevent multi-megabyte data blobs and archived legacy apps from slowing down 
 
 *Overwrite this at the end of every session; move the previous handoff into `HISTORY.md` first.*
 
-- **Last Worked On (2026-11-05, PC, Claude):** two passes, two commits.
-  - `4d68bc5` WAVE pass: empty evict button, SVGs `aria-hidden` on the `<svg>`, no redundant titles; `--muted-dim` lifted in all themes; 0.75rem font floor; light/OLED no longer repainted dark by the studio `:root`; synced game cards use the big-board layout; Studio Menu folds (desktop rail, sticky; drawer at 1040px and below, `studioMenu.ts`); stage board shrinks to fit (container units).
-  - `eeb24d2` anti-slop pass from Impeccable 4.8.0, axe-core 4 and the AI-slop catalogs: side-tab stripes and picker top stripe removed, bounce easing off routine controls, emoji out of controls and status text, secondary buttons outlined, nested-interactive and label-in-name fixes, picker result badge back inside its card.
-- **Current State:** 357 unit tests pass; build clean; Playwright desktop + mobile 92 passed, 3 skipped, 1 failed. axe: 0 violations (desktop + Pixel 7, empty + demo). Playwright now blocks the service worker (`serviceWorkers: "block"`), which fixed the flaky Featurebase test.
+- **Last Worked On (2026-11-23, PC, Antigravity):** Front-end overhaul — borderless edge-to-edge layout, 2×3 entry launchpad window, distinguished Operating vs. Playing orientations, simplified Get Connected panel, top header cleanup, and background/closed-app sync:
+  - Removed outer card borders and miniature inner borders across **Get Connected** (`#sync-section`), **Studio Menu** (`#studio-nav-panel`), **Daily Training Set** (`#today-section`), and **Previously Played Games** (`#picker-section`, `#import-section`), expanding `.wrap` to `max-width: 100%` edge-to-edge with larger, spread-out typography.
+  - Built the **2×3 Panel-Style Launchpad Window** (`#studio-nav-list.launchpad-grid-2x3` in `main.ts` / `studioMenu.ts`) that opens on entry and distinguishes **Operating View** (`data-orientation="operating"`) from **Playing View** (`data-orientation="playing"`), with a header orientation switcher (`#orientation-operating-btn`, `#orientation-playing-btn`) and automatic switch to Playing View when starting/reviewing a game.
+  - Simplified **Get connected.** (`#sync-section`) to the heading, `✕` collapse toggle, description, site selector (`#sync-site`), and username input (`#username`), removing the demo button and batch analyze drawer from that panel.
+  - Cleaned up the top header by removing the redundant **Play**, **Stockfish WASM**, and **Feedback** buttons while keeping **Sync** (`#hero-analyze-btn`) and wiring non-blocking while-playing + Service Worker closed-app background sync (`web/src/backgroundSync.ts`, `web/public/sw.js`).
+- **Current State:** 366 unit tests across 32 files pass; TypeScript + Vite production build clean; Playwright desktop + mobile E2E suites (`smoke.spec.ts` and `studio-layout.spec.ts`, 31 passed, 0 failed) 100% green.
 - **Next Up:**
-  1. Fix the mobile `review-picker` e2e failure (fails on the old HEAD too): on a phone the review buttons and banner cover the `#review-before` checkbox.
-  2. Fix the phone board clip: mobile.css sizes squares as `(100vw - 44px) / 8`, but the real chrome is about 72px, so the h-file is cut off at 390px (also on the live site).
-  3. Light theme: accent text (`--accent`, `--accent-strong`, `--win`) is 1.5–1.9:1 on white; it needs dark text variants per accent.
-  4. Owner calls left open by the anti-slop pass: Inter for everything (Impeccable "overused font"; unified on purpose in `2c7b9e1`), the jello connect panel and move-quality pops (bounce easing, kept), motif emoji in `blunderTagger.ts`/`gamePatterns.ts`, Title Case headings.
-  5. Install WebKit for Playwright (`npx playwright install webkit`); the `webkit` project could not run on this PC.
-  6. Earlier: real-device mobile check; Safari/WebKit IndexedDB at 1,000+ games; optional Vercel rename.
+  1. Real-device mobile check (iOS/Android touch, 3D pinch-zoom, eval-curve scrubbing) and large real-account sync on Safari/WebKit.
+  2. Try the new 2×3 Operating View vs. Playing View flow with a real Chess.com or Lichess account.
+  3. Optional: rename the Vercel deployment off `chegga-web.vercel.app`.

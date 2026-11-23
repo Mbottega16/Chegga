@@ -9,7 +9,14 @@
 //   - the tally: how many of their moves landed in each tier.
 
 import { getClassColor, getClassGlyph } from "./classificationColors";
-import { moveLabel, tallyHumanQuality, REVIEW_QUALITY_LABELS, computeStorylineMoments, type ReviewGame } from "./gameReview";
+import {
+  moveLabel,
+  tallyHumanQuality,
+  REVIEW_QUALITY_LABELS,
+  computeStorylineMoments,
+  positionWinChances,
+  type ReviewGame,
+} from "./gameReview";
 import { formatCandidateEval, isShadedTier, type Candidate } from "./candidateMoves";
 import type { BlunderDna } from "./blunderTagger";
 
@@ -17,139 +24,97 @@ function escapeAttr(text: string): string {
   return text.replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c]!);
 }
 
-/** An interactive evaluation advantage curve for the whole game.
- * Plots White advantage (+) vs Black advantage (-) with clickable points
- * colored by the move quality system and time-trouble heat zones. */
+/** Tiers worth a marker on the chart: the moves that changed the game. */
+const CHART_MARKED_TIERS = new Set(["brilliant", "inaccuracy", "mistake", "miss", "blunder"]);
+
+/** The game as one picture: White's winning chances over time.
+ *
+ * The light area is White's share, the dark area Black's, the same split
+ * as the evaluation bar beside the board, so the bar is the chart at one
+ * moment. It is drawn on winning chances, not raw pawns: a +3 to +6 swing
+ * in a won game barely moves it, a 0 to +3 swing in a level game moves it
+ * a lot, which is how the game actually felt. Markers (round HTML dots, so
+ * they stay round however wide the chart is) sit on the moves that
+ * changed things, the reviewer's own bigger than the opponent's. Dashed
+ * lines mark where the middlegame and the endgame began. */
 export function renderEvalGraph(review: ReviewGame, currentIndex: number): string {
   if (!review.steps.length) return "";
   const n = review.steps.length;
-  // White-relative evaluation in pawns clamped to [-8, +8]
-  let prevScore = 0;
-  const scores: number[] = review.steps.map((step) => {
-    if (step.evalAfterMate !== undefined) {
-      prevScore = step.evalAfterMate > 0 ? 8 : -8;
-    } else if (step.evalAfterCp !== undefined) {
-      prevScore = Math.max(-8, Math.min(8, step.evalAfterCp / 100));
-    }
-    return prevScore;
-  });
+  const wins = positionWinChances(review); // n + 1 positions: the start, then after each move
+  const x = (pos: number) => (pos / n) * 100;
+  const y = (win: number) => 2 + (1 - win / 100) * 36; // viewBox height 40, 2 units of headroom
+  const pts = wins.map((w, k) => `${x(k).toFixed(2)} ${y(w).toFixed(2)}`);
+  const line = `M ${pts.join(" L ")}`;
+  const whiteArea = `M 0 40 L ${pts.join(" L ")} L 100 40 Z`;
 
-  const getX = (i: number) => {
-    if (n === 1) return 50;
-    return 3 + (i / (n - 1)) * 94;
-  };
-  const getY = (score: number) => {
-    // 0 is at y=20, +8 at y=4, -8 at y=36
-    return 20 - (score / 8) * 16;
-  };
-
-  const points = scores.map((s, i) => ({ x: getX(i), y: getY(s), score: s }));
-  const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
-
-  // Fill polygon above midline (White advantage) and below midline (Black advantage)
-  const whitePoly = [
-    `M ${getX(0).toFixed(1)} 20`,
-    ...points.map((p) => `L ${p.x.toFixed(1)} ${Math.min(20, p.y).toFixed(1)}`),
-    `L ${getX(n - 1).toFixed(1)} 20`,
-    "Z",
-  ].join(" ");
-
-  const blackPoly = [
-    `M ${getX(0).toFixed(1)} 20`,
-    ...points.map((p) => `L ${p.x.toFixed(1)} ${Math.max(20, p.y).toFixed(1)}`),
-    `L ${getX(n - 1).toFixed(1)} 20`,
-    "Z",
-  ].join(" ");
-
-  // Time-trouble / clock-panic heat bands behind the curve
-  const stepWidth = n > 1 ? Math.max(1.8, 94 / (n - 1)) : 6;
+  // Clock trouble: a band behind the move.
+  const band = Math.max(0.8, 100 / n);
   const heatBands = review.steps
     .map((step, i) => {
       if (!step.clockAlert) return "";
-      const p = points[i];
-      if (!p) return "";
-      const bandColor = step.clockAlert === "panic" ? "#e53935" : "#ffb300";
-      const opacity = step.clockAlert === "panic" ? "0.22" : "0.14";
-      return `<rect x="${(p.x - stepWidth / 2).toFixed(1)}" y="2" width="${stepWidth.toFixed(1)}" height="36" fill="${bandColor}" fill-opacity="${opacity}" class="eval-heat-band eval-heat-${step.clockAlert}"/>`;
+      const cx = x(i + 1);
+      return `<rect x="${(cx - band / 2).toFixed(2)}" y="0" width="${band.toFixed(2)}" height="40" class="eval-heat-band eval-heat-${step.clockAlert}"/>`;
     })
     .join("");
 
-  // Interactive dots for moves with move quality or annotations
+  // Where the middlegame and the endgame begin.
+  const phaseStarts: { pos: number; label: string }[] = [];
+  let lastPhase = review.steps[0].gamePhase;
+  review.steps.forEach((step, i) => {
+    if (step.gamePhase && lastPhase && step.gamePhase !== lastPhase && !phaseStarts.some((p) => p.label === step.gamePhase)) {
+      phaseStarts.push({ pos: i, label: step.gamePhase });
+    }
+    if (step.gamePhase) lastPhase = step.gamePhase;
+  });
+  const phaseLines = phaseStarts
+    .map((p) => `<line x1="${x(p.pos).toFixed(2)}" y1="0" x2="${x(p.pos).toFixed(2)}" y2="40" class="eval-phase-line" vector-effect="non-scaling-stroke"/>`)
+    .join("");
+  const phaseLabels = phaseStarts
+    .map((p) => `<span class="eval-phase-label" style="left:${x(p.pos).toFixed(2)}%">${p.label === "middlegame" ? "Middlegame" : "Endgame"}</span>`)
+    .join("");
+
   const dots = review.steps
     .map((step, i) => {
-      const p = points[i];
-      if (!p) return "";
-      const isHuman = step.isHuman;
-      const tier = step.classification;
-      if (!isHuman || !tier) return "";
+      const tier = step.tier ?? step.classification;
+      if (!tier || !CHART_MARKED_TIERS.has(tier)) return "";
       const color = getClassColor(tier);
-      const glyph = getClassGlyph(tier);
-      const isMajor = tier === "brilliant" || tier === "blunder";
-      const radius = isMajor ? 2.5 : 1.55;
-      const glyphTag = isMajor
-        ? `<text x="${p.x.toFixed(1)}" y="${p.y < 20 ? (p.y - 3.3).toFixed(1) : (p.y + 5.8).toFixed(1)}" font-family="JetBrains Mono, monospace" font-size="3.4" font-weight="900" fill="${color}" text-anchor="middle" class="eval-graph-glyph">${glyph}</text>`
-        : "";
-      return `
-        <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${radius}" fill="${color}" stroke="#0b0f17" stroke-width="0.7"
-                class="eval-graph-node" data-review-index="${i}" data-tier="${tier}">
-          <title>${escapeAttr(moveLabel(step))}: ${tier} (${p.score > 0 ? "+" : ""}${p.score.toFixed(1)})</title>
-        </circle>
-        ${glyphTag}`;
+      const label = `${moveLabel(step)}: ${step.isHuman ? "your" : "opponent's"} ${REVIEW_QUALITY_LABELS[tier] ?? tier}`;
+      return `<button type="button" class="eval-graph-node ${step.isHuman ? "eval-node-mine" : "eval-node-theirs"}" data-review-index="${i}" data-tier="${tier}" style="left:${x(i + 1).toFixed(2)}%;top:${((y(wins[i + 1]) / 40) * 100).toFixed(2)}%;--node-color:${color}" title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}"></button>`;
     })
     .join("");
 
-  // Current move cursor line and value tag
   let cursorSvg = "";
-  if (currentIndex >= 0 && currentIndex < n) {
-    const curP = points[currentIndex];
-    if (curP) {
-      const curScore = curP.score;
-      const curLabel = curScore > 0 ? `+${curScore.toFixed(1)}` : curScore.toFixed(1);
-      cursorSvg = `
-        <line x1="${curP.x.toFixed(1)}" y1="2" x2="${curP.x.toFixed(1)}" y2="38" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="1.5,1.5" class="eval-graph-cursor"/>
-        <circle cx="${curP.x.toFixed(1)}" cy="${curP.y.toFixed(1)}" r="2.9" fill="var(--accent)" stroke="#fff" stroke-width="1" class="eval-graph-current-dot"/>
-        <text x="${curP.x < 84 ? (curP.x + 3.2).toFixed(1) : (curP.x - 3.2).toFixed(1)}" y="7.5" font-family="JetBrains Mono, monospace" font-size="3.6" font-weight="800" fill="var(--accent-strong)" text-anchor="${curP.x < 84 ? "start" : "end"}">${curLabel}</text>`;
-    }
+  let cursorTag = "";
+  const curPos = Math.max(0, Math.min(n, currentIndex + 1));
+  if (currentIndex >= -1) {
+    const cx = x(curPos);
+    cursorSvg = `<line x1="${cx.toFixed(2)}" y1="0" x2="${cx.toFixed(2)}" y2="40" class="eval-graph-cursor" vector-effect="non-scaling-stroke"/>`;
+    const w = wins[curPos];
+    const pct = Math.round(w >= 50 ? w : 100 - w);
+    const who = Math.abs(w - 50) < 2 ? "Level" : `${w >= 50 ? "White" : "Black"} ${pct}%`;
+    cursorTag = `<span class="eval-graph-cursor-dot" style="left:${cx.toFixed(2)}%;top:${((y(w) / 40) * 100).toFixed(2)}%"></span><span class="eval-graph-tag${cx > 80 ? " eval-graph-tag-left" : ""}" style="left:${cx.toFixed(2)}%">${who}</span>`;
   }
 
   return `
-    <div class="eval-graph-container" role="region" aria-label="Game evaluation advantage curve">
+    <div class="eval-graph-container" role="region" aria-label="Winning chances over the game. Drag across it to move through the game.">
       <div class="eval-graph-header">
         <span class="eval-graph-label">Evaluation Flow</span>
-        <span class="eval-graph-legend"><span class="legend-white">▲ White</span> <span class="legend-black">▼ Black</span></span>
+        <span class="eval-graph-legend"><span class="legend-white">White</span> / <span class="legend-black">Black</span> winning chances</span>
       </div>
-      <svg class="eval-graph-svg" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-        <defs>
-          <linearGradient id="white-eval-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.34"/>
-            <stop offset="100%" stop-color="#ffffff" stop-opacity="0.04"/>
-          </linearGradient>
-          <linearGradient id="black-eval-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#0b0f17" stop-opacity="0.12"/>
-            <stop offset="100%" stop-color="#e53935" stop-opacity="0.28"/>
-          </linearGradient>
-          <filter id="eval-line-glow" x="-10%" y="-20%" width="120%" height="140%">
-            <feGaussianBlur stdDeviation="0.9" result="blur"/>
-            <feMerge>
-              <feMergeNode in="blur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-        </defs>
-        <!-- Time-trouble heat bands -->
-        ${heatBands}
-        <!-- Advantage fills -->
-        <path d="${whitePoly}" fill="url(#white-eval-grad)"/>
-        <path d="${blackPoly}" fill="url(#black-eval-grad)"/>
-        <!-- Midline -->
-        <line x1="2" y1="20" x2="98" y2="20" stroke="var(--border-strong)" stroke-width="0.6" stroke-dasharray="1.5,1.5"/>
-        <!-- Eval curve with broadcast glow -->
-        <path d="${pathD}" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" filter="url(#eval-line-glow)"/>
-        <!-- Interactive node dots -->
+      <div class="eval-graph-plot">
+        <svg class="eval-graph-svg" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+          <rect x="0" y="0" width="100" height="40" class="eval-black-area"/>
+          <path d="${whiteArea}" class="eval-white-area"/>
+          ${heatBands}
+          <line x1="0" y1="20" x2="100" y2="20" class="eval-midline" vector-effect="non-scaling-stroke"/>
+          ${phaseLines}
+          <path d="${line}" class="eval-line" vector-effect="non-scaling-stroke"/>
+          ${cursorSvg}
+        </svg>
+        ${phaseLabels}
         ${dots}
-        <!-- Current cursor -->
-        ${cursorSvg}
-      </svg>
+        ${cursorTag}
+      </div>
     </div>`;
 }
 

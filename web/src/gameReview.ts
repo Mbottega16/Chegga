@@ -18,6 +18,8 @@ import type { MoveAnalysisRecord } from "./db";
 import { CLASSIFICATION_ORDER } from "./classificationColors";
 import { clocksByFen, parseTimeControlBaseSeconds, parseTimeControlIncrementSeconds, timeSpentSeconds } from "./clockParser";
 import { extractBlunderDna, type BlunderDna } from "./blunderTagger";
+import { isSacrifice } from "./candidateMoves";
+import { winChance } from "./accuracy";
 
 export interface ReviewStep {
   ply: number; // 1-based half-move, same convention as MoveAnalysisRecord.ply
@@ -33,6 +35,12 @@ export interface ReviewStep {
   // Grading, present only when analysis covered this ply -- a partly
   // analyzed game still reviews, it just has ungraded steps.
   classification?: string;
+  // The tier the review shows. Usually the stored classification, but a
+  // "best" move that is also a real sacrifice reads as brilliant, and a
+  // slip right after the opponent's own mistake reads as a miss (the gift
+  // was not taken). Both are decided here, at review time, never stored,
+  // so profile stats keep counting the stored tiers.
+  tier?: string;
   centipawnLoss?: number;
   bestMoveSan?: string;
   bestMoveUci?: string;
@@ -52,12 +60,21 @@ export interface ReviewStep {
   clockAlert?: "panic" | "rush";
 }
 
+export interface ReviewPlayer {
+  name?: string;
+  rating?: number;
+}
+
 export interface ReviewGame {
   gameId?: string; // the synced game's id, when there is one -- a bot game or a pasted PGN has none
   pgn: string; // kept so a caller can rebuild the real game (e.g. Undo after a review)
   startFen: string; // the position before ply 1 -- not always the standard start (handicap games)
   humanColor: "white" | "black";
   steps: ReviewStep[];
+  // From the PGN headers, when the PGN has them.
+  players: { white: ReviewPlayer; black: ReviewPlayer };
+  result?: string; // "1-0" | "0-1" | "1/2-1/2"
+  baseClockSec?: number; // the time control's starting clock
 }
 
 /** Board labels for a review, one per tier. Live play deliberately labels
@@ -65,13 +82,14 @@ export interface ReviewGame {
  * see main.ts's MOVE_QUALITY_LABELS); a review is for finding out what
  * happened, so every tier says what it was. */
 export const REVIEW_QUALITY_LABELS: Record<string, string> = {
-  brilliant: "Brilliant!", // never stored -- main.ts upgrades a sacrificial "best" at display time
+  brilliant: "Brilliant!", // never stored -- buildReview upgrades a sacrificial "best" (ReviewStep.tier)
   best: "Best!",
   excellent: "Excellent",
   good: "Good",
   inaccuracy: "Inaccuracy",
   mistake: "Mistake",
   blunder: "Blunder",
+  miss: "Miss", // never stored -- see missedChance()
 };
 
 /** Tiers where the engine's own preference is worth showing -- naming a
@@ -201,7 +219,66 @@ export function buildReview(
       };
     });
 
-  return { gameId, pgn, startFen, humanColor, steps };
+  const headers = chess.getHeaders();
+  const rating = (v: string | undefined) => {
+    const n = v ? parseInt(v, 10) : NaN;
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  };
+  const players = {
+    white: { name: headers.White && headers.White !== "?" ? headers.White : undefined, rating: rating(headers.WhiteElo) },
+    black: { name: headers.Black && headers.Black !== "?" ? headers.Black : undefined, rating: rating(headers.BlackElo) },
+  };
+  const result = headers.Result && headers.Result !== "*" ? headers.Result : undefined;
+
+  const review: ReviewGame = { gameId, pgn, startFen, humanColor, steps, players, result, baseClockSec: baseSeconds };
+  const wins = positionWinChances(review);
+  steps.forEach((step, i) => {
+    if (!step.classification) return;
+    if (step.classification === "best" && isSacrifice(step.fenBefore, step.uci)) step.tier = "brilliant";
+    else if (missedChance(review, i, wins)) step.tier = "miss";
+    else step.tier = step.classification;
+  });
+  return review;
+}
+
+/** White's winning chance (0-100) at every position of the game: index 0
+ * is the start, index i+1 the position after step i. A stretch the
+ * analysis didn't cover holds the last known value. */
+export function positionWinChances(review: ReviewGame): number[] {
+  const out: number[] = [];
+  let last = 50;
+  const first = review.steps[0];
+  if (first && (first.evalBeforeCp !== undefined || first.evalBeforeMate !== undefined)) {
+    last = winChance(first.evalBeforeCp, first.evalBeforeMate);
+  }
+  out.push(last);
+  for (const step of review.steps) {
+    if (step.evalAfterCp !== undefined || step.evalAfterMate !== undefined) {
+      last = winChance(step.evalAfterCp, step.evalAfterMate);
+    }
+    out.push(last);
+  }
+  return out;
+}
+
+const MISSABLE_GIFT = new Set(["mistake", "blunder"]);
+const SLIP = new Set(["inaccuracy", "mistake", "blunder"]);
+
+/** A "miss": the opponent's last move was a mistake that handed this side
+ * real winning chances, and this move gave most of that gift back without
+ * throwing the game outright (a move that swings the game to losing stays
+ * a blunder). Thresholds are in winning-chance points, 0-100. */
+export function missedChance(review: ReviewGame, index: number, wins = positionWinChances(review)): boolean {
+  const step = review.steps[index];
+  const prev = review.steps[index - 1];
+  if (!step || !prev || !step.classification || !prev.classification) return false;
+  if (!MISSABLE_GIFT.has(prev.classification) || !SLIP.has(step.classification)) return false;
+  const mine = (w: number) => (step.side === "white" ? w : 100 - w);
+  const beforeGift = mine(wins[index - 1]);
+  const before = mine(wins[index]);
+  const after = mine(wins[index + 1]);
+  const gift = before - beforeGift;
+  return gift >= 10 && before >= 60 && before - after >= 10 && after >= 35;
 }
 
 export interface PunishmentPreview {
@@ -305,12 +382,21 @@ export function describeStep(review: ReviewGame, index: number): string {
   if (!step) return "";
 
   const parts = [moveLabel(step)];
+  const tier = step.tier ?? step.classification;
   if (!step.isHuman) {
-    parts.push("— your opponent's move.");
-  } else if (!step.classification) {
+    // The opponent's grade, without the cost or the engine's line: the
+    // review is about the reviewer's own play, but knowing the other side
+    // blundered is half of understanding what happened next.
+    const label = tier ? REVIEW_QUALITY_LABELS[tier] ?? tier : undefined;
+    parts.push(label ? `— your opponent's move: ${label.replace(/!$/, "")}.` : "— your opponent's move.");
+  } else if (!step.classification || !tier) {
     parts.push("— your move (not graded).");
+  } else if (tier === "miss") {
+    const loss = step.centipawnLoss ?? 0;
+    parts.push(`— Miss, ${loss}cp lost. Your opponent's last move handed you a chance, and this let it go.`);
+    if (step.bestMoveSan && step.bestMoveSan !== step.san) parts.push(`${step.bestMoveSan} would have kept it.`);
   } else {
-    const label = REVIEW_QUALITY_LABELS[step.classification] ?? step.classification;
+    const label = REVIEW_QUALITY_LABELS[tier] ?? tier;
     const loss = step.centipawnLoss ?? 0;
     // The top tier never quotes its centipawns: "Best!, 7cp lost" reads as
     // a contradiction, and a few centipawns off the engine's own line is
@@ -373,7 +459,8 @@ export function computeStorylineMoments(review: ReviewGame): StorylineMoment[] {
 
   for (let i = 0; i < review.steps.length; i++) {
     const step = review.steps[i];
-    const tier = step.classification;
+    // Brilliant is a review-time tier (ReviewStep.tier); the rest read the stored grade.
+    const tier = step.tier === "brilliant" ? "brilliant" : step.classification;
     const loss = step.centipawnLoss ?? 0;
 
     const prevCp = i > 0 ? (review.steps[i - 1].evalAfterCp ?? 0) : 0;

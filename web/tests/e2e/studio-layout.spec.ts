@@ -1,8 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
-// Studio Menu fold (studioMenu.ts), the synced-game cards in the right
-// column, and the WAVE errors fixed on 2026-11-05 (empty button, SVGs with
-// no text alternative, redundant titles).
+// Studio 2x3 Launchpad Window (studioMenu.ts), Operating vs. Playing orientation,
+// borderless edge-to-edge sections, synced-game cards, and WAVE checks.
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -16,7 +15,22 @@ test.beforeEach(async ({ page }) => {
 
 const isWide = (page: Page) => (page.viewportSize()?.width ?? 0) > 1040;
 
-test.describe("Studio Menu fold", () => {
+test.describe("Studio Menu 2x3 Window & Fold", () => {
+  test("opens with a 2x3 panel-style launchpad window in Operating View and switches to Playing View", async ({ page }) => {
+    await page.goto("/");
+    const grid = page.locator("#studio-grid");
+    await expect(grid).toHaveAttribute("data-orientation", "operating");
+
+    const tiles = page.locator("#studio-nav-list.launchpad-grid-2x3 .launchpad-tile");
+    await expect(tiles).toHaveCount(6);
+
+    await page.locator("#orientation-playing-btn").click();
+    await expect(grid).toHaveAttribute("data-orientation", "playing");
+
+    await page.locator("#orientation-operating-btn").click();
+    await expect(grid).toHaveAttribute("data-orientation", "operating");
+  });
+
   test("desktop: folds into an icon rail, widens the stage, and is remembered", async ({ page }) => {
     test.skip(!isWide(page), "the rail is the desktop layout");
     await page.goto("/");
@@ -55,7 +69,7 @@ test.describe("Studio Menu fold", () => {
   });
 });
 
-test("a menu click moves the highlight and flashes its target", async ({ page }) => {
+test("a menu click moves the highlight, switches orientation, and flashes its target", async ({ page }) => {
   await page.goto("/");
   const toggle = page.locator("#studio-nav-toggle");
   if ((await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
@@ -63,13 +77,14 @@ test("a menu click moves the highlight and flashes its target", async ({ page })
   await link.click();
   await expect(link).toHaveClass(/active/);
   await expect(link).toHaveAttribute("aria-current", "location");
-  await expect(page.locator('.studio-nav-link[href="#sync-section"]')).not.toHaveClass(/active/);
+  await expect(page.locator("#studio-grid")).toHaveAttribute("data-orientation", "playing");
+  await expect(page.locator('.studio-nav-link[href="#picker-section"]')).not.toHaveClass(/active/);
   await expect(page.locator("#play-section")).toHaveClass(/nav-target-flash/);
 });
 
 test("synced game cards keep their details inside the card", async ({ page }) => {
   await page.goto("/");
-  await page.locator("#demo-load-btn").click();
+  await page.locator(".picker-demo-cta-btn").first().click();
   await expect(page.locator("#demo-banner")).toBeVisible();
   const card = page.locator("#picker-track .picker-card").first();
   await expect(card).toBeVisible();

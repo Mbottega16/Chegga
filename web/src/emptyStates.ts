@@ -348,7 +348,7 @@ export function wireEmptyStateCtas(): void {
     const sampleBtn = (e.target as HTMLElement).closest(".picker-demo-cta-btn, .game-slider-card");
     if (sampleBtn) {
       const demoBtn = document.getElementById("demo-load-btn") as HTMLButtonElement | null;
-      if (demoBtn) demoBtn.click();
+      if (demoBtn) demoBtn.click(); else window.dispatchEvent(new CustomEvent("chegga:load-demo"));
       return;
     }
     const btn = (e.target as HTMLElement).closest("[data-empty-cta]");

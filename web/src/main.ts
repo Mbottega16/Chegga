@@ -14,6 +14,7 @@ import { installErrorOverlay } from "./errorOverlay";
 installErrorOverlay(); // first, before anything else can throw
 
 import "./style.css";
+import "./review.css"; // the review screen's board furniture, summary, move list, chart, drill
 import "./mobile.css"; // small-viewport pass — loaded after style.css so equal-specificity rules win
 import { showEmptyStates, emptyFor, clearEmptyFor, wireEmptyStateCtas } from "./emptyStates";
 import { wireMiniBoardReplay } from "./miniBoardSvg";
@@ -31,7 +32,6 @@ import {
   iconStorage,
   iconCurriculum,
   iconTerminal,
-  iconPlay,
   iconMoon,
   iconSun,
   iconCube,
@@ -42,7 +42,8 @@ import {
   iconImage,
   iconChevron,
 } from "./icons";
-import { setupStudioMenu, revealSection } from "./studioMenu";
+import { setupStudioMenu, revealSection, setDashboardOrientation } from "./studioMenu";
+import { saveBgSyncConfig, setupBackgroundSync } from "./backgroundSync";
 import { renderReviewCardCanvas, copyReviewCardImage, downloadReviewCardImage } from "./shareCard";
 import {
   openDb,
@@ -206,11 +207,27 @@ import {
 import {
   renderEvalGraph,
   renderStorylineBar,
-  renderReviewStrip,
-  renderQualityTally,
   renderCandidateList,
   renderBlunderDna,
 } from "./gameReviewView";
+import {
+  renderEvalBar,
+  renderPlayerBar,
+  renderGameSummary,
+  renderMoveList as renderReviewMoveList,
+  nextTierIndex,
+  playerSides,
+} from "./reviewBoardView";
+import { summarizeGame } from "./reviewInsights";
+import {
+  chooseReviewSide,
+  decodeSharedReview,
+  encodeSharedReview,
+  fetchLichessGame,
+  parseLichessGameUrl,
+  pgnHeader,
+  readPgn,
+} from "./gameImport";
 import { explainMove, explainInputFromStep, explainInputFromPuzzle } from "./moveExplanation";
 import {
   buildCandidates,
@@ -266,6 +283,7 @@ const showTutorialThisLoad = shouldShowTutorial({
   })(),
   search: location.search,
   hashUsername: new URLSearchParams(location.hash.replace(/^#/, "")).get("u") || undefined,
+  sharedReview: new URLSearchParams(location.hash.replace(/^#/, "")).has("review"),
 });
 
 // Cap arrows per origin square so the board stays legible as the synced
@@ -312,13 +330,14 @@ app.innerHTML = `
         </div>
       </div>
       <div class="header-actions">
-        <button type="button" id="hero-play-btn" class="header-action-btn btn-primary" title="Play vs. bot">${iconPlay} Play</button>
-        <button type="button" id="hero-analyze-btn" class="header-action-btn" title="Sync & analyze games">${iconConnect} Sync</button>
+        <div class="orientation-switcher" id="orientation-switcher" role="group" aria-label="Dashboard view orientation">
+          <button type="button" id="orientation-operating-btn" class="orientation-btn active" aria-pressed="true" title="Switch to the Operating & 2x3 Hub view">Operating View</button>
+          <button type="button" id="orientation-playing-btn" class="orientation-btn" aria-pressed="false" title="Switch to the Playing & Board orientation">Playing View</button>
+        </div>
+        <button type="button" id="hero-analyze-btn" class="header-action-btn" title="Sync & analyze games in the background">${iconConnect} <span id="header-sync-label">Sync</span></button>
         <button type="button" id="theme-toggle-btn" class="header-theme-btn" title="Toggle theme mode (Dark / Light / OLED)">
           <span id="theme-toggle-icon">${iconMoon}</span> <span id="theme-toggle-label">Dark</span>
         </button>
-        <span class="header-engine-pill"><span class="engine-dot"></span>Stockfish WASM</span>
-        <button type="button" id="feedback-btn" class="feedback-btn" hidden>Feedback</button>
       </div>
     </header>
 
@@ -328,12 +347,80 @@ app.innerHTML = `
     </p>
 
     <main id="main-content">
-    <div class="studio-workspace-grid" id="studio-grid">
+    <div class="studio-workspace-grid" id="studio-grid" data-orientation="operating">
+      <div class="studio-left-column">
+        <nav class="card studio-nav-card section-nav" id="studio-nav-panel" aria-label="Studio Menu">
+          <div class="studio-nav-header">
+            <h2 class="studio-nav-heading">
+              <button type="button" class="studio-nav-toggle" id="studio-nav-toggle" aria-expanded="true" aria-controls="studio-nav-list">
+                <span class="studio-nav-heading-text">Studio Menu</span>
+                <span class="studio-nav-chevron">${iconChevron}</span>
+              </button>
+            </h2>
+          </div>
+          <div class="studio-nav-list launchpad-grid-2x3" id="studio-nav-list">
+            <a href="#picker-section" class="studio-nav-link launchpad-tile active" data-view-mode="operating">
+              <div class="launchpad-tile-top">
+                <span class="nav-icon">${iconGames}</span>
+                <span class="launchpad-tile-kicker">Game Library</span>
+              </div>
+              <strong class="nav-text">Previously Played Games</strong>
+              <span class="launchpad-tile-desc">Look over a previously played game, paste a PGN or Lichess link, and step through move evaluations.</span>
+            </a>
+            <a href="#today-section" class="studio-nav-link launchpad-tile" data-view-mode="operating">
+              <div class="launchpad-tile-top">
+                <span class="nav-icon">${iconToday}</span>
+                <span class="launchpad-tile-kicker">Daily Practice</span>
+              </div>
+              <strong class="nav-text">Daily Training Sets</strong>
+              <span class="launchpad-tile-desc">Complete today's personalized training set, spaced-repetition blunders, and endgame drills.</span>
+            </a>
+            <a href="#play-section" class="studio-nav-link launchpad-tile" data-view-mode="playing">
+              <div class="launchpad-tile-top">
+                <span class="nav-icon">${iconStage}</span>
+                <span class="launchpad-tile-kicker">Board Orientation</span>
+              </div>
+              <strong class="nav-text">Playing</strong>
+              <span class="launchpad-tile-desc">Switch to the playing orientation of the dashboard to challenge Stockfish or study the live board.</span>
+            </a>
+            <a href="#sync-section" class="studio-nav-link launchpad-tile" data-view-mode="operating">
+              <div class="launchpad-tile-top">
+                <span class="nav-icon">${iconConnect}</span>
+                <span class="launchpad-tile-kicker">Account Sync</span>
+              </div>
+              <strong class="nav-text">Getting Connected.</strong>
+              <span class="launchpad-tile-desc">Enter your Chess.com or Lichess username to load your recent games in the background.</span>
+            </a>
+            <a href="#profile-section" class="studio-nav-link launchpad-tile" data-view-mode="operating">
+              <div class="launchpad-tile-top">
+                <span class="nav-icon">${iconProfile}</span>
+                <span class="launchpad-tile-kicker">Scouting &amp; Leaks</span>
+              </div>
+              <strong class="nav-text">Your Profile</strong>
+              <span class="launchpad-tile-desc">Inspect your move-quality distribution, accuracy trends, opening repertoire, and tactical leaks.</span>
+            </a>
+            <a href="#coming-soon-section" class="studio-nav-link launchpad-tile" data-view-mode="operating">
+              <div class="launchpad-tile-top">
+                <span class="nav-icon">${iconLab}</span>
+                <span class="launchpad-tile-kicker">Studio Lab Suite</span>
+              </div>
+              <strong class="nav-text">What's Coming Soon</strong>
+              <span class="launchpad-tile-desc">Explore the 15 upcoming Studio Lab tools, the 74-node Curriculum Map, and tactical reference guides.</span>
+            </a>
+          </div>
+        </nav>
+
+        <section class="card studio-today-card" id="today-section" data-tier="primary">
+          <h2>Daily Training Set</h2>
+          <div id="today-output"></div>
+        </section>
+      </div>
+
       <section class="card studio-sync-card" id="sync-section" data-tier="primary" data-non-collapsible="true">
         <div class="sync-card-header">
           <h2>Get connected.</h2>
-          <button type="button" class="sync-expand-toggle" id="sync-expand-toggle" title="Expand connection panel" aria-label="Expand or collapse connection panel">
-            <span class="sync-toggle-icon">↗</span>
+          <button type="button" class="sync-expand-toggle" id="sync-expand-toggle" title="Collapse connection panel" aria-label="Expand or collapse connection panel">
+            <span class="sync-toggle-icon">✕</span>
           </button>
         </div>
         <p class="card-teaser" data-card-teaser>Enter your Chess.com or Lichess username to load your recent games and track your progress.</p>
@@ -347,18 +434,7 @@ app.innerHTML = `
             <label for="username" class="sr-only">Chess.com or Lichess username</label>
             <input id="username" type="text" placeholder="Username (e.g. MichaelBottega)" autocomplete="off" required />
           </div>
-          <div class="sync-actions-row">
-            <button type="submit" id="sync-btn">${iconConnect} Sync games</button>
-            <div class="demo-square-wrap">
-              <button type="button" id="demo-load-btn" class="demo-square-btn" aria-label="Try demo">
-                ${iconPlay}
-              </button>
-              <div class="demo-popover-panel" role="tooltip">
-                <strong class="demo-popover-title">Try demo</strong>
-                <span class="demo-popover-desc">Instant sample game review without an account</span>
-              </div>
-            </div>
-          </div>
+          <button type="submit" id="sync-btn" class="sr-only">Sync games</button>
         </form>
         <p id="sync-log" class="status-line"></p>
         <div id="sync-progress"></div>
@@ -369,68 +445,9 @@ app.innerHTML = `
           <span id="lichess-history-text"></span> <button type="button" id="lichess-history-btn">Get my full history</button>
           <button type="button" id="lichess-history-cancel" style="display:none">Cancel</button>
         </p>
-        <details class="studio-batch-drawer">
-          <summary class="btn-quiet">Batch analyze more games</summary>
-          <form id="analyze-recent-form" class="row" style="margin-top:10px">
-            <label for="analyze-count" class="sr-only">Number of recent games to analyze</label>
-            <input id="analyze-count" type="number" min="1" max="200" value="10" />
-            <button type="submit" id="analyze-recent-btn">Analyze most recent</button>
-          </form>
-        </details>
-        <p id="analyze-recent-log" class="status-line"></p>
-        <div id="analyze-progress"></div>
         <p id="background-analyze-log" class="status-line status-ok" style="display:none"></p>
         <div id="background-analyze-progress"></div>
       </section>
-
-      <div class="studio-left-column">
-        <nav class="card studio-nav-card section-nav" id="studio-nav-panel" aria-label="Studio Menu">
-          <div class="studio-nav-header">
-            <h2 class="studio-nav-heading">
-              <button type="button" class="studio-nav-toggle" id="studio-nav-toggle" aria-expanded="true" aria-controls="studio-nav-list">
-                <span class="studio-nav-heading-text">Studio Menu</span>
-                <span class="studio-nav-chevron">${iconChevron}</span>
-              </button>
-            </h2>
-          </div>
-          <div class="studio-nav-list" id="studio-nav-list">
-            <a href="#sync-section" class="studio-nav-link active">
-              <span class="nav-icon">${iconConnect}</span>
-              <span class="nav-text">Getting Connected.</span>
-            </a>
-            <a href="#play-section" class="studio-nav-link">
-              <span class="nav-icon">${iconStage}</span>
-              <span class="nav-text">Playing</span>
-            </a>
-            <a href="#picker-section" class="studio-nav-link">
-              <span class="nav-icon">${iconGames}</span>
-              <span class="nav-text">Reviewing</span>
-            </a>
-            <a href="#today-section" class="studio-nav-link">
-              <span class="nav-icon">${iconToday}</span>
-              <span class="nav-text">Daily Training</span>
-            </a>
-            <a href="#profile-section" class="studio-nav-link">
-              <span class="nav-icon">${iconProfile}</span>
-              <span class="nav-text">Your Profile</span>
-            </a>
-            <a href="#coming-soon-section" class="studio-nav-link">
-              <span class="nav-icon">${iconLab}</span>
-              <span class="nav-text">What's Coming Soon</span>
-            </a>
-            <a href="#feedback-form-details" class="studio-nav-link">
-              <span class="nav-icon">${iconFeedback}</span>
-              <span class="nav-text">Feedback</span>
-            </a>
-          </div>
-        </nav>
-
-        <!-- Daily Training Set on left side underneath Studio Menu -->
-        <section class="card studio-today-card" id="today-section" data-tier="primary">
-          <h2>Daily Training Set</h2>
-          <div id="today-output"></div>
-        </section>
-      </div>
 
       <div class="studio-stage-column">
         <section class="card studio-stage-card" id="play-section" data-tier="primary" data-non-collapsible="true">
@@ -439,14 +456,25 @@ app.innerHTML = `
             <button type="button" id="resume-btn">Resume it</button>
             <button type="button" id="discard-resume-btn">Discard</button>
           </div>
-          <div class="play-layout">
-            <div class="play-board-wrap" id="play-board-wrap"></div>
+          <div class="play-layout" id="play-layout">
+            <div class="board-column">
+              <div id="review-player-top" class="review-player-slot" hidden></div>
+              <div class="board-row">
+                <div id="review-eval-bar-host" class="review-eval-bar-host" hidden></div>
+                <div class="play-board-wrap" id="play-board-wrap"></div>
+              </div>
+              <div id="review-player-bottom" class="review-player-slot" hidden></div>
+            </div>
             <div class="play-sidebar">
               <div id="review-panel" style="display:none">
                 <div class="review-header-bar">
-                  <h3 class="review-heading">Broadcast Review</h3>
-                  <button type="button" class="kbd-help-btn" id="review-kbd-help-btn" title="View keyboard shortcuts">⌨ Shortcuts</button>
+                  <h3 class="review-heading">Game Review</h3>
+                  <div class="review-header-actions">
+                    <button type="button" class="kbd-help-btn" id="review-flip-side" title="See the same review from the other player's side">Review as Black</button>
+                    <button type="button" class="kbd-help-btn" id="review-kbd-help-btn" title="View keyboard shortcuts">⌨ Shortcuts</button>
+                  </div>
                 </div>
+                <div id="review-summary-host"></div>
                 <div id="review-strip-host"></div>
                 <div class="review-broadcast-banner">
                   <p id="review-caption" class="review-caption" aria-live="polite" aria-atomic="true"></p>
@@ -460,6 +488,7 @@ app.innerHTML = `
                   <button type="button" id="review-last" aria-label="Jump to the last move">⏭</button>
                   <button type="button" id="review-autoplay" class="btn-ghost">▶ Play it back</button>
                   <button type="button" id="review-worst" class="btn-ghost">Your worst move</button>
+                  <button type="button" id="review-drill" class="btn-ghost review-drill-btn" style="display:none">Fix your mistakes</button>
                 </div>
                 <div id="review-shortcuts-help" class="review-shortcuts-help" style="display:none">
                   <div class="shortcuts-header">
@@ -473,6 +502,8 @@ app.innerHTML = `
                     <div><kbd>Space</kbd></div><div>Play back game (autoplay)</div>
                     <div><kbd>B</kbd></div><div>Toggle "Before" view &amp; candidates</div>
                     <div><kbd>W</kbd></div><div>Jump to your worst move</div>
+                    <div><kbd>F</kbd></div><div>Fix your mistakes, one by one</div>
+                    <div><kbd>L</kbd></div><div>Copy a link to this review</div>
                     <div><kbd>T</kbd></div><div>Try this position</div>
                     <div><kbd>G</kbd></div><div>Export graphic review card</div>
                     <div><kbd>S</kbd></div><div>Copy shareable summary card</div>
@@ -481,6 +512,7 @@ app.innerHTML = `
                     <div><kbd>?</kbd></div><div>Toggle this shortcuts cheat-sheet</div>
                   </div>
                 </div>
+                <div id="review-moves-host"></div>
                 <label class="play-checkbox-label review-before-label"><input type="checkbox" id="review-before" /> Show position before move + best candidates</label>
                 <div id="review-candidates"></div>
                 <div class="review-buttons review-practice">
@@ -490,8 +522,8 @@ app.innerHTML = `
                   <button type="button" id="review-save" class="btn-quiet" style="display:none">Save this position</button>
                   <button type="button" id="review-save-key" class="btn-quiet" style="display:none">Save key moments</button>
                 </div>
-                <div id="review-tally"></div>
                 <div class="review-export-actions">
+                  <button type="button" id="review-share-link-btn" class="btn-quiet" title="Copy a link that opens this game's review for anyone">${iconShare} Copy link</button>
                   <button type="button" id="review-share-card-btn" class="btn-quiet" title="Export high-res graphic game review card">${iconImage} Export card</button>
                   <button type="button" id="review-share-summary-btn" class="btn-quiet" title="Copy shareable summary card">${iconShare} Share summary</button>
                   <button type="button" id="review-copy-pgn-btn" class="btn-quiet" title="Copy annotated PGN to clipboard">${iconCopy} Copy PGN</button>
@@ -500,11 +532,13 @@ app.innerHTML = `
                 <p id="review-export-status" class="status-line status-ok" style="display:none"></p>
               </div>
               <div id="try-panel" style="display:none">
-                <h3 class="review-heading">Try this position</h3>
+                <h3 class="review-heading" id="try-heading">Try this position</h3>
+                <div id="drill-progress" class="drill-progress" style="display:none"></div>
                 <p id="try-status" class="review-caption" role="status"></p>
                 <div class="review-buttons">
                   <button type="button" id="try-again" class="btn-quiet" style="display:none">Try again</button>
                   <button type="button" id="try-show" class="btn-quiet" style="display:none">Show the best move</button>
+                  <button type="button" id="drill-next" style="display:none">Next mistake</button>
                   <button type="button" id="try-done">Done</button>
                 </div>
               </div>
@@ -603,6 +637,25 @@ app.innerHTML = `
       </div>
 
       <div class="studio-right-column">
+        <section class="card studio-import-card" id="import-section" data-tier="primary" data-non-collapsible="true">
+          <h2 class="import-heading">Review any game</h2>
+          <form id="import-form" class="import-form">
+            <label for="import-input" class="sr-only">A PGN or a Lichess game link</label>
+            <textarea id="import-input" rows="2" spellcheck="false" autocomplete="off" placeholder="Paste a PGN or a lichess.org game link"></textarea>
+            <div class="import-row">
+              <label for="import-side" class="sr-only">Review as</label>
+              <select id="import-side">
+                <option value="auto">As: auto</option>
+                <option value="white">As White</option>
+                <option value="black">As Black</option>
+              </select>
+              <button type="submit" id="import-btn">Review</button>
+            </div>
+          </form>
+          <div id="import-progress"></div>
+          <p id="import-status" class="status-line" role="status"></p>
+          <p class="import-hint">Chess.com game? Open it, choose Share, then PGN, and paste it here. Nothing is saved to your games.</p>
+        </section>
         <section class="card studio-picker-card" id="picker-section" data-tier="primary" data-non-collapsible="true">
           <div class="picker-card-header">
             <h2>Previously Played Games</h2>
@@ -1002,14 +1055,18 @@ labGrid?.addEventListener("mouseleave", () => {
 setupFeedbackWidget(); // Featurebase widget — org slug "mibottega" set in feedback.ts
 setupFeedbackForm(); // Tally form — loads on first open of the "Send feedback" card
 
-// Hero CTAs: scroll to the relevant card and put the cursor where it's needed.
+// Header Sync button: runs sync right in the background while playing games,
+// or focuses the Get Connected username box if no account is entered yet.
 document.getElementById("hero-analyze-btn")?.addEventListener("click", () => {
+  const typed = document.querySelector<HTMLInputElement>("#username")?.value.trim();
+  const targetUser = typed || (currentUsername && currentUsername !== DEMO_USERNAME ? currentUsername : "");
+  if (targetUser) {
+    const chosenSite = document.querySelector<HTMLSelectElement>("#sync-site")?.value === "lichess" ? "lichess" : "chesscom";
+    void runSync(targetUser, chosenSite);
+    return;
+  }
   revealSection("sync-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
   window.setTimeout(() => document.getElementById("username")?.focus(), 400);
-});
-document.getElementById("hero-play-btn")?.addEventListener("click", () => {
-  expandCard("play-section");
-  document.getElementById("play-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 // Post-game report's "connect your real games" link -- delegated on the
 // stable report container since the link itself is re-rendered fresh
@@ -1531,7 +1588,15 @@ fullscreenPromotion.addEventListener("click", (e) => {
 const reviewPanel = document.querySelector<HTMLDivElement>("#review-panel")!;
 const reviewStripHost = document.querySelector<HTMLDivElement>("#review-strip-host")!;
 const reviewCaption = document.querySelector<HTMLParagraphElement>("#review-caption")!;
-const reviewTally = document.querySelector<HTMLDivElement>("#review-tally")!;
+const reviewSummaryHost = document.querySelector<HTMLDivElement>("#review-summary-host")!;
+const reviewMovesHost = document.querySelector<HTMLDivElement>("#review-moves-host")!;
+const reviewFlipSideBtn = document.querySelector<HTMLButtonElement>("#review-flip-side")!;
+const reviewDrillBtn = document.querySelector<HTMLButtonElement>("#review-drill")!;
+const reviewShareLinkBtn = document.querySelector<HTMLButtonElement>("#review-share-link-btn")!;
+const playLayout = document.querySelector<HTMLDivElement>("#play-layout")!;
+const reviewEvalBarHost = document.querySelector<HTMLDivElement>("#review-eval-bar-host")!;
+const reviewPlayerTop = document.querySelector<HTMLDivElement>("#review-player-top")!;
+const reviewPlayerBottom = document.querySelector<HTMLDivElement>("#review-player-bottom")!;
 const reviewFirstBtn = document.querySelector<HTMLButtonElement>("#review-first")!;
 const reviewPrevBtn = document.querySelector<HTMLButtonElement>("#review-prev")!;
 const reviewNextBtn = document.querySelector<HTMLButtonElement>("#review-next")!;
@@ -1560,6 +1625,9 @@ const tryStatus = document.querySelector<HTMLParagraphElement>("#try-status")!;
 const tryAgainBtn = document.querySelector<HTMLButtonElement>("#try-again")!;
 const tryShowBtn = document.querySelector<HTMLButtonElement>("#try-show")!;
 const tryDoneBtn = document.querySelector<HTMLButtonElement>("#try-done")!;
+const tryHeading = document.querySelector<HTMLHeadingElement>("#try-heading")!;
+const drillProgress = document.querySelector<HTMLDivElement>("#drill-progress")!;
+const drillNextBtn = document.querySelector<HTMLButtonElement>("#drill-next")!;
 
 const REVIEW_AUTOPLAY_MS = 1200; // slow enough to actually read each grade
 
@@ -1567,6 +1635,7 @@ let review: ReviewGame | null = null;
 let reviewIndex = -1; // -1 = the starting position, before ply 1
 let reviewAutoplayTimer: number | null = null;
 let reviewOpening: string | undefined; // the opening name of a synced game, kept for saved puzzles
+let reviewRecords: MoveAnalysisRecord[] = []; // the open review's analysis rows, so it can be rebuilt (side flip)
 let isViewingPunishment = false;
 let isViewingThreatRadar = false;
 // "Before" view: the position the move was chosen in, with the engine's
@@ -1733,11 +1802,11 @@ function showReviewStep(index: number) {
     reviewCandidatesHost.innerHTML = "";
     clearOverlayState();
     playBoard.showPosition(step ? step.fenAfter : review.startFen, step ? { from: step.from, to: step.to } : undefined);
-    if (step?.isHuman && step.classification) {
-      // A stored "best" that was also a real sacrifice reads as brilliant
-      // here too, so a brilliancy looks the same reviewed as it did live.
-      const classification =
-        step.classification === "best" && isSacrifice(step.fenBefore, step.uci) ? "brilliant" : step.classification;
+    if (step?.tier) {
+      // The review-time tier (gameReview.ts): a sacrificial "best" reads as
+      // brilliant, a gift left on the board reads as a miss. Both players'
+      // moves wear their grade; only the reviewer's own fire the juice.
+      const classification = step.tier;
       const color = getClassColor(classification);
       const glyph = getClassGlyph(classification);
       // ms = 0: the marker holds while the viewer sits on this move.
@@ -1749,7 +1818,7 @@ function showReviewStep(index: number) {
       board3dInstance?.flashSquareQuality(step.to, color);
       board3dInstance?.showMoveTrail(step.from, step.to, color, classification);
       // Only on the way forward -- stepping back over a move shouldn't re-fire juice.
-      if (movingForward) {
+      if (movingForward && step.isHuman) {
         if (classification === "brilliant") {
           celebrateBrilliantSquare(step.to);
           playBrilliantSound();
@@ -1782,9 +1851,8 @@ function showReviewStep(index: number) {
     reviewCaption.removeAttribute("aria-label");
   }
   const why = step && step.isHuman ? explainMove(explainInputFromStep(step)) : [];
-  if (step && step.isHuman && step.classification) {
-    const effectiveTier =
-      step.classification === "best" && isSacrifice(step.fenBefore, step.uci) ? "brilliant" : step.classification;
+  if (step && step.isHuman && step.tier) {
+    const effectiveTier = step.tier;
     const glyph = getClassGlyph(effectiveTier);
     const color = getClassColor(effectiveTier);
     const label = REVIEW_QUALITY_LABELS[effectiveTier] ?? effectiveTier;
@@ -1809,7 +1877,10 @@ function showReviewStep(index: number) {
     reviewBlunderDnaHost.style.display = "none";
   }
   updateReviewActions(step);
-  reviewStripHost.innerHTML = renderEvalGraph(review, clamped) + renderStorylineBar(review, clamped) + renderReviewStrip(review, clamped);
+  reviewStripHost.innerHTML = renderEvalGraph(review, clamped);
+  reviewMovesHost.innerHTML = renderReviewMoveList(review, clamped) + renderStorylineBar(review, clamped);
+  keepCurrentMoveInView();
+  renderBoardFurniture(review, clamped);
   const atStart = clamped < 0;
   const atEnd = clamped >= review.steps.length - 1;
   reviewFirstBtn.disabled = atStart;
@@ -1822,6 +1893,7 @@ function showReviewStep(index: number) {
  * already on the board when a game ends, so nothing jumps under the
  * viewer. Stepping back, or "Play it back", goes from there. */
 function enterReview(next: ReviewGame) {
+  setDashboardOrientation("playing");
   stopReviewAutoplay();
   preserveBotGameForLater();
   review = next;
@@ -1829,9 +1901,48 @@ function enterReview(next: ReviewGame) {
   const board = ensurePlayBoard();
   board.reset(next.humanColor, next.startFen); // orientation follows whose review this is
   reviewPanel.style.display = "";
-  reviewTally.innerHTML = renderQualityTally(next);
+  reviewSummaryHost.innerHTML = renderGameSummary(next, summarizeGame(next));
   reviewWorstBtn.style.display = worstHumanStepIndex(next) >= 0 ? "" : "none";
+  reviewFlipSideBtn.textContent = next.humanColor === "white" ? "Review as Black" : "Review as White";
+  const mistakes = drillSteps(next).length;
+  reviewDrillBtn.style.display = mistakes ? "" : "none";
+  reviewDrillBtn.textContent = `Fix your mistakes (${mistakes})`;
+  setBoardFurnitureVisible(true);
   showReviewStep(next.steps.length - 1);
+}
+
+/** The eval bar beside the board and the two player bars, for the board at
+ * step `index`. Top and bottom follow the board's orientation. */
+function renderBoardFurniture(r: ReviewGame, index: number) {
+  const orientation = r.humanColor;
+  const { top, bottom } = playerSides(orientation);
+  reviewEvalBarHost.innerHTML = renderEvalBar(r, index, orientation);
+  reviewPlayerTop.innerHTML = renderPlayerBar(r, index, top);
+  reviewPlayerBottom.innerHTML = renderPlayerBar(r, index, bottom);
+}
+
+function setBoardFurnitureVisible(visible: boolean) {
+  reviewEvalBarHost.hidden = !visible;
+  reviewPlayerTop.hidden = !visible;
+  reviewPlayerBottom.hidden = !visible;
+  playLayout.classList.toggle("is-reviewing", visible);
+  if (!visible) {
+    reviewEvalBarHost.innerHTML = "";
+    reviewPlayerTop.innerHTML = "";
+    reviewPlayerBottom.innerHTML = "";
+  }
+}
+
+/** Scrolls the move list (only the list, never the page) so the current
+ * move stays visible. */
+function keepCurrentMoveInView() {
+  const list = reviewMovesHost.querySelector<HTMLElement>("#review-move-list");
+  const current = list?.querySelector<HTMLElement>(".rml-current");
+  if (!list || !current) return;
+  const top = current.offsetTop - list.offsetTop;
+  if (top < list.scrollTop || top + current.offsetHeight > list.scrollTop + list.clientHeight) {
+    list.scrollTop = Math.max(0, top - list.clientHeight / 2);
+  }
 }
 
 /** Reviews any analyzed game on the play board: shows the report card,
@@ -1847,6 +1958,7 @@ function openReviewForPgn(
 ) {
   expandCard("play-section");
   reviewOpening = openingName;
+  reviewRecords = moves;
   enterReview(buildReview(pgn, moves, reviewerColor, gameId));
   playBoardWrap.scrollIntoView({ behavior: "smooth", block: "center" });
 }
@@ -1867,7 +1979,9 @@ function exitReview() {
   setStageAura(null, null);
   reviewShortcutsHelp.style.display = "none";
   reviewStripHost.innerHTML = "";
-  reviewTally.innerHTML = "";
+  reviewSummaryHost.innerHTML = "";
+  reviewMovesHost.innerHTML = "";
+  setBoardFurnitureVisible(false);
   reviewCaption.textContent = "";
   reviewWhy.textContent = "";
   reviewWhy.style.display = "none";
@@ -1912,11 +2026,37 @@ reviewWorstBtn.addEventListener("click", () => {
   const worst = worstHumanStepIndex(review);
   if (worst >= 0) showReviewStep(worst);
 });
-reviewStripHost.addEventListener("click", (e) => {
-  const chip = (e.target as HTMLElement).closest<HTMLElement>("[data-review-index]");
-  if (!chip) return;
-  stopReviewAutoplay();
-  showReviewStep(parseInt(chip.dataset.reviewIndex!, 10));
+for (const host of [reviewStripHost, reviewMovesHost]) {
+  host.addEventListener("click", (e) => {
+    const chip = (e.target as HTMLElement).closest<HTMLElement>("[data-review-index]");
+    if (!chip) return;
+    stopReviewAutoplay();
+    showReviewStep(parseInt(chip.dataset.reviewIndex!, 10));
+  });
+}
+
+// A count in the game summary jumps to that player's next move of that tier.
+reviewSummaryHost.addEventListener("click", (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-review-jump]");
+  if (!btn || !review) return;
+  const [side, tier] = btn.dataset.reviewJump!.split(":");
+  const i = nextTierIndex(review, side as "white" | "black", tier, reviewIndex);
+  if (i >= 0) {
+    stopReviewAutoplay();
+    showReviewStep(i);
+  }
+});
+
+// The same game, graded the same way, seen from the other chair: whose
+// moves count as "yours", which way the board faces, whose mistakes the
+// drill and "worst move" pick.
+reviewFlipSideBtn.addEventListener("click", () => {
+  if (!review) return;
+  const at = reviewIndex;
+  const flipped = buildReview(review.pgn, reviewRecords, review.humanColor === "white" ? "black" : "white", review.gameId);
+  flipped.players = review.players;
+  enterReview(flipped);
+  showReviewStep(at);
 });
 
 // Keyboard shortcuts for reviewing games: arrow keys, Home/End, Space, B, W, T, S, C, D, ?
@@ -1967,6 +2107,12 @@ document.addEventListener("keydown", (e) => {
     stopReviewAutoplay();
     const worst = worstHumanStepIndex(review);
     if (worst >= 0) showReviewStep(worst);
+  } else if ((e.key === "f" || e.key === "F") && !tryTarget) {
+    e.preventDefault();
+    startDrill();
+  } else if (e.key === "l" || e.key === "L") {
+    e.preventDefault();
+    reviewShareLinkBtn.click();
   } else if (e.key === "t" || e.key === "T") {
     e.preventDefault();
     const step = currentReviewStep();
@@ -2040,7 +2186,9 @@ function scrubEvalGraphAt(clientX: number) {
   const rect = svg.getBoundingClientRect();
   if (rect.width <= 0) return;
   const relX = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-  const targetStep = Math.min(review.steps.length - 1, Math.round(relX * (review.steps.length - 1)));
+  // The chart plots n+1 positions (the start, then after each move); the
+  // position after move i is step i.
+  const targetStep = Math.min(review.steps.length - 1, Math.round(relX * review.steps.length) - 1);
   if (targetStep !== reviewIndex) {
     stopReviewAutoplay();
     showReviewStep(targetStep);
@@ -2289,6 +2437,71 @@ savedPositionsHost.addEventListener("click", async (e) => {
 let tryTarget: Puzzle | null = null;
 let tryRewarded = false; // a position only counts toward Today once per visit to it
 
+// "Fix your mistakes": every costly move of the reviewer's in this game,
+// one after another, as a position to solve. Only a first attempt counts
+// toward the score; "Try again" is still there to learn from.
+interface MistakeDrill {
+  queue: Puzzle[];
+  at: number;
+  firstTryCorrect: number;
+  answered: boolean; // the current position already has a first answer
+}
+let drill: MistakeDrill | null = null;
+
+const DRILL_TIERS = new Set(["mistake", "miss", "blunder"]);
+
+/** The reviewer's moves the drill walks through, in game order. */
+function drillSteps(r: ReviewGame): ReviewStep[] {
+  return r.steps.filter((s) => canPracticeStep(s) && DRILL_TIERS.has(s.tier ?? s.classification ?? ""));
+}
+
+function startDrill() {
+  if (!review) return;
+  const queue = drillSteps(review)
+    .map((s) => puzzleFromStep(review!, s, reviewOpening))
+    .filter((p): p is NonNullable<typeof p> => p !== null);
+  if (!queue.length) return;
+  drill = { queue, at: 0, firstTryCorrect: 0, answered: false };
+  startTry(queue[0]);
+}
+
+function renderDrillProgress() {
+  if (!drill) {
+    drillProgress.style.display = "none";
+    drillNextBtn.style.display = "none";
+    tryHeading.textContent = "Try this position";
+    return;
+  }
+  const p = drill.queue[drill.at];
+  const pips = drill.queue
+    .map((_, i) => `<span class="drill-pip${i < drill!.at ? " drill-pip-done" : i === drill!.at ? " drill-pip-current" : ""}" aria-hidden="true"></span>`)
+    .join("");
+  const moveNo = Math.ceil(p.ply / 2);
+  tryHeading.textContent = "Fix your mistakes";
+  drillProgress.innerHTML = `<span class="drill-count">Mistake ${drill.at + 1} of ${drill.queue.length} · move ${moveNo}</span><span class="drill-pips">${pips}</span>`;
+  drillProgress.style.display = "";
+  drillNextBtn.style.display = drill.answered ? "" : "none";
+  drillNextBtn.textContent = drill.at + 1 < drill.queue.length ? "Next mistake" : "See your score";
+}
+
+function finishDrill() {
+  if (!drill || !playBoard) return;
+  const { queue, firstTryCorrect } = drill;
+  drill = null;
+  renderDrillProgress();
+  tryHeading.textContent = "Fix your mistakes";
+  const all = firstTryCorrect === queue.length;
+  tryStatus.textContent = all
+    ? `All ${queue.length} fixed on the first try. That game would have gone differently.`
+    : `You fixed ${firstTryCorrect} of ${queue.length} on the first try. Save the ones you missed to see them again.`;
+  tryAgainBtn.style.display = "none";
+  tryShowBtn.style.display = "none";
+  if (all) {
+    confetti(playBoardWrap, 1);
+    playLevelUpSound();
+  }
+}
+
 function startTry(p: Puzzle) {
   stopReviewAutoplay();
   preserveBotGameForLater();
@@ -2304,12 +2517,19 @@ function startTry(p: Puzzle) {
   tryStatus.textContent = `Your turn as ${p.sideToMove}. Find a better move than ${p.playedSan} — it cost ${(p.centipawnLoss / 100).toFixed(1)} pawns in the game.`;
   tryAgainBtn.style.display = "none";
   tryShowBtn.style.display = "none";
+  if (drill) drill.answered = drill.answered && drill.queue[drill.at] === p;
+  renderDrillProgress();
+  // The bars beside the board follow the position being tried, when it
+  // comes from the open review (the position before that move).
+  if (review && (review.gameId ?? "bot") === p.gameId) renderBoardFurniture(review, p.ply - 2);
   playBoardWrap.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 function endTry() {
   if (!tryTarget) return;
   tryTarget = null;
+  drill = null;
+  renderDrillProgress();
   tryPanel.style.display = "none";
 }
 
@@ -2334,6 +2554,11 @@ function onTryMove(uci: string, san: string) {
   tryStatus.textContent = `${verdict} In the game you played ${p.playedSan}. ${reason}`.trim();
   tryAgainBtn.style.display = "";
   tryShowBtn.style.display = correct ? "none" : "";
+  if (drill && !drill.answered) {
+    drill.answered = true;
+    if (correct) drill.firstTryCorrect += 1;
+  }
+  renderDrillProgress();
 
   recordAttempt(lcUser(), p.id, correct);
   if (correct) {
@@ -2400,6 +2625,19 @@ tryDoneBtn.addEventListener("click", () => {
     setStatus(playStatus, "Click “New game” to play again.");
   }
 });
+
+drillNextBtn.addEventListener("click", () => {
+  if (!drill) return;
+  if (drill.at + 1 >= drill.queue.length) {
+    finishDrill();
+    return;
+  }
+  drill.at += 1;
+  drill.answered = false;
+  startTry(drill.queue[drill.at]);
+});
+
+reviewDrillBtn.addEventListener("click", startDrill);
 
 reviewTryBtn.addEventListener("click", () => {
   const step = currentReviewStep();
@@ -2705,7 +2943,13 @@ async function runPostGameReport(board: PlayBoard) {
     const { report, moves } = await analyzeFinishedBotGame(pgn, humanColor);
     postGameReportOutput.innerHTML = renderPostGameReport(report);
     lastAnnotatedPgn = buildAnnotatedPgn(pgn, moves, humanColor);
-    enterReview(buildReview(pgn, moves, humanColor));
+    reviewRecords = moves;
+    const botReview = buildReview(pgn, moves, humanColor);
+    botReview.players[humanColor === "white" ? "black" : "white"] = {
+      name: "Stockfish bot",
+      rating: parseInt(botEloInput.value, 10) || undefined,
+    };
+    enterReview(botReview);
   } catch (err: any) {
     postGameReportOutput.innerHTML = `<p class="status-line status-error">Report failed: ${err.message ?? err}</p>`;
   }
@@ -2849,6 +3093,7 @@ function ensurePlayBoard(): PlayBoard {
 }
 
 botNewGameBtn.addEventListener("click", async () => {
+  setDashboardOrientation("playing");
   humanColor = botColorSelect.value === "black" ? "black" : "white";
   sanHistory = [];
   gameReportedThisGame = false;
@@ -2975,19 +3220,34 @@ verifyDb().catch((err) => (dbLog.textContent = `✗ db failed: ${err.message ?? 
 
 const syncSection = document.querySelector<HTMLElement>("#sync-section")!;
 const syncExpandToggle = document.querySelector<HTMLButtonElement>("#sync-expand-toggle");
+const headerSyncBtn = document.querySelector<HTMLButtonElement>("#hero-analyze-btn");
+const headerSyncLabel = document.querySelector<HTMLSpanElement>("#header-sync-label");
+
+function setHeaderSyncStatus(state: "idle" | "syncing" | "done" | "error") {
+  if (!headerSyncBtn || !headerSyncLabel) return;
+  headerSyncBtn.dataset.syncState = state;
+  if (state === "syncing") {
+    headerSyncLabel.textContent = "Syncing…";
+  } else if (state === "done") {
+    headerSyncLabel.textContent = "Synced ✓";
+    window.setTimeout(() => {
+      if (headerSyncBtn.dataset.syncState === "done") {
+        headerSyncBtn.dataset.syncState = "idle";
+        headerSyncLabel.textContent = "Sync";
+      }
+    }, 3000);
+  } else if (state === "error") {
+    headerSyncLabel.textContent = "Sync";
+  } else {
+    headerSyncLabel.textContent = "Sync";
+  }
+}
 
 export function setSyncExpanded(expanded: boolean) {
   if (!syncSection) return;
-  const grid = document.querySelector(".studio-workspace-grid");
-  if (grid) {
-    grid.classList.remove("is-bouncing");
-    // Trigger reflow to restart animation
-    void (grid as HTMLElement).offsetWidth;
-    grid.classList.add("is-bouncing");
-    window.setTimeout(() => grid.classList.remove("is-bouncing"), 550);
-  }
   if (expanded) {
     syncSection.dataset.expanded = "true";
+    delete syncSection.dataset.collapsed;
     if (syncExpandToggle) {
       syncExpandToggle.innerHTML = '<span class="sync-toggle-icon">✕</span>';
       syncExpandToggle.title = "Collapse panel";
@@ -2996,34 +3256,27 @@ export function setSyncExpanded(expanded: boolean) {
   } else {
     delete syncSection.dataset.expanded;
     if (syncExpandToggle) {
-      syncExpandToggle.innerHTML = '<span class="sync-toggle-icon">↗</span>';
-      syncExpandToggle.title = "Expand panel";
-      syncExpandToggle.setAttribute("aria-label", "Expand connection panel");
+      syncExpandToggle.innerHTML = '<span class="sync-toggle-icon">✕</span>';
+      syncExpandToggle.title = "Expand or collapse panel";
+      syncExpandToggle.setAttribute("aria-label", "Expand or collapse connection panel");
     }
   }
 }
 
 syncExpandToggle?.addEventListener("click", (e) => {
   e.stopPropagation();
-  const isExp = syncSection.dataset.expanded === "true";
-  setSyncExpanded(!isExp);
+  const isCollapsed = syncSection.dataset.collapsed === "true";
+  if (isCollapsed) {
+    delete syncSection.dataset.collapsed;
+  } else {
+    syncSection.dataset.collapsed = "true";
+    delete syncSection.dataset.expanded;
+  }
 });
 
 syncSection.addEventListener("click", () => {
-  if (syncSection.dataset.expanded !== "true") {
-    setSyncExpanded(true);
-  }
-});
-
-document.addEventListener("click", (e) => {
-  if (syncSection.dataset.expanded === "true" && !syncSection.contains(e.target as Node)) {
-    setSyncExpanded(false);
-  }
-});
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && syncSection.dataset.expanded === "true") {
-    setSyncExpanded(false);
+  if (syncSection.dataset.collapsed === "true") {
+    delete syncSection.dataset.collapsed;
   }
 });
 
@@ -3065,6 +3318,7 @@ siteSelect.value = currentSite;
  * and later syncs ask only for what is newer than the newest one stored. */
 async function runLichessSync(username: string) {
   syncBtn.disabled = true;
+  setHeaderSyncStatus("syncing");
   fullSyncPrompt.style.display = "none";
   try {
     const db = await openDb();
@@ -3079,6 +3333,7 @@ async function runLichessSync(username: string) {
       }
       setLastSite("lichess");
       writeHashState({ u: username, s: "lichess" });
+      void saveBgSyncConfig(username, "lichess");
       const result = await syncLichess(db, username, {
         max: isFirstEverSync ? QUICK_SYNC_GAME_TARGET : 200,
         incremental: !isFirstEverSync,
@@ -3093,12 +3348,14 @@ async function runLichessSync(username: string) {
         lichessHistoryText.textContent = `That's your ${result.gamesAdded} most recent games.`;
       }
       await refreshProfile();
+      setHeaderSyncStatus("done");
       if (isFirstEverSync) await runAnalyzeFirstThenBackground(QUICK_SYNC_ANALYZE_COUNT);
     } catch (err) {
       db.close();
       throw err;
     }
   } catch (err: any) {
+    setHeaderSyncStatus("error");
     setStatus(syncLog, `${err.message ?? err}`, "error");
   } finally {
     syncBtn.disabled = false;
@@ -3111,6 +3368,7 @@ async function runSync(username: string, site: Site = currentSite) {
   setLastSite("chesscom");
   writeHashState({ s: "chesscom" });
   syncBtn.disabled = true;
+  setHeaderSyncStatus("syncing");
   fullSyncPrompt.style.display = "none";
 
   try {
@@ -3137,6 +3395,7 @@ async function runSync(username: string, site: Site = currentSite) {
       // best-effort only -- private browsing / blocked storage just means no auto-fill next time
     }
     writeHashState({ u: username }); // make the current view linkable/bookmarkable
+    void saveBgSyncConfig(username, "chesscom");
 
     if (isFirstEverSync) {
       const result = await quickSyncRecentGames(db, client, username, QUICK_SYNC_GAME_TARGET, onProgress);
@@ -3152,6 +3411,7 @@ async function runSync(username: string, site: Site = currentSite) {
         fullSyncPrompt.style.display = "";
       }
       await refreshProfile();
+      setHeaderSyncStatus("done");
       // The actual "don't make them click twice to see anything" fix --
       // runs the same analysis path Analyze-recent's button does, just
       // triggered automatically instead of waiting for a second click.
@@ -3170,8 +3430,10 @@ async function runSync(username: string, site: Site = currentSite) {
         "ok",
       );
       await refreshProfile();
+      setHeaderSyncStatus("done");
     }
   } catch (err: any) {
+    setHeaderSyncStatus("error");
     syncProgressBar.hide();
     // Both sync paths mark each month "complete" as they finish (see
     // syncService.ts), so a failure partway through doesn't lose earlier
@@ -3321,7 +3583,7 @@ lichessHistoryCancelBtn.addEventListener("click", () => {
 // temporal-dead-zone error, and inside that async IIFE it would surface as
 // nothing rendering at all rather than as a visible crash.
 
-const demoLoadBtn = document.querySelector<HTMLButtonElement>("#demo-load-btn")!;
+const demoLoadBtn = document.querySelector<HTMLButtonElement>("#demo-load-btn");
 const demoBanner = document.querySelector<HTMLParagraphElement>("#demo-banner")!;
 const demoClearBtn = document.querySelector<HTMLButtonElement>("#demo-clear-btn")!;
 
@@ -3329,8 +3591,8 @@ function showDemoBanner(visible: boolean) {
   demoBanner.style.display = visible ? "" : "none";
 }
 
-demoLoadBtn.addEventListener("click", async () => {
-  demoLoadBtn.disabled = true;
+async function triggerDemoLoad() {
+  if (demoLoadBtn) demoLoadBtn.disabled = true;
   setStatus(syncLog, "Loading the sample games…");
   let db: IDBDatabase | null = null;
   try {
@@ -3350,9 +3612,12 @@ demoLoadBtn.addEventListener("click", async () => {
     setStatus(syncLog, `Couldn't load the sample data: ${err.message ?? err}`, "error");
   } finally {
     db?.close();
-    demoLoadBtn.disabled = false;
+    if (demoLoadBtn) demoLoadBtn.disabled = false;
   }
-});
+}
+
+demoLoadBtn?.addEventListener("click", () => void triggerDemoLoad());
+window.addEventListener("chegga:load-demo", () => void triggerDemoLoad());
 
 demoClearBtn.addEventListener("click", async () => {
   demoClearBtn.disabled = true;
@@ -3601,103 +3866,26 @@ importDataInput.addEventListener("change", async () => {
   }
 });
 
-// --- Phase 2: analyze recent games ---
+// --- Phase 2: background analysis & while-playing / closed-app sync ---
 
-const analyzeRecentForm = document.querySelector<HTMLFormElement>("#analyze-recent-form")!;
-const analyzeCountInput = document.querySelector<HTMLInputElement>("#analyze-count")!;
-const analyzeRecentBtn = document.querySelector<HTMLButtonElement>("#analyze-recent-btn")!;
-const analyzeRecentLog = document.querySelector<HTMLParagraphElement>("#analyze-recent-log")!;
-const analyzeProgressBar = createProgressBar(document.querySelector<HTMLElement>("#analyze-progress")!);
 const backgroundAnalyzeLog = document.querySelector<HTMLParagraphElement>("#background-analyze-log")!;
 const backgroundAnalyzeBar = createProgressBar(document.querySelector<HTMLElement>("#background-analyze-progress")!);
 
-/** The "Analyze most recent" form's own explicit batch -- a full,
- * blocking pass over `count` games. The automatic first-sync batch uses
- * `runAnalyzeFirstThenBackground` below instead, so a brand-new visitor
- * sees their dashboard after one game, not the whole batch. */
-async function runAnalyzeRecent(count: number) {
-  if (!currentUsername) {
-    setStatus(analyzeRecentLog, "Sync a username first.", "error");
-    return;
-  }
-
-  analyzeRecentBtn.disabled = true;
-  const db = await openDb();
-  const engine = new Engine();
-
-  try {
-    await engine.init();
-
-    const allGames = await getGamesByUsername(db, currentUsername);
-    const candidates = allGames
-      .filter((g) => !g.analyzed && g.rules === "chess")
-      .sort((a, b) => b.endTime - a.endTime)
-      .slice(0, count);
-
-    if (candidates.length === 0) {
-      setStatus(analyzeRecentLog, "No unanalyzed standard-chess games left to analyze.", "ok");
-      return;
-    }
-
-    // One bad game (a malformed PGN, a position the engine chokes on)
-    // used to abort the whole batch here -- every game analyzed before it
-    // was already saved (putMoveAnalyses/markGameAnalyzed per game), but
-    // the user had no way to know that from a bare "Analysis failed" and
-    // no reason to expect re-running would do anything but fail again on
-    // the same game. Now a single game's failure is skipped, not fatal;
-    // only a real run of consecutive failures (the engine itself is
-    // probably dead, e.g. the Worker crashed) stops the batch early,
-    // since grinding through the rest one-by-one at that point just wastes
-    // time repeating the same failure.
-    let analyzed = 0;
-    let consecutiveFailures = 0;
-    const failures: string[] = [];
-    for (let i = 0; i < candidates.length; i++) {
-      const game = candidates[i];
-      const dateLabel = game.endTime ? new Date(game.endTime * 1000).toISOString().slice(0, 10) : game.chessComUuid;
-      analyzeProgressBar.update(i + 1, candidates.length, `Analyzing ${dateLabel}`);
-      try {
-        const moves = await analyzeGame(engine, game, DEFAULT_ANALYSIS_OPTIONS);
-        await putMoveAnalyses(db, moves);
-        await markGameAnalyzed(db, game);
-        analyzed += 1;
-        consecutiveFailures = 0;
-      } catch (err: any) {
-        console.warn(`Skipping game ${game.chessComUuid}: ${err.message ?? err}`);
-        failures.push(game.chessComUuid);
-        consecutiveFailures += 1;
-        if (consecutiveFailures >= 3) {
-          analyzeProgressBar.hide();
-          setStatus(analyzeRecentLog, `Stopped after 3 games in a row failed (engine may have crashed) — see console. ${analyzed} analyzed before that.`, "error");
-          await refreshProfile();
-          return;
-        }
-      }
-    }
-
-    analyzeProgressBar.hide();
-    setStatus(
-      analyzeRecentLog,
-      failures.length
-        ? `Analyzed ${analyzed} of ${candidates.length} (${failures.length} skipped — see console). Updating profile…`
-        : `Analyzed ${candidates.length} games. Updating profile…`,
-      failures.length ? "error" : "ok",
-    );
+setupBackgroundSync({
+  getCredentials: () => {
+    const user = (currentUsername && currentUsername !== DEMO_USERNAME ? currentUsername : "") || usernameInput.value.trim();
+    if (!user) return null;
+    const site: Site = siteSelect.value === "lichess" ? "lichess" : "chesscom";
+    return { username: user, site };
+  },
+  isSyncBusy: () => syncBtn.disabled || Boolean(lichessHistoryAbort),
+  runSilentSync: async (username, site) => {
+    await runSync(username, site);
+  },
+  onSwSyncCompleted: async () => {
     await refreshProfile();
-  } catch (err: any) {
-    analyzeProgressBar.hide();
-    setStatus(analyzeRecentLog, `Analysis failed: ${err.message ?? err}`, "error");
-  } finally {
-    engine.terminate();
-    db.close();
-    analyzeRecentBtn.disabled = false;
-  }
-}
-
-analyzeRecentForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const count = Math.max(1, Math.min(200, parseInt(analyzeCountInput.value, 10) || 10));
-  await runAnalyzeRecent(count);
+    await runAnalyzeFirstThenBackground(QUICK_SYNC_ANALYZE_COUNT);
+  },
 });
 
 /** The automatic first-sync batch, split in two: analyze just the single
@@ -5295,6 +5483,127 @@ analyzeForm.addEventListener("submit", async (e) => {
     analyzeBtn.disabled = false;
   }
 });
+
+// --- Review any game: a pasted PGN, a Lichess link, or a shared link ---
+//
+// The game is analyzed in this tab and opened on the review screen. It is
+// not written to IndexedDB: it isn't one of the visitor's own synced games,
+// so it must not move their profile stats.
+
+const importForm = document.querySelector<HTMLFormElement>("#import-form")!;
+const importInput = document.querySelector<HTMLTextAreaElement>("#import-input")!;
+const importSide = document.querySelector<HTMLSelectElement>("#import-side")!;
+const importBtn = document.querySelector<HTMLButtonElement>("#import-btn")!;
+const importStatus = document.querySelector<HTMLParagraphElement>("#import-status")!;
+const importProgress = createProgressBar(document.querySelector<HTMLDivElement>("#import-progress")!);
+let importBusy = false;
+
+/** Analyzes `pgn` in the browser and opens its review as `side`. */
+async function reviewOutsideGame(pgn: string, side: "white" | "black", label: string) {
+  if (importBusy) return;
+  importBusy = true;
+  importBtn.disabled = true;
+  try {
+    const plies = new Chess();
+    plies.loadPgn(pgn);
+    const total = plies.history().length + 1;
+    importProgress.update(0, total, `Analyzing ${label}`);
+    const game: GameRecord = {
+      chessComUuid: `outside-${Date.now()}`,
+      username: "",
+      url: pgnHeader(pgn, "Site") ?? "",
+      pgn,
+      timeControl: pgnHeader(pgn, "TimeControl") ?? "",
+      timeClass: "unknown",
+      rules: "chess",
+      rated: false,
+      endTime: 0,
+      whiteUsername: pgnHeader(pgn, "White") ?? "White",
+      whiteRating: parseInt(pgnHeader(pgn, "WhiteElo") ?? "", 10) || 0,
+      blackUsername: pgnHeader(pgn, "Black") ?? "Black",
+      blackRating: parseInt(pgnHeader(pgn, "BlackElo") ?? "", 10) || 0,
+      whiteResult: "",
+      blackResult: "",
+      userColor: side,
+      userResult: "draw",
+      analyzed: false,
+    };
+    const engine = await getAnalysisEngine();
+    const moves = await analyzeGame(engine, game, DEFAULT_ANALYSIS_OPTIONS, (done, all) => {
+      importProgress.update(done, all, `Analyzing ${label}`);
+    });
+    importProgress.hide();
+    setStatus(importStatus, "");
+    openReviewForPgn(pgn, moves, side, undefined, pgnHeader(pgn, "Opening"));
+  } catch (err: any) {
+    importProgress.hide();
+    setStatus(importStatus, String(err?.message ?? err), "error");
+  } finally {
+    importBusy = false;
+    importBtn.disabled = false;
+  }
+}
+
+importForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (importBusy) return;
+  const text = importInput.value.trim();
+  const preferred = importSide.value as "auto" | "white" | "black";
+  try {
+    const link = parseLichessGameUrl(text);
+    let pgn: string;
+    if (link) {
+      setStatus(importStatus, "Fetching the game from Lichess…");
+      pgn = readPgn(await fetchLichessGame(link.id));
+    } else {
+      pgn = readPgn(text);
+    }
+    const side = chooseReviewSide(pgn, { preferred, usernames: [currentUsername ?? "", lcUser()], linkSide: link?.side });
+    setStatus(importStatus, "");
+    await reviewOutsideGame(pgn, side, "the game");
+  } catch (err: any) {
+    setStatus(importStatus, String(err?.message ?? err), "error");
+  }
+});
+
+// Copy a link that opens this review anywhere: the game rides in the link's
+// #fragment, which browsers never send to a server.
+reviewShareLinkBtn.addEventListener("click", async () => {
+  if (!review) return;
+  try {
+    const fragment = await encodeSharedReview(review.pgn, review.humanColor);
+    const url = `${location.origin}${location.pathname}#${fragment}`;
+    const copied = await copyToClipboard(url);
+    reviewExportStatus.style.display = "";
+    reviewExportStatus.textContent = copied
+      ? "Link copied. Whoever opens it sees this game reviewed in their own browser."
+      : url;
+    if (copied) floatText(reviewShareLinkBtn, "Copied!", "good");
+  } catch (err: any) {
+    reviewExportStatus.style.display = "";
+    reviewExportStatus.textContent = `Couldn't make a link: ${err?.message ?? err}`;
+  }
+});
+
+/** A shared review link (#review=...) opens that game's review on load. */
+async function openSharedReviewFromHash() {
+  let shared: { pgn: string; side: "white" | "black" } | null = null;
+  try {
+    shared = await decodeSharedReview(location.hash);
+  } catch (err: any) {
+    setStatus(importStatus, String(err?.message ?? err), "error");
+    importStatus.scrollIntoView({ block: "center" });
+    return;
+  }
+  if (!shared) return;
+  const white = pgnHeader(shared.pgn, "White");
+  const black = pgnHeader(shared.pgn, "Black");
+  const label = white && black ? `${white} vs ${black}` : "the shared game";
+  document.querySelector("#import-section")?.scrollIntoView({ block: "center" });
+  await reviewOutsideGame(shared.pgn, shared.side, label);
+}
+void openSharedReviewFromHash();
+window.addEventListener("hashchange", () => void openSharedReviewFromHash());
 
 // --- Dev tools window hooks (used by headless cross-check scripts to seed
 // raw GameRecord/MoveAnalysisRecord rows dumped straight from Chegga's own

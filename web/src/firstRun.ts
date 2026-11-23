@@ -34,6 +34,7 @@ export interface FirstRunEnv {
   storage: StorageLike | null;
   search: string; // location.search
   hashUsername?: string; // the `u` in `#u=name`, a shared link that already names an account
+  sharedReview?: boolean; // a `#review=...` link: the visitor came to see one game, not a tour
 }
 
 /** `?tutorial=1` always shows it (a "replay" link, and tests); `?tutorial=0`
@@ -46,7 +47,7 @@ export function shouldShowTutorial(env: FirstRunEnv): boolean {
   if (!env.storage) return false;
   try {
     if (env.storage.getItem(TUTORIAL_KEY)) return false;
-    if (env.hashUsername) return false;
+    if (env.hashUsername || env.sharedReview) return false;
     for (let i = 0; i < env.storage.length; i++) {
       const key = env.storage.key(i);
       if (key && ACTIVITY_KEYS.some((prefix) => key.startsWith(prefix))) return false;

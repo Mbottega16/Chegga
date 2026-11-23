@@ -1,15 +1,23 @@
-// Studio Menu fold (left column of the studio grid).
+// Studio Launchpad (2x3 entry window) & Dashboard Orientation (Operating vs. Playing).
 //
-// Wider than 1040px: the left column folds into a slim icon rail, so the
-// board stage gets the room. The choice is remembered between visits.
-// 1040px or less: the menu list folds into a drawer that starts closed on
-// every visit, so it never pushes the board down the page.
+// Distinguishes:
+//   - "operating": the operating-based view of the app (opens first with the
+//     2x3 panel-style launchpad window, followed by full-width borderless
+//     operating panels for Get Connected, Daily Training Sets, Previously
+//     Played Games, Scouting Profile, and What's Coming Soon).
+//   - "playing": the dedicated playing-the-game orientation of the dashboard,
+//     where the chessboard stage (#play-section) rises to the top at full
+//     screen width for playing vs. Stockfish or stepping through a game review.
 
 const STORAGE_KEY = "chegga-web:studio-menu";
 const NARROW_QUERY = "(max-width: 1040px)";
 
+export type DashboardOrientation = "operating" | "playing";
+
 let grid: HTMLElement | null = null;
 let toggle: HTMLButtonElement | null = null;
+let operatingBtn: HTMLButtonElement | null = null;
+let playingBtn: HTMLButtonElement | null = null;
 
 function rememberedCollapsed(): boolean {
   try {
@@ -27,7 +35,6 @@ export function setStudioMenuCollapsed(collapsed: boolean, remember = true): voi
   if (!grid || !toggle) return;
   grid.classList.toggle("menu-collapsed", collapsed);
   toggle.setAttribute("aria-expanded", String(!collapsed));
-  // Only the desktop rail is a preference; the phone drawer always starts closed.
   if (remember && !window.matchMedia(NARROW_QUERY).matches) {
     try {
       localStorage.setItem(STORAGE_KEY, collapsed ? "collapsed" : "open");
@@ -37,9 +44,36 @@ export function setStudioMenuCollapsed(collapsed: boolean, remember = true): voi
   }
 }
 
-/** Returns the section, opening the menu first if the rail has folded it away. */
+export function getDashboardOrientation(): DashboardOrientation {
+  return (grid?.dataset.orientation as DashboardOrientation) || "operating";
+}
+
+export function setDashboardOrientation(mode: DashboardOrientation): void {
+  if (!grid) grid = document.getElementById("studio-grid");
+  if (!grid) return;
+  grid.dataset.orientation = mode;
+  document.body.dataset.orientation = mode;
+
+  if (operatingBtn) {
+    const isOp = mode === "operating";
+    operatingBtn.classList.toggle("active", isOp);
+    operatingBtn.setAttribute("aria-pressed", String(isOp));
+  }
+  if (playingBtn) {
+    const isPlay = mode === "playing";
+    playingBtn.classList.toggle("active", isPlay);
+    playingBtn.setAttribute("aria-pressed", String(isPlay));
+  }
+}
+
+/** Returns the section, opening the menu/operating view first if folded away. */
 export function revealSection(id: string): HTMLElement | null {
   const target = document.getElementById(id);
+  if (id === "play-section") {
+    setDashboardOrientation("playing");
+  } else if (id) {
+    setDashboardOrientation("operating");
+  }
   if (target && isStudioMenuCollapsed() && target.getClientRects().length === 0) {
     setStudioMenuCollapsed(false);
   }
@@ -50,7 +84,12 @@ export function revealSection(id: string): HTMLElement | null {
 export function setupStudioMenu(): void {
   grid = document.getElementById("studio-grid");
   toggle = document.querySelector<HTMLButtonElement>("#studio-nav-toggle");
+  operatingBtn = document.querySelector<HTMLButtonElement>("#orientation-operating-btn");
+  playingBtn = document.querySelector<HTMLButtonElement>("#orientation-playing-btn");
   if (!grid || !toggle) return;
+
+  // Start in Operating View with the 2x3 panel window open on desktop.
+  setDashboardOrientation("operating");
 
   const narrow = window.matchMedia(NARROW_QUERY);
   const applyDefault = () => setStudioMenuCollapsed(narrow.matches || rememberedCollapsed(), false);
@@ -59,14 +98,26 @@ export function setupStudioMenu(): void {
 
   toggle.addEventListener("click", () => setStudioMenuCollapsed(!isStudioMenuCollapsed()));
 
-  // A rail link to a folded-away card (Get connected, Daily Training) opens
-  // the menu before the browser's own anchor jump runs. Every click also
-  // moves the highlight and flashes the target: the first three targets are
-  // already on screen, so without this a click looked like it did nothing.
+  operatingBtn?.addEventListener("click", () => {
+    setDashboardOrientation("operating");
+    if (isStudioMenuCollapsed() && !narrow.matches) {
+      setStudioMenuCollapsed(false);
+    }
+  });
+
+  playingBtn?.addEventListener("click", () => {
+    setDashboardOrientation("playing");
+    document.getElementById("play-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
   const links = document.querySelectorAll<HTMLAnchorElement>(".studio-nav-link");
   links.forEach((link) => {
     link.addEventListener("click", () => {
       const id = link.hash.slice(1);
+      const requestedMode = link.dataset.viewMode as DashboardOrientation | undefined;
+      if (requestedMode) {
+        setDashboardOrientation(requestedMode);
+      }
       const target = id ? revealSection(id) : null;
       links.forEach((l) => {
         l.classList.toggle("active", l === link);

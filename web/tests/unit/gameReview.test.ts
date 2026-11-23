@@ -185,8 +185,8 @@ describe("move labels and captions", () => {
     expect(describeStep(partial, 0)).toBe("1. e4 — Good.");
   });
 
-  it("does not grade the opponent's move", () => {
-    expect(describeStep(review, 1)).toBe("1... e5 — your opponent's move.");
+  it("names the opponent's grade but not its cost", () => {
+    expect(describeStep(review, 1)).toBe("1... e5 — your opponent's move: Good.");
   });
 
   it("says so when a move wasn't graded", () => {

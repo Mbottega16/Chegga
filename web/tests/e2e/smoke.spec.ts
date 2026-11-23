@@ -12,14 +12,6 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-
-// The pre-connect surface — everything a first-time visitor sees before
-// they type a username. This is what actually ships to a phone from a
-// shared link, so it is the highest-value thing to keep un-broken.
-//
-// Walking the growth cards against a real analysed account is the
-// "bundled demo dataset" describe block at the bottom of this file.
-
 test.describe("landing page smoke", () => {
   test("loads with no thrown errors or console errors", async ({ page }) => {
     const problems: string[] = [];
@@ -30,57 +22,37 @@ test.describe("landing page smoke", () => {
 
     await page.goto("/");
     await expect(page.locator("#main-content")).toBeVisible();
-    // let deferred init (DB open, feature-detects) settle
     await page.waitForTimeout(1500);
 
     expect(problems, problems.join("\n")).toEqual([]);
   });
 
-  // The app says a visitor's games stay in their browser, so nothing from
-  // the feedback vendors may load until the visitor asks for feedback.
-  test("Featurebase loads only after the Feedback button is clicked", async ({ page }) => {
-    const featurebaseRequests: string[] = [];
-    page.on("request", (req) => {
-      if (req.url().includes("featurebase")) featurebaseRequests.push(req.url());
-    });
-
-    await page.goto("/");
-    await expect(page.locator("#feedback-btn")).toBeVisible();
-    await page.waitForTimeout(1500);
-    expect(featurebaseRequests, featurebaseRequests.join("\n")).toEqual([]);
-    await expect(page.locator("#featurebase-sdk")).toHaveCount(0);
-
-    await page.locator("#feedback-btn").click();
-    await expect(page.locator("#featurebase-sdk")).toHaveCount(1);
-    await expect.poll(() => featurebaseRequests.length).toBeGreaterThan(0);
-  });
-
-  test("a blocked Featurebase script sends the click to the public feedback page", async ({
-    page,
-  }) => {
-    await page.route("**/do.featurebase.app/**", (route) => route.abort());
-    await page.goto("/");
-
-    const popup = page.waitForEvent("popup");
-    await page.locator("#feedback-btn").click();
-    const feedbackPage = await popup;
-    await expect.poll(() => feedbackPage.url()).toContain("mibottega.featurebase.app");
-  });
-
-  test("shows the hero and both primary CTAs", async ({ page }) => {
+  test("shows the simplified header (Sync, Orientation Switcher, Theme) without redundant Play/Stockfish/Feedback buttons", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator("header.header")).toBeVisible();
     await expect(page.locator("#hero-analyze-btn")).toBeVisible();
-    await expect(page.locator("#hero-play-btn")).toBeVisible();
+    await expect(page.locator("#orientation-operating-btn")).toBeVisible();
+    await expect(page.locator("#orientation-playing-btn")).toBeVisible();
+    await expect(page.locator("#hero-play-btn")).toHaveCount(0);
+    await expect(page.locator("#feedback-btn")).toHaveCount(0);
+    await expect(page.locator(".header-engine-pill")).toHaveCount(0);
   });
 
-  test("the connect form is reachable and usable by keyboard", async ({ page }) => {
+  test("the connect form is simplified and reachable by keyboard", async ({ page }) => {
     await page.goto("/");
+    await expect(page.locator("#sync-section h2")).toHaveText("Get connected.");
+    await expect(page.locator("#sync-section .card-teaser")).toHaveText(
+      "Enter your Chess.com or Lichess username to load your recent games and track your progress.",
+    );
+    await expect(page.locator("#demo-load-btn")).toHaveCount(0);
+    await expect(page.locator("#analyze-recent-form")).toHaveCount(0);
+
     const username = page.locator("#username");
     await username.focus();
     await expect(username).toBeFocused();
     await username.fill("MagnusCarlsen");
-    await expect(page.locator("#sync-btn")).toBeVisible();
+    await expect(page.locator("#sync-site")).toBeVisible();
+    await expect(page.locator("#hero-analyze-btn")).toBeVisible();
   });
 
   test("the data export control is present (no silent data-loss trap)", async ({ page }) => {
@@ -88,8 +60,6 @@ test.describe("landing page smoke", () => {
     await expect(page.locator("#export-data-btn")).toBeAttached();
   });
 
-  // The review itself needs an analyzed game (real engine time), so the
-  // deploy check is that its controls shipped and start out of the way.
   test("the game review is wired up, and stays hidden until there is a game", async ({ page }) => {
     await page.goto("/");
     const panel = page.locator("#review-panel");
@@ -117,16 +87,13 @@ test.describe("landing page smoke", () => {
     await expect(page.locator("#try-panel")).toBeHidden();
   });
 
-  // The game picker needs synced games, so before a username is connected
-  // it should show its designed waiting state with a way to get started,
-  // not vanish or sit empty (the seeded-game run is review-picker.spec.ts).
   test("the game picker shows a waiting state before there are games", async ({ page }) => {
     await page.goto("/");
     const section = page.locator("#picker-section");
     await expect(section).toBeVisible();
     await expect(section.locator(".empty-state")).toBeVisible();
     await expect(section.locator("[data-empty-cta]").first()).toBeVisible();
-    await expect(page.locator('a[href="#picker-section"]')).toBeAttached(); // and it is in the jump nav
+    await expect(page.locator('a[href="#picker-section"]')).toBeAttached();
   });
 
   test("body does not scroll horizontally on a phone viewport", async ({ page }) => {
@@ -136,28 +103,10 @@ test.describe("landing page smoke", () => {
       const el = document.documentElement;
       return el.scrollWidth - el.clientWidth;
     });
-    if (overflow > 2) {
-      const culprits = await page.evaluate(() => {
-        const docWidth = document.documentElement.clientWidth;
-        return Array.from(document.querySelectorAll('*'))
-          .filter(e => e.getBoundingClientRect().right > docWidth + 2)
-          .map(e => e.tagName + '#' + e.id + '.' + e.className + ' [right=' + Math.round(e.getBoundingClientRect().right) + ', docWidth=' + docWidth + ']');
-      });
-      console.log('OVERFLOW CULPRITS:', culprits);
-    }
-    // a few px of sub-pixel rounding is fine; a real overflow is not
     expect(overflow).toBeLessThanOrEqual(2);
   });
 });
 
-// The growth cards had never been click-tested against real data — there was
-// no way to get data into the page without a real account and an engine run.
-// The bundled demo dataset is that way, so this is the run they never got.
-//
-// The five cards sit behind the "Coming soon" gate (`data-coming-soon`), which
-// CSS-hides them regardless of their own state. So these assert what the data
-// actually drives: the card un-hid itself (each one sets display:none when its
-// compute function returns nothing) and its output holds real content.
 const GROWTH_CARDS = [
   { section: "#road-section", output: "#road-output", expect: /Model estimate now/i },
   { section: "#weekly-plan-section", output: "#weekly-plan-output", expect: /Mon|Tue|Wed/i },
@@ -175,7 +124,7 @@ test.describe("bundled demo dataset", () => {
     });
 
     await page.goto("/");
-    await page.locator("#demo-load-btn").click();
+    await page.locator(".picker-demo-cta-btn").first().click();
 
     await expect(page.locator("#demo-banner")).toBeVisible();
     await expect(page.locator("#sync-log")).toContainText(/sample games/i);
@@ -183,8 +132,6 @@ test.describe("bundled demo dataset", () => {
     for (const card of GROWTH_CARDS) {
       const section = page.locator(card.section);
       await expect(section).toBeAttached();
-      // Hidden by the Coming-soon gate, but its own data-driven toggle must
-      // have opened it — "none" here means the card found nothing to show.
       await expect
         .poll(async () => section.evaluate((el: HTMLElement) => el.style.display), {
           message: `${card.section} stayed hidden — its compute function returned nothing`,
@@ -198,7 +145,6 @@ test.describe("bundled demo dataset", () => {
       expect(text).not.toMatch(/not enough data|no data yet/i);
     }
 
-    // The cards that are on the front page should have filled in too.
     await expect(page.locator("#profile-output")).toContainText(/\d/);
     await expect(page.locator("#picker-output")).toContainText(/\d/);
 
@@ -207,12 +153,11 @@ test.describe("bundled demo dataset", () => {
 
   test("clearing the demo returns the page to its empty state", async ({ page }) => {
     await page.goto("/");
-    await page.locator("#demo-load-btn").click();
+    await page.locator(".picker-demo-cta-btn").first().click();
     await expect(page.locator("#demo-banner")).toBeVisible();
 
     await page.locator("#demo-clear-btn").click();
 
-    // The clear reloads the page; the banner must not come back.
     await expect(page.locator("#demo-banner")).toBeHidden();
     await expect(page.locator("#picker-section .empty-state")).toBeVisible();
     await expect(page.locator("#road-section")).toHaveJSProperty("style.display", "none");
@@ -221,7 +166,7 @@ test.describe("bundled demo dataset", () => {
   test("the demo survives a reload without trying to sync a fake account", async ({ page }) => {
     const siteRequests: string[] = [];
     await page.goto("/");
-    await page.locator("#demo-load-btn").click();
+    await page.locator(".picker-demo-cta-btn").first().click();
     await expect(page.locator("#demo-banner")).toBeVisible();
 
     page.on("request", (req) => {

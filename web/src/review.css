@@ -1,0 +1,665 @@
+/* Chegga Web — the review screen's board furniture, game summary, move
+   list, winning-chances chart and mistake drill (reviewBoardView.ts,
+   gameReviewView.ts). Loaded after style.css, before mobile.css. */
+
+/* ---- Board column: player bar / [eval bar | board] / player bar ---- */
+.board-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+.board-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+}
+.review-eval-bar-host {
+  flex: 0 0 28px;
+  display: flex;
+}
+.review-eval-bar-host[hidden],
+.review-player-slot[hidden] {
+  display: none;
+}
+
+/* While a review is open the eval bar takes 30px of the row, so the board
+   gives it back (the same container-unit sizing as style.css). */
+@media (min-width: 601px) {
+  .studio-stage-card .play-layout.is-reviewing .play-board {
+    grid-template-columns: repeat(8, min(84px, calc((100cqi - 70px) / 8)));
+    grid-template-rows: repeat(8, min(84px, calc((100cqi - 70px) / 8)));
+  }
+  .studio-stage-card .play-layout.is-reviewing .play-piece {
+    font-size: min(58px, calc((100cqi - 64px) / 8 * 0.69));
+  }
+}
+
+/* ---- Evaluation bar ---- */
+.review-eval-bar {
+  position: relative;
+  flex: 1;
+  width: 28px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #2b2d31;
+  border: 1px solid var(--border-strong);
+}
+.review-eval-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #f1f1ee;
+  transition: height 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.review-eval-bar[data-orientation="black"] .review-eval-fill {
+  bottom: auto;
+  top: 0;
+}
+.review-eval-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  pointer-events: none;
+}
+.review-eval-label-bottom {
+  bottom: 5px;
+}
+.review-eval-label-top {
+  top: 5px;
+}
+.review-eval-label.on-white {
+  color: #1d1f23;
+}
+.review-eval-label.on-black {
+  color: #f1f1ee;
+}
+@media (prefers-reduced-motion: reduce) {
+  .review-eval-fill {
+    transition: none;
+  }
+}
+
+/* ---- Player bars ---- */
+.review-player-slot {
+  min-height: 34px;
+}
+.rpb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 4px 10px;
+  background: var(--panel-hover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.86rem;
+  min-width: 0;
+}
+.rpb-swatch {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+}
+.rpb-white .rpb-swatch,
+.rs-white .rpb-swatch {
+  background: #f1f1ee;
+}
+.rpb-black .rpb-swatch,
+.rs-black .rpb-swatch {
+  background: #2b2d31;
+}
+.rpb-name {
+  font-weight: 650;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.rpb-rating {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.rpb-you {
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.rpb-material {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+.rpb-captured {
+  color: var(--muted);
+  font-size: 0.95rem;
+  letter-spacing: -0.18em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+.rpb-lead {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.rpb-clock {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 0.92rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+.rpb-clock-running {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.rpb-clock-low {
+  color: var(--loss);
+  border-color: var(--loss);
+}
+
+/* ---- Game summary ---- */
+.review-header-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.review-summary {
+  margin: 0 0 12px;
+  padding: 12px;
+  background: var(--panel-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.rs-players {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+}
+.rs-vs {
+  align-self: center;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.rs-side {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rs-side + .rs-vs + .rs-side {
+  align-items: flex-end;
+  text-align: right;
+}
+.rs-who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.rs-side + .rs-vs + .rs-side .rs-who {
+  justify-content: flex-end;
+}
+.rs-name {
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.rs-rating {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+.rs-result {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 4px;
+  padding: 1px 5px;
+  border: 1px solid currentColor;
+}
+.rs-result-win {
+  color: var(--win);
+}
+.rs-result-loss {
+  color: var(--loss);
+}
+.rs-result-draw {
+  color: var(--muted);
+}
+.rs-acc {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.rs-acc-num {
+  font-size: 2rem;
+  font-weight: 750;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.rs-is-you .rs-acc-num {
+  color: var(--accent-strong);
+}
+.rs-acc-label {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.rs-phases {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.rs-phase strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.rs-phase-word {
+  font-weight: 600;
+}
+.rs-word-excellent {
+  color: var(--win);
+}
+.rs-word-rough {
+  color: var(--loss);
+}
+.rs-tally {
+  margin-top: 12px;
+  display: grid;
+  gap: 3px;
+}
+.rs-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+}
+.rs-tier {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+.rs-count {
+  font: inherit;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-height: 28px;
+  padding: 2px 0;
+  text-align: center;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+button.rs-count:hover,
+button.rs-count:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+.rs-count-zero {
+  color: var(--muted-dim);
+  cursor: default;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- Move list ---- */
+.review-move-list-wrap {
+  margin: 4px 0 12px;
+}
+.review-subheading {
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.review-move-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 232px;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overscroll-behavior: contain;
+}
+.rml-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 2px;
+}
+.rml-num {
+  color: var(--muted-dim);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  padding-right: 6px;
+}
+.rml-move {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  min-height: 28px;
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 550;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+.rml-move:hover {
+  background: var(--panel-hover);
+}
+.rml-san {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rml-glyph {
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: var(--tier-color, var(--muted));
+}
+.rml-theirs {
+  color: var(--muted);
+}
+.rml-theirs .rml-glyph {
+  opacity: 0.85;
+}
+.rml-current {
+  background: var(--accent-wash);
+  border-color: var(--accent);
+  color: var(--text);
+}
+.rml-empty {
+  cursor: default;
+  color: var(--muted-dim);
+}
+.rml-empty:hover {
+  background: transparent;
+}
+
+/* ---- Winning-chances chart ---- */
+.eval-graph-plot {
+  position: relative;
+  height: 84px;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: crosshair;
+  touch-action: pan-y;
+}
+.eval-graph-plot .eval-graph-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.eval-black-area {
+  fill: #2b2d31;
+}
+.eval-white-area {
+  fill: #e9e8e4;
+}
+.eval-midline {
+  stroke: #8a8f98;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.7;
+}
+.eval-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.eval-phase-line {
+  stroke: #8a8f98;
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+.eval-phase-label {
+  position: absolute;
+  top: 3px;
+  transform: translateX(4px);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #c9ccd2;
+  pointer-events: none;
+  text-shadow: 0 1px 2px #000;
+}
+.eval-heat-band.eval-heat-panic {
+  fill: #e53935;
+  fill-opacity: 0.28;
+}
+.eval-heat-band.eval-heat-rush {
+  fill: #ffb300;
+  fill-opacity: 0.2;
+}
+.eval-graph-cursor {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.eval-graph-plot .eval-graph-node {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--node-color);
+  border: 1.5px solid #14161a;
+  cursor: pointer;
+  z-index: 2;
+}
+.eval-graph-plot .eval-node-theirs {
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  opacity: 0.8;
+}
+.eval-graph-plot .eval-graph-node:hover,
+.eval-graph-plot .eval-graph-node:focus-visible {
+  transform: scale(1.5);
+  border-color: #fff;
+}
+.eval-graph-cursor-dot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #fff;
+  pointer-events: none;
+  z-index: 3;
+  box-shadow: 0 0 6px var(--accent);
+}
+.eval-graph-tag {
+  position: absolute;
+  bottom: 3px;
+  transform: translateX(6px);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(10, 12, 16, 0.82);
+  color: #f1f1ee;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 3;
+}
+.eval-graph-tag-left {
+  transform: translateX(calc(-100% - 6px));
+}
+
+/* ---- Fix your mistakes ---- */
+.review-drill-btn {
+  border-color: var(--accent) !important;
+  color: var(--accent-strong) !important;
+}
+.drill-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.drill-pips {
+  display: inline-flex;
+  gap: 4px;
+}
+.drill-pip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+}
+.drill-pip-done {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.drill-pip-current {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-wash);
+}
+
+/* Light theme: the board furniture keeps its true white/black, but the
+   chart labels need to read on the light page around them. */
+[data-theme="light"] .eval-black-area {
+  fill: #3a3d44;
+}
+
+/* ---- Phones ---- */
+@media (max-width: 600px) {
+  .board-row {
+    gap: 6px;
+  }
+  .review-eval-bar-host {
+    flex-basis: 24px;
+  }
+  .review-eval-bar {
+    width: 24px;
+  }
+  /* mobile.css sizes squares as (100vw - 72px) / 8; the eval bar and its
+     gap take 30px more of the row while a review is open. */
+  .play-layout.is-reviewing .play-board {
+    grid-template-columns: repeat(8, min(calc((100vw - 102px) / 8), 52px)) !important;
+    grid-template-rows: repeat(8, min(calc((100vw - 102px) / 8), 52px)) !important;
+  }
+  .play-layout.is-reviewing .play-piece {
+    font-size: min(calc((100vw - 102px) / 8 * 0.74), 38px) !important;
+  }
+  .play-layout.is-reviewing .play-board-wrap {
+    margin-bottom: 0 !important;
+  }
+  .rpb {
+    font-size: 0.82rem;
+    padding: 3px 8px;
+  }
+  .rs-acc-num {
+    font-size: 1.6rem;
+  }
+  .review-move-list {
+    max-height: 196px;
+  }
+  .rml-move {
+    min-height: 36px;
+  }
+  .rs-count {
+    min-height: 36px;
+  }
+}
+
+/* ---- Review any game (right column, above the games) ---- */
+.studio-right-column #import-section {
+  padding: 14px 16px;
+  flex: 0 0 auto;
+}
+.import-heading {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+.import-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 52px;
+  resize: vertical;
+  font-size: 0.86rem;
+}
+.import-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.import-row select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.import-row button {
+  flex: 0 0 auto;
+}
+.import-hint {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+#import-status:empty {
+  display: none;
+}

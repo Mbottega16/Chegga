@@ -19,6 +19,16 @@ This repo is public, so private planning notes stay in the owner's vault, not he
 
 ---
 
+## 2026-11-23 — Front-End Overhaul: Borderless Edge-to-Edge Layout, 2x3 Launchpad, Operating vs. Playing Views & Background Sync
+*PC · Antigravity*
+- **Changed:** Removed outer card borders and miniature inner borders across Get Connected, Studio Menu, Daily Training Set, and Previously Played Games; expanded `.wrap` to 100% edge-to-edge width; transformed Studio Menu into a 2×3 panel-style launchpad window distinguishing Operating View (`data-orientation="operating"`) from Playing View (`data-orientation="playing"`); simplified Get Connected to heading, `✕`, description, site selector, and username input (removed demo and batch analyze controls); removed redundant Play, Stockfish WASM, and Feedback header buttons; wired while-playing and closed-app Service Worker background sync (`web/src/backgroundSync.ts`, `web/public/sw.js`).
+- **Verified:** Vitest 366/366 passed (32 files), `npm run build` clean, Playwright desktop + mobile E2E suites 31/31 passed.
+
+## 2026-11-05 — WAVE Accessibility, Anti-Slop Polish & Studio Menu Fold
+*PC · Claude · commits `4d68bc5`, `eeb24d2`, `ee7c593`, `f8946a7`*
+- **Changed:** Fixed WAVE errors (empty evict button, SVG `aria-hidden`, redundant titles, lifted `--muted-dim`, 0.75rem font floor, light/OLED dark-repaint fix, dark accent variants for light mode, mobile review grid & 72px board square allowance), removed side-tab stripes and bounce easing off routine controls, and added Studio Menu rail/drawer fold (`studioMenu.ts`).
+- **Verified:** Vitest 357 passed, build clean, mobile & desktop review-picker headless flows green.
+
 ## 2026-11-04 — 1-Click Graphic Review Card Generator, WCAG 2.1 AA Screen-Reader Live Review & Export Actions
 
 *PC · Antigravity · shareable graphics, accessibility, game review polish*
