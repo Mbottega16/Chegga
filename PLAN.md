@@ -8,16 +8,16 @@ Chess training site. Live at https://chegga-web.vercel.app, auto-deploys from `m
 
 ## Stage assessment — run these checks before claiming a stage
 
-1. Is `REQUIREMENTS.md` in the repo root? (Written Nov 23, 2026; push was pending owner approval.) If absent, the requirements brief has not landed yet.
+1. Is `REQUIREMENTS.md` in the repo root? (Written and pushed Nov 23, 2026.) If absent, something has gone wrong — flag it to the owner.
 2. Run the full test suite (unit + Playwright e2e). Last full Mac run (Nov 10): 140 passed, 5 skipped, 2 failed — the review-picker failed at the practice step on phone screens; a one-file CSS fix was pushed Nov 11 (`f8946a78`). The e2e re-run on the Mac is still owed; until it passes, the stage is "fix shipped, unverified."
-3. Does any account/auth code exist? If no, Requirements 1–3 (accounts, sync, player model) are all still at zero — they are design-stage, not build-stage.
+3. Does any account/auth code exist? If no, Requirements 1–3 (accounts, sync, player model) are all still at zero — they are design-stage, not build-stage. Note: files named *sync* (`syncService.ts`, `siteSync.ts`, `backgroundSync.ts`) DO exist — they import Chess.com/Lichess games into browser-local IndexedDB. That is not account sync; Requirements 1–3 are still at zero.
 4. Is the heat map finished? Check the move-visualization code for a completed heat map view; the owner says it is not finished.
 
 **Current stage (Nov 23, 2026):** polished static v1, unverified e2e, requirements defined, backend not started.
 
 ## Week plan (to Sun Nov 29)
 
-1. Land `REQUIREMENTS.md` in the repo (owner approval for the push).
+1. ~~Land `REQUIREMENTS.md` in the repo~~ — DONE Nov 23, 2026.
 2. Mac e2e re-run green; update the repo `AGENTS.md` handoff with the result.
 3. Accounts + sync: produce a design doc (auth choice, data model for games, sync conflict rules, in-browser and out-of-browser review flows) for owner approval before any build.
 4. Scope the heat map finish and palette pass as build-ready task lists (no build until design doc is approved).
