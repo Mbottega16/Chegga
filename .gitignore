@@ -32,3 +32,7 @@ archive/frontend/tsconfig.tsbuildinfo
 Thumbs.db
 
 .agents/
+
+# Root node_modules (Vercel function deps)
+/node_modules/
+.env

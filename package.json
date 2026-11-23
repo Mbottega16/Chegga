@@ -7,5 +7,9 @@
     "test:smoke": "npm --prefix web run test:smoke",
     "pre-push": "npm test && npm run build",
     "verify": "npm test && npm run build"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.0",
+    "resend": "^6.0.0"
   }
 }
