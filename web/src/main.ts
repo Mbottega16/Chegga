@@ -24,7 +24,6 @@ import {
   iconConnect,
   iconGames,
   iconToday,
-  iconProfile,
   iconLab,
   iconTools,
   iconFeedback,
@@ -391,14 +390,6 @@ app.innerHTML = `
               <strong class="nav-text">Getting Connected.</strong>
               <span class="launchpad-tile-desc">Enter your Chess.com or Lichess username to load your recent games in the background.</span>
             </a>
-            <a href="#profile-section" class="studio-nav-link launchpad-tile" data-view-mode="operating">
-              <div class="launchpad-tile-top">
-                <span class="nav-icon">${iconProfile}</span>
-                <span class="launchpad-tile-kicker">Scouting &amp; Leaks</span>
-              </div>
-              <strong class="nav-text">Your Profile</strong>
-              <span class="launchpad-tile-desc">Inspect your move-quality distribution, accuracy trends, opening repertoire, and tactical leaks.</span>
-            </a>
             <a href="#coming-soon-section" class="studio-nav-link launchpad-tile" data-view-mode="operating">
               <div class="launchpad-tile-top">
                 <span class="nav-icon">${iconLab}</span>
@@ -542,7 +533,7 @@ app.innerHTML = `
                   <button type="button" id="try-done">Done</button>
                 </div>
               </div>
-              <p id="play-status" class="status-line">Click "New game" to start.</p>
+              <p id="play-status" class="status-line"></p>
               <p id="play-hang-warning" class="status-line status-error" style="display:none"></p>
               <div id="analysis-output"></div>
               <div id="play-move-list" class="play-move-list"></div>
@@ -561,8 +552,7 @@ app.innerHTML = `
           </div>
 
           <div class="studio-stage-footer-controls">
-            <h2>Play vs. bot &amp; Game Review</h2>
-            <p class="card-teaser" data-card-teaser>Test your tactics against Stockfish with live quality grading, blunder alerts, and move playback.</p>
+            <h2>Play vs. Bot &amp; Game Review</h2>
             <div class="play-controls play-controls-primary">
               <label for="bot-elo">Bot</label>
               <input type="range" id="bot-elo" min="100" max="3000" step="10" value="800" />
@@ -654,7 +644,6 @@ app.innerHTML = `
           </form>
           <div id="import-progress"></div>
           <p id="import-status" class="status-line" role="status"></p>
-          <p class="import-hint">Chess.com game? Open it, choose Share, then PGN, and paste it here. Nothing is saved to your games.</p>
         </section>
         <section class="card studio-picker-card" id="picker-section" data-tier="primary" data-non-collapsible="true">
           <div class="picker-card-header">
@@ -4129,7 +4118,6 @@ document.addEventListener("keydown", (e) => {
 
 // --- Your focus (skill assessment / growth path) ---
 
-const focusSection = document.querySelector<HTMLElement>("#focus-section")!;
 const focusOutput = document.querySelector<HTMLDivElement>("#focus-output")!;
 
 // Shared state for the spine features (Today / Redemption / Achievements),
@@ -4413,7 +4401,8 @@ async function refreshProfile() {
     snapshotDb.close();
   }
   clearEmptyFor("focus-section");
-  focusSection.style.display = "";
+  // "Your Focus" is removed from the page; the section stays hidden so the
+  // references above and below keep resolving.
   focusOutput.innerHTML = renderSkillProfile(assessment, snapshots);
 
   clearEmptyFor("insights-section");
