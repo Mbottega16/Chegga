@@ -136,6 +136,9 @@ export interface OverlayTrail {
   to: Square;
   color: string;
   tier: string;
+  label?: string; // "Nf3 +0.4"
+  played?: boolean;
+  preview?: boolean;
 }
 
 export interface CandidateOverlay {
@@ -187,9 +190,29 @@ export function buildOverlay(
     arrows.push({ from: preview.from, to: preview.to, color: getClassColor(preview.tier), kind: "preview" });
   }
 
-  const trails: OverlayTrail[] = candidates
-    .filter((c) => isShadedTier(c.tier))
-    .map((c) => ({ from: c.from, to: c.to, color: getClassColor(c.tier), tier: c.tier }));
+  // Every ranked move gets an arrow, so a poor option reads as poor instead of
+  // being missing. Only the good ones tint their square (above).
+  const trails: OverlayTrail[] = candidates.map((c) => ({
+    from: c.from,
+    to: c.to,
+    color: getClassColor(c.tier),
+    tier: c.tier,
+    label: `${c.san} ${formatCandidateEval(c)}`,
+    ...(c.uci === playedUci ? { played: true } : {}),
+    ...(c.uci === previewUci ? { preview: true } : {}),
+  }));
+  // The move made in the game is always drawn, even if the engine's short list
+  // left it out.
+  if (candidates.length && playedUci && !candidates.some((c) => c.uci === playedUci)) {
+    const tier = playedTier ?? "inaccuracy";
+    trails.push({
+      from: playedUci.slice(0, 2) as Square,
+      to: playedUci.slice(2, 4) as Square,
+      color: getClassColor(tier),
+      tier,
+      played: true,
+    });
+  }
 
   return { tints, arrows, trails };
 }

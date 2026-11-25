@@ -14,9 +14,9 @@ import type { AnalysisLine } from "./engine";
 import { EXAMPLE_CANDIDATE_LINES } from "./tutorialEvalCache";
 import { EXAMPLE_MOMENT } from "./tutorialExample";
 
-// A heatmap needs the near-best moves, not all thirty. 8 lines at this
+// A heatmap needs the leading moves, not all thirty. 10 lines at this
 // budget reach a depth where the ranking is stable enough to shade.
-const MAX_CANDIDATES = 8;
+const MAX_CANDIDATES = 10;
 const CANDIDATE_DEPTH = 13;
 const CANDIDATE_MOVETIME_MS = 1600;
 

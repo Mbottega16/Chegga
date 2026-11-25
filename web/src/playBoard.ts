@@ -21,7 +21,8 @@
 import { Chess, type Square } from "chess.js";
 import { playPieceHtml, pieceImgUrl, PIECE_GLYPH } from "./pieceSet";
 import { effectsEnabled, flash, confetti } from "./juice";
-import { trailFadeStops, trailPath } from "./trailGeometry";
+import { trailControls, trailFadeStops, trailPath } from "./trailGeometry";
+import { getClassGlyph, MOVE_QUALITY_TITLES } from "./classificationColors";
 
 const SELECTED_COLOR = "#3a4a2e";
 const LAST_MOVE_COLOR = "rgba(227, 168, 87, 0.18)";
@@ -39,14 +40,21 @@ const PIECE_NAMES: Record<string, string> = {
   k: "king",
 };
 
-// Candidate trails ("where the piece should go"): lower tiers drawn first
-// so best/brilliant read on top wherever paths cross -- the answer to
-// overlap is importance, not draw-order luck. Width and opacity step up
-// the same way so the hierarchy holds even without color (colorblind
-// palette).
-const TRAIL_TIER_ORDER: Record<string, number> = { good: 0, excellent: 1, best: 2, brilliant: 3 };
-const TRAIL_WIDTH: Record<string, number> = { good: 1.6, excellent: 2.1, best: 2.7, brilliant: 3.6 };
-const TRAIL_OPACITY: Record<string, number> = { good: 0.42, excellent: 0.55, best: 0.72, brilliant: 0.95 };
+// The move heatmap: one arrow per candidate move. Lower tiers are drawn first
+// so the strongest read on top where paths cross, and pointing at (or
+// selecting) a piece lifts its own arrows above everything else. Width and
+// opacity step with quality, and each arrow carries its quality symbol, so the
+// ranking holds without color (colorblind palette). Sizes are board units
+// (the board is 100 wide, a square 12.5).
+const TRAIL_TIER_ORDER: Record<string, number> = {
+  blunder: 0, mistake: 1, inaccuracy: 2, good: 3, excellent: 4, best: 5, brilliant: 6,
+};
+const TRAIL_WIDTH: Record<string, number> = {
+  blunder: 1, mistake: 1, inaccuracy: 1, good: 1.3, excellent: 1.6, best: 2.1, brilliant: 2.5,
+};
+const TRAIL_OPACITY: Record<string, number> = {
+  blunder: 0.55, mistake: 0.55, inaccuracy: 0.58, good: 0.7, excellent: 0.82, best: 0.96, brilliant: 1,
+};
 
 /** One arrow on the board. `color` is any CSS color. */
 export interface BoardArrow {
@@ -77,6 +85,10 @@ export interface CandidateTrail {
   to: Square;
   color: string;
   tier: string;
+  /** Shown beside the arrow while its piece is in focus, e.g. "Nf3 +0.4". */
+  label?: string;
+  played?: boolean; // the move actually made in the game
+  preview?: boolean; // a move tapped in the candidate list
 }
 
 export type GameStatus =
@@ -149,6 +161,18 @@ export class PlayBoard {
   private handleKeyDown = (e: KeyboardEvent) => this.onKeyDown(e);
   private handleFocusIn = (e: FocusEvent) => this.onFocusIn(e);
   private handleFocusOut = (e: FocusEvent) => this.onFocusOut(e);
+  private heatHover: Square | null = null; // the square under the pointer or keyboard focus
+  private handleHeatOver = (e: Event) => {
+    const square = (e.target as HTMLElement).closest<HTMLElement>("[data-square]")?.dataset.square as Square | undefined;
+    if (square && square !== this.heatHover) {
+      this.heatHover = square;
+      this.applyHeatFocus();
+    }
+  };
+  private handleHeatLeave = () => {
+    this.heatHover = null;
+    this.applyHeatFocus();
+  };
 
   constructor(container: HTMLElement, onPlayerMove: (uci: string, san: string) => void) {
     this.container = container;
@@ -160,6 +184,9 @@ export class PlayBoard {
     this.container.addEventListener("keydown", this.handleKeyDown);
     this.container.addEventListener("focusin", this.handleFocusIn);
     this.container.addEventListener("focusout", this.handleFocusOut);
+    this.container.addEventListener("pointerover", this.handleHeatOver);
+    this.container.addEventListener("pointerleave", this.handleHeatLeave);
+    this.container.addEventListener("focusin", this.handleHeatOver);
     this.render();
   }
 
@@ -802,6 +829,7 @@ export class PlayBoard {
       }
     }
 
+    this.applyHeatFocus(); // a re-render must not drop the lifted piece
     if (this.animateTintsOnce) this.celebrateBrilliantTints();
     this.animateTintsOnce = false;
     this.animateArrowsOnce = false;
@@ -1132,6 +1160,9 @@ export class PlayBoard {
     this.container.removeEventListener("keydown", this.handleKeyDown);
     this.container.removeEventListener("focusin", this.handleFocusIn);
     this.container.removeEventListener("focusout", this.handleFocusOut);
+    this.container.removeEventListener("pointerover", this.handleHeatOver);
+    this.container.removeEventListener("pointerleave", this.handleHeatLeave);
+    this.container.removeEventListener("focusin", this.handleHeatOver);
     window.removeEventListener("pointermove", this.handlePointerMove);
     window.removeEventListener("pointerup", this.handlePointerUp);
     if (this.qualityFlashTimeout) {
@@ -1193,13 +1224,9 @@ export class PlayBoard {
     }
   }
 
-  /** One pulsing dashed line per shaded candidate, from its origin square
-   * to its destination -- "where the piece should go," not just the
-   * tinted end square. Several trails can start from different pieces and
-   * cross on the board; the "artistic" answer to that overlap is tier
-   * order (see TRAIL_TIER_ORDER/-WIDTH/-OPACITY above): a brilliant or
-   * best path draws on top of, and reads through, a merely-good one
-   * underneath it, rather than whichever happened to be drawn last. */
+  /** The move heatmap: a glowing arrow per candidate, from the piece to where
+   * it could go, with energy flowing toward the destination, a quality symbol
+   * on its end, and a dashed outline on the move actually played. */
   private renderTrails(displayFiles: string[], displayRanks: number[]): string {
     const squarePx = 100 / 8;
     const center = (square: Square) => {
@@ -1207,43 +1234,98 @@ export class PlayBoard {
       const rank = displayRanks.indexOf(parseInt(square[1], 10));
       return { x: file * squarePx + squarePx / 2, y: rank * squarePx + squarePx / 2 };
     };
+    const n = (v: number) => Math.round(v * 100) / 100;
     const sorted = [...this.candidateTrails].sort(
       (a, b) => (TRAIL_TIER_ORDER[a.tier] ?? 0) - (TRAIL_TIER_ORDER[b.tier] ?? 0),
     );
+    const badged = new Set<Square>();
+    // The strongest move into a square owns that square's resting badge.
+    const owners = new Set([...sorted].reverse().filter((t) => !badged.has(t.to) && badged.add(t.to)));
     const gradients: string[] = [];
-    const lines = sorted.map((t, i) => {
+    const moves = sorted.map((t, i) => {
       const from = center(t.from);
       const to = center(t.to);
-      const width = TRAIL_WIDTH[t.tier] ?? 2;
-      const opacity = TRAIL_OPACITY[t.tier] ?? 0.5;
-      // A slightly finer dash for brilliant so its flow reads faster/more
-      // urgent than the calmer lower tiers. Staggered delay so parallel
-      // or crossing trails don't all pulse in obviously locked step.
-      const dasharray = t.tier === "brilliant" ? "3,2.2" : "2.6,3";
-      const delay = (i % 5) * 0.15;
-      // The trail dissolves toward its origin: faint tail, full opacity at
-      // the destination. The gradient follows the straight line between the
-      // two squares, which the curve stays close to.
+      const width = TRAIL_WIDTH[t.tier] ?? 1.2;
+      const opacity = TRAIL_OPACITY[t.tier] ?? 0.6;
+      // The head points along the curve's final direction, and the shaft stops
+      // at the head's base so its round end never pokes through the tip.
+      const [, c2] = trailControls(from, to);
+      const len = Math.hypot(to.x - c2.x, to.y - c2.y) || 1;
+      const dx = (to.x - c2.x) / len;
+      const dy = (to.y - c2.y) / len;
+      const head = width * 1.5 + 1.6;
+      const tip = { x: to.x + dx * 1.4, y: to.y + dy * 1.4 };
+      const base = { x: tip.x - dx * head, y: tip.y - dy * head };
+      const half = head * 0.62;
+      const points = `${n(tip.x)},${n(tip.y)} ${n(base.x - dy * half)},${n(base.y + dx * half)} ${n(base.x + dy * half)},${n(base.y - dx * half)}`;
+      const shaft = trailPath(from, base);
       const gradientId = `play-trail-fade-${this.uid}-${i}`;
       const stops = trailFadeStops()
         .map((s) => `<stop offset="${s.offset}" stop-color="${t.color}" stop-opacity="${s.opacity}"/>`)
         .join("");
       gradients.push(
-        `<linearGradient id="${gradientId}" gradientUnits="userSpaceOnUse" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}">${stops}</linearGradient>`,
+        `<linearGradient id="${gradientId}" gradientUnits="userSpaceOnUse" x1="${n(from.x)}" y1="${n(from.y)}" x2="${n(base.x)}" y2="${n(base.y)}">${stops}</linearGradient>`,
       );
+      const strong = t.tier === "best" || t.tier === "brilliant";
+      const badge = { x: Math.min(97, to.x + 4), y: Math.max(3, to.y - 4) };
+      const text = [t.played ? "Played" : "", t.label ?? MOVE_QUALITY_TITLES[t.tier] ?? ""].filter(Boolean).join(" · ");
+      const labelWidth = text.length * 1.45 + 2.4;
+      const labelX = Math.min(100 - labelWidth / 2 - 0.5, Math.max(labelWidth / 2 + 0.5, to.x));
+      const labelY = to.y + 8.2 > 98 ? to.y - 8.2 : to.y + 6.4;
+      const classes = [
+        "hm-move",
+        `hm-${t.tier}`,
+        strong ? "hm-strong" : "",
+        t.played ? "hm-played" : "",
+        owners.has(t) || t.played ? "hm-owner" : "",
+        t.preview ? "hm-preview" : "",
+      ].filter(Boolean).join(" ");
       return `
-        <path d="${trailPath(from, to)}" fill="none"
-              class="play-trail-line${t.tier === "brilliant" ? " play-trail-brilliant" : ""}"
-              stroke="url(#${gradientId})" stroke-width="${width}" stroke-opacity="${opacity}"
-              stroke-dasharray="${dasharray}" stroke-linecap="round"
-              style="animation-delay:-${delay}s"
-              vector-effect="non-scaling-stroke"/>`;
+        <g class="${classes}" data-from="${t.from}" data-order="${i}" style="--hm:${t.color};--hm-o:${opacity};--hm-delay:-${(i % 6) * 0.17}s">
+          <path class="hm-glow" d="${shaft}" stroke-width="${n(width * 2.6)}"/>
+          ${t.played ? `<path class="hm-played-edge" d="${shaft}" stroke-width="${n(width + 1.5)}"/>` : ""}
+          <path class="hm-body" d="${shaft}" stroke="url(#${gradientId})" stroke-width="${width}"/>
+          <path class="hm-flow" d="${shaft}" stroke-width="${n(width * 0.42)}"/>
+          <polygon class="hm-head" points="${points}"/>
+          ${strong ? `<circle class="hm-ring" cx="${n(to.x)}" cy="${n(to.y)}" r="5.4"/>` : ""}
+          <g class="hm-badge">
+            <circle cx="${n(badge.x)}" cy="${n(badge.y)}" r="2.7"/>
+            <text x="${n(badge.x)}" y="${n(badge.y)}">${getClassGlyph(t.tier)}</text>
+          </g>
+          <g class="hm-label">
+            <rect x="${n(labelX - labelWidth / 2)}" y="${n(labelY - 2.2)}" width="${n(labelWidth)}" height="4.4" rx="1.4"/>
+            <text x="${n(labelX)}" y="${n(labelY)}">${text}</text>
+          </g>
+        </g>`;
     });
     return `
       <svg class="play-trail-layer${this.animateTrailsOnce ? " play-trail-layer-in" : ""}" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
         <defs>${gradients.join("")}</defs>
-        ${lines.join("")}
+        ${moves.join("")}
       </svg>`;
+  }
+
+  /** Lifts one piece's arrows to the top and fades the rest: the piece under
+   * the pointer or keyboard focus, else the selected piece, else the move
+   * tapped in the candidate list. */
+  private applyHeatFocus(): void {
+    const layer = this.container.querySelector?.<SVGSVGElement>(".play-trail-layer");
+    if (!layer) return;
+    const moves = [...layer.querySelectorAll<SVGGElement>("g.hm-move")].sort(
+      (a, b) => Number(a.dataset.order) - Number(b.dataset.order),
+    );
+    const origin = [this.heatHover, this.selected].find((s) => s && moves.some((m) => m.dataset.from === s));
+    const lifted = origin
+      ? moves.filter((m) => m.dataset.from === origin)
+      : moves.filter((m) => m.classList.contains("hm-preview"));
+    layer.classList.toggle("hm-focusing", lifted.length > 0);
+    // Re-appending in rank order restores the resting stack; the lifted moves
+    // then go last, which is "on top" in SVG.
+    for (const move of moves) {
+      move.classList.toggle("hm-focus", lifted.includes(move));
+      layer.appendChild(move);
+    }
+    for (const move of lifted) layer.appendChild(move);
   }
 
   private renderArrows(displayFiles: string[], displayRanks: number[]): string {

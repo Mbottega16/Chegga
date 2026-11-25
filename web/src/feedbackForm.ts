@@ -60,13 +60,9 @@ export function loadFeedbackForm(): void {
   loadTallyScript();
 }
 
-/** Wire the form to load the first time its <details> is opened, so
+/** Wire the form to load the first time the Feedback tab is opened, so
  * nothing third-party loads unless the visitor actually goes looking for
  * the form. */
 export function setupFeedbackForm(): void {
-  const details = document.getElementById("feedback-form-details") as HTMLDetailsElement | null;
-  if (!details) return;
-  details.addEventListener("toggle", () => {
-    if (details.open) loadFeedbackForm();
-  });
+  document.querySelector('[data-dialog="feedback-dialog"]')?.addEventListener("click", loadFeedbackForm);
 }

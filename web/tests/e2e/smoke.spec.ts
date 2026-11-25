@@ -27,12 +27,11 @@ test.describe("landing page smoke", () => {
     expect(problems, problems.join("\n")).toEqual([]);
   });
 
-  test("shows the simplified header (Sync, Orientation Switcher, Theme) without redundant Play/Stockfish/Feedback buttons", async ({ page }) => {
+  test("shows the simplified header (Sync, Theme) without redundant Play/Stockfish/Feedback buttons", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator("header.header")).toBeVisible();
     await expect(page.locator("#hero-analyze-btn")).toBeVisible();
-    await expect(page.locator("#orientation-operating-btn")).toBeVisible();
-    await expect(page.locator("#orientation-playing-btn")).toBeVisible();
+    await expect(page.locator("#orientation-switcher")).toHaveCount(0);
     await expect(page.locator("#hero-play-btn")).toHaveCount(0);
     await expect(page.locator("#feedback-btn")).toHaveCount(0);
     await expect(page.locator(".header-engine-pill")).toHaveCount(0);

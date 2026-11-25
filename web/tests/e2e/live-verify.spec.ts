@@ -32,11 +32,12 @@ test.describe("feedback widgets", () => {
     await expect(dialog.locator("iframe")).toBeAttached();
   });
 
-  test("opening the Send feedback card loads the Tally form", async ({ page }) => {
+  test("opening the Feedback tab loads the Tally form", async ({ page }) => {
     await page.goto("/");
-    const details = page.locator("#feedback-form-details");
-    await details.locator("summary").click();
-    await expect(details).toHaveJSProperty("open", true);
+    const toggle = page.locator("#studio-nav-toggle");
+    if ((await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
+    await page.locator('[data-dialog="feedback-dialog"]').click();
+    await expect(page.locator("#feedback-dialog")).toBeVisible();
     const iframe = page.locator("#tally-embed iframe");
     await expect(iframe).toBeAttached({ timeout: 10_000 });
     // embed.js promotes data-tally-src -> src once the script loads
@@ -51,10 +52,8 @@ test.describe("jump nav", () => {
   const targets = [
     ["#today-section", "Today"],
     ["#sync-section", "Get started"],
-    ["#profile-section", "Profile"],
     ["#play-section", "Play"],
     ["#coming-soon-section", "Coming soon"],
-    ["#feedback-form-details", "Feedback"],
   ] as const;
 
   for (const [id, label] of targets) {

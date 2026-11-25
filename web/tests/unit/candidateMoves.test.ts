@@ -108,13 +108,24 @@ describe("buildOverlay", () => {
     expect(buildOverlay([], undefined, undefined)).toEqual({ tints: [], arrows: [], trails: [] });
   });
 
-  it("draws a trail per shaded candidate, not deduped by destination", () => {
+  it("draws a labelled trail for every ranked move, good or bad", () => {
     const { trails } = buildOverlay(candidates, undefined, undefined);
-    expect(trails).toEqual([
-      { from: "e2", to: "e4", color: CLASS_COLOR.best, tier: "best" },
-      { from: "d2", to: "d4", color: CLASS_COLOR.best, tier: "best" },
-      { from: "g1", to: "f3", color: CLASS_COLOR.good, tier: "good" },
-    ]);
+    expect(trails).toHaveLength(candidates.length);
+    expect(trails.map((t) => `${t.from}${t.to}`)).toEqual(candidates.map((c) => c.uci));
+    expect(trails[0]).toMatchObject({ color: CLASS_COLOR.best, tier: "best" });
+    expect(trails[0].label).toContain(candidates[0].san);
+    expect(trails.some((t) => t.tier === "mistake" && t.color === CLASS_COLOR.mistake)).toBe(true);
+  });
+
+  it("flags the move played and the move being previewed", () => {
+    const { trails } = buildOverlay(candidates, "a2a3", "mistake", "g1f3");
+    expect(trails.filter((t) => t.played).map((t) => t.from)).toEqual(["a2"]);
+    expect(trails.filter((t) => t.preview).map((t) => t.from)).toEqual(["g1"]);
+  });
+
+  it("still draws a played move the engine's short list left out", () => {
+    const { trails } = buildOverlay(candidates, "h2h4", "blunder");
+    expect(trails.at(-1)).toEqual({ from: "h2", to: "h4", color: CLASS_COLOR.blunder, tier: "blunder", played: true });
   });
 
   it("shades a brilliant candidate in its own color, and the best-move arrow follows it", () => {

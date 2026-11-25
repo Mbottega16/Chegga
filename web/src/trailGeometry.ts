@@ -36,21 +36,27 @@ export function trailFadeStops(count = 5, floor = 0.35): FadeStop[] {
   return stops;
 }
 
-/** An SVG path `d` string: one cubic Bezier from `from` to `to`, bowed to the
- * left of the direction of travel (on screen, y grows downward). Both control
- * points sit on the same side, so the curve is a smooth arc with no kink. A
- * zero-length move gives a single point. */
-export function trailPath(from: Point, to: Point, bend: number = TRAIL_BEND): string {
+/** The two control points of the bowed curve from `from` to `to`. Both sit to
+ * the left of the direction of travel (on screen, y grows downward). */
+export function trailControls(from: Point, to: Point, bend: number = TRAIL_BEND): [Point, Point] {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
-  const length = Math.hypot(dx, dy);
-  const start = `M${round(from.x)} ${round(from.y)}`;
-  if (length === 0) return start;
+  const length = Math.hypot(dx, dy) || 1;
   // Unit normal pointing left of travel.
   const nx = dy / length;
   const ny = -dx / length;
-  const offset = length * bend;
-  const c1 = { x: from.x + dx * 0.25 + nx * offset, y: from.y + dy * 0.25 + ny * offset };
-  const c2 = { x: from.x + dx * 0.75 + nx * offset, y: from.y + dy * 0.75 + ny * offset };
+  const offset = Math.hypot(dx, dy) * bend;
+  return [
+    { x: from.x + dx * 0.25 + nx * offset, y: from.y + dy * 0.25 + ny * offset },
+    { x: from.x + dx * 0.75 + nx * offset, y: from.y + dy * 0.75 + ny * offset },
+  ];
+}
+
+/** An SVG path `d` string: one cubic Bezier from `from` to `to`, a smooth arc
+ * with no kink. A zero-length move gives a single point. */
+export function trailPath(from: Point, to: Point, bend: number = TRAIL_BEND): string {
+  const start = `M${round(from.x)} ${round(from.y)}`;
+  if (from.x === to.x && from.y === to.y) return start;
+  const [c1, c2] = trailControls(from, to, bend);
   return `${start} C${round(c1.x)} ${round(c1.y)} ${round(c2.x)} ${round(c2.y)} ${round(to.x)} ${round(to.y)}`;
 }

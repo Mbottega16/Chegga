@@ -71,7 +71,13 @@ npm run test:smoke     # Playwright E2E smoke suite (review picker, tutorial, sy
 npm run pre-push       # Full pre-push gate (npm test && npm run build) — runs automatically on git push
 npm run dev            # Standard Vite dev server
 npm run dev:vscode     # Safe preview server for VS Code Simple Browser (no HMR webview bug)
+npm run dev:playtest   # Playtest build (port 5175), opens with the games in web/playtest/
 ```
+
+**Playtest site** (`chegga-michael` on Vercel, manual deploy; `web/playtest/` is gitignored):
+`node scripts/fetch-playtest-games.mjs <username>` (refreshes games), then
+`npx vite build --mode playtest --outDir <tmp>/chegga-michael`, add a `vercel.json` there that sends
+`X-Robots-Tag: noindex`, and run `vercel deploy --prod --yes` from that folder.
 
 ## Never Read / Noise Zones (Do Not Scan)
 
@@ -99,13 +105,14 @@ To prevent multi-megabyte data blobs and archived legacy apps from slowing down 
 
 *Overwrite this at the end of every session; move the previous handoff into `HISTORY.md` first.*
 
-- **Last Worked On (2026-11-23, PC, Antigravity):** Front-end overhaul — borderless edge-to-edge layout, 2×3 entry launchpad window, distinguished Operating vs. Playing orientations, simplified Get Connected panel, top header cleanup, and background/closed-app sync:
-  - Removed outer card borders and miniature inner borders across **Get Connected** (`#sync-section`), **Studio Menu** (`#studio-nav-panel`), **Daily Training Set** (`#today-section`), and **Previously Played Games** (`#picker-section`, `#import-section`), expanding `.wrap` to `max-width: 100%` edge-to-edge with larger, spread-out typography.
-  - Built the **2×3 Panel-Style Launchpad Window** (`#studio-nav-list.launchpad-grid-2x3` in `main.ts` / `studioMenu.ts`) that opens on entry and distinguishes **Operating View** (`data-orientation="operating"`) from **Playing View** (`data-orientation="playing"`), with a header orientation switcher (`#orientation-operating-btn`, `#orientation-playing-btn`) and automatic switch to Playing View when starting/reviewing a game.
-  - Simplified **Get connected.** (`#sync-section`) to the heading, `✕` collapse toggle, description, site selector (`#sync-site`), and username input (`#username`), removing the demo button and batch analyze drawer from that panel.
-  - Cleaned up the top header by removing the redundant **Play**, **Stockfish WASM**, and **Feedback** buttons while keeping **Sync** (`#hero-analyze-btn`) and wiring non-blocking while-playing + Service Worker closed-app background sync (`web/src/backgroundSync.ts`, `web/public/sw.js`).
-- **Current State:** 366 unit tests across 32 files pass; TypeScript + Vite production build clean; Playwright desktop + mobile E2E suites (`smoke.spec.ts` and `studio-layout.spec.ts`, 31 passed, 0 failed) 100% green.
+- **Last Worked On (2026-11-25, Mac, Claude):** owner's playtest round.
+  - Removed the Operating/Playing view toggle (one layout). Added **Customize** and **Feedback** menu tabs (dialogs; appearance controls moved out of Settings). The right games panel folds into a rail like the menu. Removed the green board frame; "Your Focus" and "Scouting Profile" are hidden by CSS (code still writes to them).
+  - "Review any game" lists the last 10 games, with opening/opponent search over all games. Captured pieces use the real piece art.
+  - New move heatmap (`renderTrails` in `playBoard.ts`): an arrow for every ranked move (10 lines), pulsing and flowing, quality colors and symbols, dashed edge on the move played; pointing at or tapping a piece lifts its arrows.
+  - Speed: two stats replayed every PGN on each load (22k-game account froze about 4 min). They now read the movetext; same load is under 5 s in headless runs.
+  - Playtest build with the owner's games, deployed by hand to a separate Vercel project (see Commands).
+- **Current State:** 371 unit tests pass, build clean. Playwright desktop, mobile and WebKit: the only failures also fail on the previous commit (header Featurebase button, "Play a bot instead" CTA, and `review-picker` on mobile + WebKit at the worst-move step). Not pushed to `main` yet: the public site does not have this round.
 - **Next Up:**
-  1. Real-device mobile check (iOS/Android touch, 3D pinch-zoom, eval-curve scrubbing) and large real-account sync on Safari/WebKit.
-  2. Try the new 2×3 Operating View vs. Playing View flow with a real Chess.com or Lichess account.
-  3. Optional: rename the Vercel deployment off `chegga-web.vercel.app`.
+  1. Owner reviews on the personal playtest site; push to `main` only on their yes.
+  2. Fix or retire the pre-existing e2e failures.
+  3. Real-device phone check of the heatmap.

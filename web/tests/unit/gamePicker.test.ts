@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildPickerCards, pickerCounts, toPickerCard } from "../../src/gamePicker";
+import { buildPickerCards, findRecentGames, pickerCounts, toPickerCard } from "../../src/gamePicker";
 import { game } from "./_factories";
 
 const games = [
@@ -69,5 +69,28 @@ describe("pickerCounts", () => {
       game({ chessComUuid: "sic-1", userResult: "win", analyzed: true, openingName: "Sicilian Defense" }),
     ];
     expect(pickerCounts(withOpenings, "French Defense")).toEqual({ all: 2, win: 1, loss: 1, draw: 0, analyzed: 1 });
+  });
+});
+
+describe("findRecentGames", () => {
+  const many = Array.from({ length: 14 }, (_, i) =>
+    game({ chessComUuid: `g${i}`, endTime: i, openingName: "Slav Defense", blackUsername: `rival${i}` }),
+  );
+
+  it("returns the 10 newest games", () => {
+    const ids = findRecentGames(many).map((c) => c.id);
+    expect(ids).toHaveLength(10);
+    expect(ids[0]).toBe("g13");
+    expect(ids[9]).toBe("g4");
+  });
+
+  it("searches every game by opponent or opening, ignoring case", () => {
+    expect(findRecentGames(many, "RIVAL2").map((c) => c.id)).toEqual(["g2"]); // older than the newest 10
+    expect(findRecentGames(many, "slav")).toHaveLength(10);
+    expect(findRecentGames(many, "french")).toEqual([]);
+  });
+
+  it("matches the opponent's name, never the viewer's own", () => {
+    expect(findRecentGames(many, "tester")).toEqual([]);
   });
 });

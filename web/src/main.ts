@@ -41,7 +41,7 @@ import {
   iconImage,
   iconChevron,
 } from "./icons";
-import { setupStudioMenu, revealSection, setDashboardOrientation } from "./studioMenu";
+import { setupStudioMenu, revealSection, showBoard } from "./studioMenu";
 import { saveBgSyncConfig, setupBackgroundSync } from "./backgroundSync";
 import { renderReviewCardCanvas, copyReviewCardImage, downloadReviewCardImage } from "./shareCard";
 import {
@@ -240,8 +240,8 @@ import {
   type OverlayTrail,
 } from "./candidateMoves";
 import { analyzeCandidates, cachedCandidateLines } from "./candidateAnalysis";
-import { buildPickerCards, pickerCounts, PICKER_CARD_LIMIT, type PickerFilter } from "./gamePicker";
-import { renderGamePicker, renderSavedPositions } from "./gamePickerView";
+import { findRecentGames, buildPickerCards, pickerCounts, PICKER_CARD_LIMIT, type PickerFilter } from "./gamePicker";
+import { renderGamePicker, renderRecentList, renderSavedPositions } from "./gamePickerView";
 import { puzzleFromStep, advanceSpacedRepetition } from "./savedPuzzles";
 import { shouldShowTutorial } from "./firstRun";
 import { startTutorial, type TutorialResult } from "./tutorial";
@@ -330,10 +330,6 @@ app.innerHTML = `
         </div>
       </div>
       <div class="header-actions">
-        <div class="orientation-switcher" id="orientation-switcher" role="group" aria-label="Dashboard view orientation">
-          <button type="button" id="orientation-operating-btn" class="orientation-btn active" aria-pressed="true" title="Switch to the Operating & 2x3 Hub view">Operating View</button>
-          <button type="button" id="orientation-playing-btn" class="orientation-btn" aria-pressed="false" title="Switch to the Playing & Board orientation">Playing View</button>
-        </div>
         <button type="button" id="hero-analyze-btn" class="header-action-btn" title="Sync & analyze games in the background">${iconConnect} <span id="header-sync-label">Sync</span></button>
         <button type="button" id="theme-toggle-btn" class="header-theme-btn" title="Toggle theme mode (Dark / Light / OLED)">
           <span id="theme-toggle-icon">${iconMoon}</span> <span id="theme-toggle-label">Dark</span>
@@ -346,8 +342,57 @@ app.innerHTML = `
       <button type="button" id="demo-clear-btn" class="btn-quiet">Clear sample data</button>
     </p>
 
+    <dialog class="studio-dialog" id="customize-dialog" aria-labelledby="customize-title">
+      <div class="studio-dialog-head">
+        <h2 id="customize-title">Customize</h2>
+        <form method="dialog"><button class="studio-dialog-close" aria-label="Close">✕</button></form>
+      </div>
+      <div class="play-controls">
+                    <label class="play-checkbox-label"><input type="checkbox" id="bot-sound-enabled" checked /> Sound</label>
+                    <label class="play-checkbox-label"><input type="checkbox" id="fx-enabled" checked /> Effects</label>
+      </div>
+                  <div class="play-controls">
+                    <span class="control-pair"><label for="board-theme">Board</label>
+                    <select id="board-theme">
+                      ${BOARD_THEMES.map((t) => `<option value="${t.id}">${t.label}</option>`).join("")}
+                    </select></span>
+                    <span class="control-pair"><label for="piece-set">Pieces</label>
+                    <select id="piece-set">
+                      ${PIECE_SET_OPTIONS.map((o) => `<option value="${o.id}">${o.label}</option>`).join("")}
+                    </select></span>
+                    <label class="play-checkbox-label"><input type="checkbox" id="colorblind-palette" /> Colorblind-safe</label>
+                  </div>
+                  <div class="settings-theme-block">
+                    <div class="settings-block-title">Display Mode</div>
+                    <div class="theme-mode-pills" role="radiogroup" aria-label="Display Mode">
+                      <button type="button" class="theme-mode-pill" data-mode="dark">Dark</button>
+                      <button type="button" class="theme-mode-pill" data-mode="light">Light</button>
+                      <button type="button" class="theme-mode-pill" data-mode="oled">OLED</button>
+                      <button type="button" class="theme-mode-pill" data-mode="system">Auto</button>
+                    </div>
+
+                    <div class="settings-block-title" style="margin-top: 12px;">Studio Accent</div>
+                    <div class="theme-accent-swatches" role="radiogroup" aria-label="Studio Accent Color">
+                      ${ACCENT_OPTIONS.map(
+                        (a) =>
+                          `<button type="button" class="theme-accent-swatch" data-accent="${a.id}" style="--swatch-hex: ${a.hex};">
+                            <span class="swatch-color" style="background: ${a.hex};"></span>
+                            <span class="swatch-name">${a.label}</span>
+                          </button>`
+                      ).join("")}
+                    </div>
+                  </div>
+    </dialog>
+    <dialog class="studio-dialog" id="feedback-dialog" aria-labelledby="feedback-title">
+      <div class="studio-dialog-head">
+        <h2 id="feedback-title">Feedback</h2>
+        <form method="dialog"><button class="studio-dialog-close" aria-label="Close">✕</button></form>
+      </div>
+      <div id="tally-embed"></div>
+    </dialog>
+
     <main id="main-content">
-    <div class="studio-workspace-grid" id="studio-grid" data-orientation="operating">
+    <div class="studio-workspace-grid" id="studio-grid">
       <div class="studio-left-column">
         <nav class="card studio-nav-card section-nav" id="studio-nav-panel" aria-label="Studio Menu">
           <div class="studio-nav-header">
@@ -359,7 +404,7 @@ app.innerHTML = `
             </h2>
           </div>
           <div class="studio-nav-list launchpad-grid-2x3" id="studio-nav-list">
-            <a href="#picker-section" class="studio-nav-link launchpad-tile active" data-view-mode="operating">
+            <a href="#picker-section" class="studio-nav-link launchpad-tile active">
               <div class="launchpad-tile-top">
                 <span class="nav-icon">${iconGames}</span>
                 <span class="launchpad-tile-kicker">Game Library</span>
@@ -367,7 +412,7 @@ app.innerHTML = `
               <strong class="nav-text">Previously Played Games</strong>
               <span class="launchpad-tile-desc">Look over a previously played game, paste a PGN or Lichess link, and step through move evaluations.</span>
             </a>
-            <a href="#today-section" class="studio-nav-link launchpad-tile" data-view-mode="operating">
+            <a href="#today-section" class="studio-nav-link launchpad-tile">
               <div class="launchpad-tile-top">
                 <span class="nav-icon">${iconToday}</span>
                 <span class="launchpad-tile-kicker">Daily Practice</span>
@@ -375,15 +420,15 @@ app.innerHTML = `
               <strong class="nav-text">Daily Training Sets</strong>
               <span class="launchpad-tile-desc">Complete today's personalized training set, spaced-repetition blunders, and endgame drills.</span>
             </a>
-            <a href="#play-section" class="studio-nav-link launchpad-tile" data-view-mode="playing">
+            <a href="#play-section" class="studio-nav-link launchpad-tile">
               <div class="launchpad-tile-top">
                 <span class="nav-icon">${iconStage}</span>
-                <span class="launchpad-tile-kicker">Board Orientation</span>
+                <span class="launchpad-tile-kicker">Stockfish</span>
               </div>
-              <strong class="nav-text">Playing</strong>
-              <span class="launchpad-tile-desc">Switch to the playing orientation of the dashboard to challenge Stockfish or study the live board.</span>
+              <strong class="nav-text">Play vs. Bot</strong>
+              <span class="launchpad-tile-desc">Jump to the board to challenge Stockfish or study a position.</span>
             </a>
-            <a href="#sync-section" class="studio-nav-link launchpad-tile" data-view-mode="operating">
+            <a href="#sync-section" class="studio-nav-link launchpad-tile">
               <div class="launchpad-tile-top">
                 <span class="nav-icon">${iconConnect}</span>
                 <span class="launchpad-tile-kicker">Account Sync</span>
@@ -391,7 +436,23 @@ app.innerHTML = `
               <strong class="nav-text">Getting Connected.</strong>
               <span class="launchpad-tile-desc">Enter your Chess.com or Lichess username to load your recent games in the background.</span>
             </a>
-            <a href="#coming-soon-section" class="studio-nav-link launchpad-tile" data-view-mode="operating">
+            <button type="button" class="studio-nav-link launchpad-tile" data-dialog="customize-dialog" aria-haspopup="dialog">
+              <div class="launchpad-tile-top">
+                <span class="nav-icon">${iconTools}</span>
+                <span class="launchpad-tile-kicker">Make It Yours</span>
+              </div>
+              <strong class="nav-text">Customize</strong>
+              <span class="launchpad-tile-desc">Board colors, piece style, light or dark mode, accent color, sound and effects.</span>
+            </button>
+            <button type="button" class="studio-nav-link launchpad-tile" data-dialog="feedback-dialog" aria-haspopup="dialog">
+              <div class="launchpad-tile-top">
+                <span class="nav-icon">${iconFeedback}</span>
+                <span class="launchpad-tile-kicker">Tell Me</span>
+              </div>
+              <strong class="nav-text">Feedback</strong>
+              <span class="launchpad-tile-desc">Report a bug or suggest what to change next.</span>
+            </button>
+            <a href="#coming-soon-section" class="studio-nav-link launchpad-tile">
               <div class="launchpad-tile-top">
                 <span class="nav-icon">${iconLab}</span>
                 <span class="launchpad-tile-kicker">Studio Lab Suite</span>
@@ -473,6 +534,13 @@ app.innerHTML = `
                   <p id="review-why" class="review-why" style="display:none"></p>
                   <div id="review-blunder-dna-host" style="display:none"></div>
                 </div>
+                <button type="button" id="review-heatmap-btn" class="heatmap-btn" aria-pressed="false">🔥 Move heatmap</button>
+                <p class="heatmap-legend" id="heatmap-legend" hidden>
+                  ${["brilliant", "best", "excellent", "good", "inaccuracy", "mistake", "blunder"]
+                    .map((t) => `<span class="hm-key" data-tier="${t}"><i></i>${t[0].toUpperCase() + t.slice(1)}</span>`)
+                    .join("")}
+                  <span class="hm-hint">Point at or tap a piece to bring its moves to the front. The dashed edge marks the move played.</span>
+                </p>
                 <div class="review-buttons">
                   <button type="button" id="review-first" aria-label="Jump to the starting position">⏮</button>
                   <button type="button" id="review-prev" aria-label="Previous move">◀</button>
@@ -585,40 +653,6 @@ app.innerHTML = `
                     <label class="play-checkbox-label"><input type="checkbox" id="bot-show-analysis" checked /> Live analysis &amp; move juice</label>
                     <label class="play-checkbox-label"><input type="checkbox" id="bot-show-heatmap" /> Square control</label>
                     <label class="play-checkbox-label"><input type="checkbox" id="bot-show-3d" /> ${iconCube} 3D board</label>
-                    <label class="play-checkbox-label"><input type="checkbox" id="bot-sound-enabled" checked /> Sound</label>
-                    <label class="play-checkbox-label"><input type="checkbox" id="fx-enabled" checked /> Effects</label>
-                  </div>
-                  <div class="play-controls">
-                    <span class="control-pair"><label for="board-theme">Board</label>
-                    <select id="board-theme">
-                      ${BOARD_THEMES.map((t) => `<option value="${t.id}">${t.label}</option>`).join("")}
-                    </select></span>
-                    <span class="control-pair"><label for="piece-set">Pieces</label>
-                    <select id="piece-set">
-                      ${PIECE_SET_OPTIONS.map((o) => `<option value="${o.id}">${o.label}</option>`).join("")}
-                    </select></span>
-                    <label class="play-checkbox-label"><input type="checkbox" id="colorblind-palette" /> Colorblind-safe</label>
-                  </div>
-                  <div class="settings-section-divider"></div>
-                  <div class="settings-theme-block">
-                    <div class="settings-block-title">Display Mode</div>
-                    <div class="theme-mode-pills" role="radiogroup" aria-label="Display Mode">
-                      <button type="button" class="theme-mode-pill" data-mode="dark">Dark</button>
-                      <button type="button" class="theme-mode-pill" data-mode="light">Light</button>
-                      <button type="button" class="theme-mode-pill" data-mode="oled">OLED</button>
-                      <button type="button" class="theme-mode-pill" data-mode="system">Auto</button>
-                    </div>
-
-                    <div class="settings-block-title" style="margin-top: 12px;">Studio Accent</div>
-                    <div class="theme-accent-swatches" role="radiogroup" aria-label="Studio Accent Color">
-                      ${ACCENT_OPTIONS.map(
-                        (a) =>
-                          `<button type="button" class="theme-accent-swatch" data-accent="${a.id}" style="--swatch-hex: ${a.hex};">
-                            <span class="swatch-color" style="background: ${a.hex};"></span>
-                            <span class="swatch-name">${a.label}</span>
-                          </button>`
-                      ).join("")}
-                    </div>
                   </div>
                 </div>
               </details>
@@ -628,6 +662,13 @@ app.innerHTML = `
       </div>
 
       <div class="studio-right-column">
+        <div class="side-panel-bar">
+          <button type="button" class="side-panel-toggle" id="side-panel-toggle" aria-expanded="true" title="Collapse the games panel" aria-label="Collapse or expand the games panel">
+            <span class="side-panel-chevron" aria-hidden="true">${iconChevron}</span>
+          </button>
+          <button type="button" class="side-panel-rail-btn" data-side-open="import-section" title="Review any game" aria-label="Review any game">${iconStage}</button>
+          <button type="button" class="side-panel-rail-btn" data-side-open="picker-section" title="Previously Played Games" aria-label="Previously Played Games">${iconGames}</button>
+        </div>
         <section class="card studio-import-card" id="import-section" data-tier="primary" data-non-collapsible="true">
           <h2 class="import-heading">Review any game</h2>
           <form id="import-form" class="import-form">
@@ -645,11 +686,18 @@ app.innerHTML = `
           </form>
           <div id="import-progress"></div>
           <p id="import-status" class="status-line" role="status"></p>
+          <div class="recent-games" id="recent-games" hidden>
+            <div class="recent-head">
+              <h3 id="recent-heading">Last 10 games</h3>
+              <label for="recent-search" class="sr-only">Search your games by opening or opponent</label>
+              <input type="search" id="recent-search" name="recent-search" placeholder="Opening or opponent…" autocomplete="off" spellcheck="false" />
+            </div>
+            <ul class="recent-list" id="recent-list"></ul>
+          </div>
         </section>
         <section class="card studio-picker-card" id="picker-section" data-tier="primary" data-non-collapsible="true">
           <div class="picker-card-header">
             <h2>Previously Played Games</h2>
-            <span class="picker-count-badge">5 recent</span>
           </div>
           <div id="picker-output"></div>
           <p id="picker-status" class="status-line" role="status"></p>
@@ -920,13 +968,6 @@ app.innerHTML = `
     </div>
 
     <div class="studio-utilities-dock" id="studio-tools-dock">
-        <details class="collapsible studio-tool-details" id="feedback-form-details">
-          <summary>${iconFeedback} Feedback</summary>
-          <div class="studio-tool-body">
-            <div id="tally-embed"></div>
-          </div>
-        </details>
-
         <details class="collapsible studio-tool-details" id="rules-guide-details">
           <summary>${iconGuide} Rules &amp; Tactics</summary>
           <div class="studio-tool-body">
@@ -1679,7 +1720,11 @@ let currentOverlay: { arrows: OverlayArrow[]; tints: OverlayTint[]; trails: Over
 function applyOverlay(arrows: OverlayArrow[], tints: OverlayTint[], trails: OverlayTrail[] = [], animate = false) {
   if (!playBoard) return;
   currentOverlay = { arrows, tints, trails };
-  playBoard.showArrows(arrows.map((a) => ({ from: a.from, to: a.to, color: a.color, width: OVERLAY_ARROW_WIDTH[a.kind] })));
+  // The heatmap arrows already show the best, played and previewed moves; the
+  // plain call-out arrows are only for before the engine has answered.
+  playBoard.showArrows(
+    trails.length ? [] : arrows.map((a) => ({ from: a.from, to: a.to, color: a.color, width: OVERLAY_ARROW_WIDTH[a.kind] })),
+  );
   playBoard.setCandidateTints(tints, { animate });
   playBoard.setCandidateTrails(trails, { animate });
   board3dInstance?.setOverlays(tints, arrows, trails);
@@ -1883,7 +1928,7 @@ function showReviewStep(index: number) {
  * already on the board when a game ends, so nothing jumps under the
  * viewer. Stepping back, or "Play it back", goes from there. */
 function enterReview(next: ReviewGame) {
-  setDashboardOrientation("playing");
+  showBoard();
   stopReviewAutoplay();
   preserveBotGameForLater();
   review = next;
@@ -2211,7 +2256,24 @@ window.addEventListener("pointercancel", () => {
 
 // --- Review: "before" view, tapping a candidate ---
 
+const heatmapBtn = document.querySelector<HTMLButtonElement>("#review-heatmap-btn")!;
+const heatmapLegend = document.querySelector<HTMLParagraphElement>("#heatmap-legend")!;
+heatmapBtn.addEventListener("click", () => {
+  reviewBeforeCheckbox.checked = !reviewBeforeCheckbox.checked;
+  reviewBeforeCheckbox.dispatchEvent(new Event("change"));
+  if (reviewBeforeCheckbox.checked) showBoard();
+});
+
+function syncHeatmapControls() {
+  heatmapBtn.setAttribute("aria-pressed", String(reviewBeforeCheckbox.checked));
+  heatmapLegend.hidden = !reviewBeforeCheckbox.checked;
+  for (const key of heatmapLegend.querySelectorAll<HTMLElement>("[data-tier]")) {
+    key.style.setProperty("--hm", getClassColor(key.dataset.tier!)); // follows the colorblind toggle
+  }
+}
+
 reviewBeforeCheckbox.addEventListener("change", () => {
+  syncHeatmapControls();
   reviewShowBefore = reviewBeforeCheckbox.checked;
   if (review) {
     stopReviewAutoplay();
@@ -2694,7 +2756,26 @@ let pickerBusyId: string | null = null;
 // cleared (same persists-until-cleared convention as puzzleFocusFilter).
 let pickerOpeningFilter: string | null = null;
 
+const recentWrap = document.querySelector<HTMLDivElement>("#recent-games")!;
+const recentHeading = document.querySelector<HTMLHeadingElement>("#recent-heading")!;
+const recentSearch = document.querySelector<HTMLInputElement>("#recent-search")!;
+const recentList = document.querySelector<HTMLUListElement>("#recent-list")!;
+
+function renderRecentGames() {
+  recentWrap.hidden = pickerGames.length === 0;
+  const query = recentSearch.value.trim();
+  recentHeading.textContent = query ? "Matching games" : "Last 10 games";
+  recentList.innerHTML = renderRecentList(findRecentGames(pickerGames, query), pickerBusyId, query);
+}
+
+recentSearch.addEventListener("input", renderRecentGames);
+recentList.addEventListener("click", (e) => {
+  const row = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-recent-id]");
+  if (row) void openPickedGame(row.dataset.recentId!);
+});
+
 function renderPicker() {
+  renderRecentGames();
   const track = document.getElementById("picker-track");
   const scrollLeft = track?.scrollLeft ?? 0; // keep the viewer's place when a card flips to "Analyzing…"
   pickerOutput.innerHTML = renderGamePicker(
@@ -2835,6 +2916,7 @@ function updatePicker(games: GameRecord[]) {
     pickerSection.style.display = "";
     renderPicker();
   } else {
+    renderRecentGames(); // hides the short list again
     emptyFor("picker-section");
   }
   void refreshSavedPositions();
@@ -3083,7 +3165,7 @@ function ensurePlayBoard(): PlayBoard {
 }
 
 botNewGameBtn.addEventListener("click", async () => {
-  setDashboardOrientation("playing");
+  showBoard();
   humanColor = botColorSelect.value === "black" ? "black" : "white";
   sanHistory = [];
   gameReportedThisGame = false;

@@ -19,6 +19,19 @@ This repo is public, so private planning notes stay in the owner's vault, not he
 
 ---
 
+## 2026-11-23 — front-end overhaul (handoff moved from CLAUDE.md)
+*PC · Antigravity*
+- **Last Worked On (2026-11-23, PC, Antigravity):** Front-end overhaul — borderless edge-to-edge layout, 2×3 entry launchpad window, distinguished Operating vs. Playing orientations, simplified Get Connected panel, top header cleanup, and background/closed-app sync:
+  - Removed outer card borders and miniature inner borders across **Get Connected** (`#sync-section`), **Studio Menu** (`#studio-nav-panel`), **Daily Training Set** (`#today-section`), and **Previously Played Games** (`#picker-section`, `#import-section`), expanding `.wrap` to `max-width: 100%` edge-to-edge with larger, spread-out typography.
+  - Built the **2×3 Panel-Style Launchpad Window** (`#studio-nav-list.launchpad-grid-2x3` in `main.ts` / `studioMenu.ts`) that opens on entry and distinguishes **Operating View** (`data-orientation="operating"`) from **Playing View** (`data-orientation="playing"`), with a header orientation switcher (`#orientation-operating-btn`, `#orientation-playing-btn`) and automatic switch to Playing View when starting/reviewing a game.
+  - Simplified **Get connected.** (`#sync-section`) to the heading, `✕` collapse toggle, description, site selector (`#sync-site`), and username input (`#username`), removing the demo button and batch analyze drawer from that panel.
+  - Cleaned up the top header by removing the redundant **Play**, **Stockfish WASM**, and **Feedback** buttons while keeping **Sync** (`#hero-analyze-btn`) and wiring non-blocking while-playing + Service Worker closed-app background sync (`web/src/backgroundSync.ts`, `web/public/sw.js`).
+- **Current State:** 366 unit tests across 32 files pass; TypeScript + Vite production build clean; Playwright desktop + mobile E2E suites (`smoke.spec.ts` and `studio-layout.spec.ts`, 31 passed, 0 failed) 100% green.
+- **Next Up:**
+  1. Real-device mobile check (iOS/Android touch, 3D pinch-zoom, eval-curve scrubbing) and large real-account sync on Safari/WebKit.
+  2. Try the new 2×3 Operating View vs. Playing View flow with a real Chess.com or Lichess account.
+  3. Optional: rename the Vercel deployment off `chegga-web.vercel.app`.
+
 ## 2026-11-23 — Front-End Overhaul: Borderless Edge-to-Edge Layout, 2x3 Launchpad, Operating vs. Playing Views & Background Sync
 *PC · Antigravity*
 - **Changed:** Removed outer card borders and miniature inner borders across Get Connected, Studio Menu, Daily Training Set, and Previously Played Games; expanded `.wrap` to 100% edge-to-edge width; transformed Studio Menu into a 2×3 panel-style launchpad window distinguishing Operating View (`data-orientation="operating"`) from Playing View (`data-orientation="playing"`); simplified Get Connected to heading, `✕`, description, site selector, and username input (removed demo and batch analyze controls); removed redundant Play, Stockfish WASM, and Feedback header buttons; wired while-playing and closed-app Service Worker background sync (`web/src/backgroundSync.ts`, `web/public/sw.js`).

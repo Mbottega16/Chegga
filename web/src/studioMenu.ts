@@ -1,23 +1,11 @@
-// Studio Launchpad (2x3 entry window) & Dashboard Orientation (Operating vs. Playing).
-//
-// Distinguishes:
-//   - "operating": the operating-based view of the app (opens first with the
-//     2x3 panel-style launchpad window, followed by full-width borderless
-//     operating panels for Get Connected, Daily Training Sets, Previously
-//     Played Games, Scouting Profile, and What's Coming Soon).
-//   - "playing": the dedicated playing-the-game orientation of the dashboard,
-//     where the chessboard stage (#play-section) rises to the top at full
-//     screen width for playing vs. Stockfish or stepping through a game review.
+// Studio Menu (the launchpad, which folds into an icon rail on the left) and
+// the games panel on the right, which folds the same way.
 
 const STORAGE_KEY = "chegga-web:studio-menu";
 const NARROW_QUERY = "(max-width: 1040px)";
 
-export type DashboardOrientation = "operating" | "playing";
-
 let grid: HTMLElement | null = null;
 let toggle: HTMLButtonElement | null = null;
-let operatingBtn: HTMLButtonElement | null = null;
-let playingBtn: HTMLButtonElement | null = null;
 
 function rememberedCollapsed(): boolean {
   try {
@@ -44,36 +32,15 @@ export function setStudioMenuCollapsed(collapsed: boolean, remember = true): voi
   }
 }
 
-export function getDashboardOrientation(): DashboardOrientation {
-  return (grid?.dataset.orientation as DashboardOrientation) || "operating";
+/** Brings the board to the top, for a game or review that is starting. */
+export function showBoard(): void {
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.getElementById("play-section")?.scrollIntoView({ behavior: still ? "auto" : "smooth", block: "start" });
 }
 
-export function setDashboardOrientation(mode: DashboardOrientation): void {
-  if (!grid) grid = document.getElementById("studio-grid");
-  if (!grid) return;
-  grid.dataset.orientation = mode;
-  document.body.dataset.orientation = mode;
-
-  if (operatingBtn) {
-    const isOp = mode === "operating";
-    operatingBtn.classList.toggle("active", isOp);
-    operatingBtn.setAttribute("aria-pressed", String(isOp));
-  }
-  if (playingBtn) {
-    const isPlay = mode === "playing";
-    playingBtn.classList.toggle("active", isPlay);
-    playingBtn.setAttribute("aria-pressed", String(isPlay));
-  }
-}
-
-/** Returns the section, opening the menu/operating view first if folded away. */
+/** Returns the section, opening the menu first if folded away. */
 export function revealSection(id: string): HTMLElement | null {
   const target = document.getElementById(id);
-  if (id === "play-section") {
-    setDashboardOrientation("playing");
-  } else if (id) {
-    setDashboardOrientation("operating");
-  }
   if (target && isStudioMenuCollapsed() && target.getClientRects().length === 0) {
     setStudioMenuCollapsed(false);
   }
@@ -84,12 +51,7 @@ export function revealSection(id: string): HTMLElement | null {
 export function setupStudioMenu(): void {
   grid = document.getElementById("studio-grid");
   toggle = document.querySelector<HTMLButtonElement>("#studio-nav-toggle");
-  operatingBtn = document.querySelector<HTMLButtonElement>("#orientation-operating-btn");
-  playingBtn = document.querySelector<HTMLButtonElement>("#orientation-playing-btn");
   if (!grid || !toggle) return;
-
-  // Start in Operating View with the 2x3 panel window open on desktop.
-  setDashboardOrientation("operating");
 
   const narrow = window.matchMedia(NARROW_QUERY);
   const applyDefault = () => setStudioMenuCollapsed(narrow.matches || rememberedCollapsed(), false);
@@ -98,26 +60,22 @@ export function setupStudioMenu(): void {
 
   toggle.addEventListener("click", () => setStudioMenuCollapsed(!isStudioMenuCollapsed()));
 
-  operatingBtn?.addEventListener("click", () => {
-    setDashboardOrientation("operating");
-    if (isStudioMenuCollapsed() && !narrow.matches) {
-      setStudioMenuCollapsed(false);
-    }
+  // Customize and Feedback open on top of the page, so they work the same
+  // whether the menu is open or folded into its icon rail.
+  document.querySelectorAll<HTMLButtonElement>("button.studio-nav-link[data-dialog]").forEach((button) => {
+    const dialog = document.getElementById(button.dataset.dialog!) as HTMLDialogElement;
+    button.addEventListener("click", () => dialog.showModal());
+    dialog.addEventListener("click", (e) => {
+      if (e.target === dialog) dialog.close(); // a click on the dimmed backdrop
+    });
   });
 
-  playingBtn?.addEventListener("click", () => {
-    setDashboardOrientation("playing");
-    document.getElementById("play-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
+  setupSidePanel();
 
-  const links = document.querySelectorAll<HTMLAnchorElement>(".studio-nav-link");
+  const links = document.querySelectorAll<HTMLAnchorElement>("a.studio-nav-link");
   links.forEach((link) => {
     link.addEventListener("click", () => {
       const id = link.hash.slice(1);
-      const requestedMode = link.dataset.viewMode as DashboardOrientation | undefined;
-      if (requestedMode) {
-        setDashboardOrientation(requestedMode);
-      }
       const target = id ? revealSection(id) : null;
       links.forEach((l) => {
         l.classList.toggle("active", l === link);
@@ -136,4 +94,38 @@ function flashTarget(el: HTMLElement): void {
   void el.offsetWidth; // restart the animation on a repeat click
   el.classList.add("nav-target-flash");
   window.setTimeout(() => el.classList.remove("nav-target-flash"), 1200);
+}
+
+const SIDE_KEY = "chegga-web:side-panel";
+
+/** The games panel on the right folds into an icon rail, like the menu on the left. */
+function setupSidePanel(): void {
+  const button = document.getElementById("side-panel-toggle");
+  if (!grid || !button) return;
+  const set = (collapsed: boolean, remember = true) => {
+    grid!.classList.toggle("side-collapsed", collapsed);
+    button.setAttribute("aria-expanded", String(!collapsed));
+    button.title = collapsed ? "Expand the games panel" : "Collapse the games panel";
+    if (!remember) return;
+    try {
+      localStorage.setItem(SIDE_KEY, collapsed ? "collapsed" : "open");
+    } catch {
+      // blocked storage: the fold still works, it just isn't remembered
+    }
+  };
+  let remembered = false;
+  try {
+    remembered = localStorage.getItem(SIDE_KEY) === "collapsed";
+  } catch {
+    // blocked storage: start open
+  }
+  set(remembered, false);
+  button.addEventListener("click", () => set(!grid!.classList.contains("side-collapsed")));
+  document.querySelectorAll<HTMLButtonElement>("[data-side-open]").forEach((rail) => {
+    rail.addEventListener("click", () => {
+      set(false);
+      const target = document.getElementById(rail.dataset.sideOpen!);
+      if (target) flashTarget(target);
+    });
+  });
 }

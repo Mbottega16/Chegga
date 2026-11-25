@@ -87,3 +87,21 @@ export function pickerCounts(games: GameRecord[], openingName?: string): Record<
     analyzed: cards.filter((c) => c.analyzed).length,
   };
 }
+
+export const RECENT_LIMIT = 10;
+
+/** The newest games for the short list under "Review any game". A query
+ * narrows it, across every synced game, to an opponent or opening that
+ * contains the text. */
+export function findRecentGames(games: GameRecord[], query = "", limit = RECENT_LIMIT): PickerCard[] {
+  const q = query.trim().toLowerCase();
+  const matching = games.filter((g) => {
+    if (!q) return true;
+    const opponent = g.userColor === "white" ? g.blackUsername : g.whiteUsername;
+    return opponent.toLowerCase().includes(q) || (g.openingName ?? "").toLowerCase().includes(q);
+  });
+  return matching
+    .sort((a, b) => b.endTime - a.endTime)
+    .slice(0, limit)
+    .map(toPickerCard);
+}

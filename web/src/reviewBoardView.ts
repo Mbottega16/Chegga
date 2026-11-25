@@ -12,6 +12,7 @@
 
 import { getClassColor, getClassGlyph, MOVE_QUALITY_TITLES } from "./classificationColors";
 import { winChance } from "./accuracy";
+import { pieceImgUrl } from "./pieceSet";
 import type { ReviewGame } from "./gameReview";
 import {
   SUMMARY_TIERS,
@@ -77,6 +78,15 @@ const PIECE_NAME: Record<string, [string, string]> = {
   p: ["pawn", "pawns"],
 };
 
+/** A taken piece drawn with the same art as the board, so it follows the
+ * viewer's piece set. The text set falls back to its symbols. */
+function capturedPiece(takenBy: Side, type: string): string {
+  const url = pieceImgUrl(takenBy === "white" ? "b" : "w", type);
+  return url
+    ? `<img class="rpb-piece" src="${url}" alt="" width="22" height="22" draggable="false">`
+    : CAPTURE_GLYPH[takenBy][type] + "︎";
+}
+
 function capturedText(pieces: string[]): string {
   const counts = new Map<string, number>();
   for (const p of pieces) counts.set(p, (counts.get(p) ?? 0) + 1);
@@ -104,7 +114,7 @@ export function renderPlayerBar(review: ReviewGame, index: number, side: Side): 
   const lead = material.lead[side];
   const captured = taken.length
     ? `<span class="rpb-captured" aria-label="${esc(`Has taken ${capturedText(taken)}`)}"><span aria-hidden="true">${taken
-        .map((p) => CAPTURE_GLYPH[side][p] + "︎")
+        .map((p) => capturedPiece(side, p))
         .join("")}</span></span>`
     : "";
   const leadTag = lead > 0 ? `<span class="rpb-lead" aria-label="ahead by ${lead} in material">+${lead}</span>` : "";

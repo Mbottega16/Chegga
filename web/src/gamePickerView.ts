@@ -76,6 +76,21 @@ function renderCard(card: PickerCard, busyId: string | null): string {
   </button>`;
 }
 
+export function renderRecentList(cards: PickerCard[], busyId: string | null, query: string): string {
+  if (!cards.length) return `<li class="recent-empty">No game matches "${esc(query)}".</li>`;
+  return cards
+    .map((card) => {
+      const busy = busyId === card.id;
+      const disabled = !card.supported || (busyId !== null && !busy);
+      const detail = busy ? "Analyzing…" : [card.opening ?? "Standard Game", formatDate(card.endTime)].filter(Boolean).join(" · ");
+      return `<li><button type="button" class="recent-row" data-recent-id="${esc(card.id)}" ${disabled ? "disabled" : ""}>
+        <span class="recent-result recent-result-${card.result}">${RESULT_LABEL[card.result]}</span>
+        <span class="recent-main"><span class="recent-opponent">vs ${esc(card.opponent)}</span><span class="recent-detail">${esc(detail)}</span></span>
+      </button></li>`;
+    })
+    .join("");
+}
+
 export function renderGamePicker(
   cards: PickerCard[],
   counts: Record<PickerFilter, number>,

@@ -110,13 +110,15 @@ test.describe("game picker and review", () => {
     await expect(page.locator("#review-candidates .candidate-chip").first()).toBeVisible({ timeout: 30_000 });
     expect(await page.locator("#review-candidates .candidate-chip").count()).toBeGreaterThanOrEqual(3);
     expect(await page.locator("#play-board-wrap .play-candidate-tint").count()).toBeGreaterThanOrEqual(1);
-    expect(await page.locator("#play-board-wrap .play-arrow-layer line").count()).toBeGreaterThanOrEqual(2); // best + played
+    const heat = page.locator("#play-board-wrap .play-trail-layer g.hm-move");
+    expect(await heat.count()).toBeGreaterThanOrEqual(3);
+    await expect(page.locator("#play-board-wrap g.hm-played")).toHaveCount(1);
     await page.screenshot({ path: "test-results/review-before-view.png", fullPage: false });
 
-    // tapping a candidate previews it as another arrow
-    const arrowsBefore = await page.locator("#play-board-wrap .play-arrow-layer line").count();
+    // tapping a candidate brings that move to the front of the heatmap
     await page.locator("#review-candidates .candidate-chip").nth(2).click();
-    expect(await page.locator("#play-board-wrap .play-arrow-layer line").count()).toBeGreaterThanOrEqual(arrowsBefore);
+    await page.mouse.move(1, 1);
+    await expect(page.locator("#play-board-wrap g.hm-preview.hm-focus")).toHaveCount(1);
 
     // --- try the position: a wrong move, then a strong one ---
     const strongUci = await page.locator("#review-candidates .candidate-chip").first().getAttribute("data-candidate");

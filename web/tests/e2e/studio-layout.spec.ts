@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 
-// Studio 2x3 Launchpad Window (studioMenu.ts), Operating vs. Playing orientation,
+// Studio 2x3 Launchpad Window (studioMenu.ts), the folding games panel,
 // borderless edge-to-edge sections, synced-game cards, and WAVE checks.
 
 test.beforeEach(async ({ page }) => {
@@ -16,19 +16,37 @@ test.beforeEach(async ({ page }) => {
 const isWide = (page: Page) => (page.viewportSize()?.width ?? 0) > 1040;
 
 test.describe("Studio Menu 2x3 Window & Fold", () => {
-  test("opens with a 2x3 panel-style launchpad window in Operating View and switches to Playing View", async ({ page }) => {
+  test("lists every menu tab, with Customize and Feedback right after Getting Connected", async ({ page }) => {
     await page.goto("/");
-    const grid = page.locator("#studio-grid");
-    await expect(grid).toHaveAttribute("data-orientation", "operating");
+    const names = await page.locator("#studio-nav-list .launchpad-tile .nav-text").allTextContents();
+    expect(names).toHaveLength(7);
+    expect(names.slice(3, 6)).toEqual(["Getting Connected.", "Customize", "Feedback"]);
+    await expect(page.locator("#orientation-switcher")).toHaveCount(0);
+  });
 
-    const tiles = page.locator("#studio-nav-list.launchpad-grid-2x3 .launchpad-tile");
-    await expect(tiles).toHaveCount(6);
+  test("the Customize tab opens the appearance controls and closes again", async ({ page }) => {
+    await page.goto("/");
+    const toggle = page.locator("#studio-nav-toggle");
+    if ((await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
+    await page.locator('[data-dialog="customize-dialog"]').click();
+    await expect(page.locator("#customize-dialog #board-theme")).toBeVisible();
+    await expect(page.locator("#customize-dialog #piece-set")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#customize-dialog")).toBeHidden();
+  });
 
-    await page.locator("#orientation-playing-btn").click();
-    await expect(grid).toHaveAttribute("data-orientation", "playing");
-
-    await page.locator("#orientation-operating-btn").click();
-    await expect(grid).toHaveAttribute("data-orientation", "operating");
+  test("desktop: the games panel folds into a rail, is remembered, and reopens", async ({ page }) => {
+    test.skip(!isWide(page), "the rail is the desktop layout");
+    await page.goto("/");
+    const before = (await page.locator(".studio-stage-column").boundingBox())!.width;
+    await page.locator("#side-panel-toggle").click();
+    await expect(page.locator("#import-section")).toBeHidden();
+    await expect(page.locator("#picker-section")).toBeHidden();
+    expect((await page.locator(".studio-stage-column").boundingBox())!.width).toBeGreaterThan(before + 100);
+    await page.reload();
+    await expect(page.locator("#side-panel-toggle")).toHaveAttribute("aria-expanded", "false");
+    await page.locator('[data-side-open="import-section"]').click();
+    await expect(page.locator("#import-section")).toBeVisible();
   });
 
   test("desktop: folds into an icon rail, widens the stage, and is remembered", async ({ page }) => {
@@ -69,7 +87,7 @@ test.describe("Studio Menu 2x3 Window & Fold", () => {
   });
 });
 
-test("a menu click moves the highlight, switches orientation, and flashes its target", async ({ page }) => {
+test("a menu click moves the highlight and flashes its target", async ({ page }) => {
   await page.goto("/");
   const toggle = page.locator("#studio-nav-toggle");
   if ((await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
@@ -77,7 +95,6 @@ test("a menu click moves the highlight, switches orientation, and flashes its ta
   await link.click();
   await expect(link).toHaveClass(/active/);
   await expect(link).toHaveAttribute("aria-current", "location");
-  await expect(page.locator("#studio-grid")).toHaveAttribute("data-orientation", "playing");
   await expect(page.locator('.studio-nav-link[href="#picker-section"]')).not.toHaveClass(/active/);
   await expect(page.locator("#play-section")).toHaveClass(/nav-target-flash/);
 });
