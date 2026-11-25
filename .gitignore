@@ -34,5 +34,4 @@ Thumbs.db
 .agents/
 
 # Playtest seed: the owner's exported games (never publish)
-web/playtest/*.json
-playtest/*.json
+web/playtest/

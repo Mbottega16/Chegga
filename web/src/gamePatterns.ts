@@ -8,7 +8,6 @@
 // engine-dependent stats for free. Only the "first mistake" one needs
 // analyzed move data, since "mistake" is an engine judgment.
 
-import { Chess } from "chess.js";
 import type { GameRecord, MoveAnalysisRecord } from "./db";
 
 // --- 1. How games actually end ---
@@ -131,6 +130,23 @@ export function computeOpponentStrengthPerformance(games: GameRecord[]): Opponen
   }).filter((b) => b.games > 0);
 }
 
+const SAN_RE = /^(O-O(-O)?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](=[QRBN])?)$/;
+
+/** The main-line moves read straight from the PGN text, without replaying the
+ * game. These stats run over every synced game on every page load, and a full
+ * chess.js replay froze a 22,000-game account for about four minutes.
+ * Returns null when the movetext holds something that isn't a move. */
+function sanMoves(pgn: string): string[] | null {
+  const tokens = pgn
+    .replace(/^\s*\[.*\]\s*$/gm, " ") // headers
+    .replace(/\{[^}]*\}/g, " ") // comments, including clock times
+    .replace(/\$\d+|\d+\.+|1-0|0-1|1\/2-1\/2|\*/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((t) => t.replace(/[+#!?]+$/, ""));
+  return tokens.every((t) => SAN_RE.test(t)) ? tokens : null;
+}
+
 // --- 4. Game-length patterns ---
 
 export interface GameLengthPatterns {
@@ -147,15 +163,9 @@ export function computeGameLengthPatterns(games: GameRecord[]): GameLengthPatter
 
   for (const game of games) {
     if (game.rules !== "chess" || !game.pgn) continue;
-    let fullMoves: number;
-    try {
-      const chess = new Chess();
-      chess.loadPgn(game.pgn);
-      fullMoves = Math.ceil(chess.history().length / 2);
-    } catch {
-      continue; // a handful of PGNs (aborted games, export quirks) won't parse -- skip rather than crash the whole stat
-    }
-    byResult[game.userResult].push(fullMoves);
+    const moves = sanMoves(game.pgn);
+    if (!moves) continue; // a handful of PGNs (aborted games, export quirks) won't read -- skip rather than crash the whole stat
+    byResult[game.userResult].push(Math.ceil(moves.length / 2));
   }
 
   const avg = (arr: number[]) => (arr.length ? Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 10) / 10 : undefined);
@@ -218,20 +228,13 @@ export function computeCastlingBreakdown(games: GameRecord[]): CastlingBreakdown
 
   for (const game of games) {
     if (game.rules !== "chess" || !game.pgn) continue;
-    try {
-      const chess = new Chess();
-      chess.loadPgn(game.pgn);
-      const ownColor = game.userColor === "white" ? "w" : "b";
-      const castled = chess.history().find((san, i) => {
-        const isOwnMove = (i % 2 === 0) === (ownColor === "w");
-        return isOwnMove && (san === "O-O" || san === "O-O-O");
-      });
-      if (!castled) result.never += 1;
-      else if (castled === "O-O") result.kingside += 1;
-      else result.queenside += 1;
-    } catch {
-      continue;
-    }
+    const moves = sanMoves(game.pgn);
+    if (!moves) continue;
+    const isWhite = game.userColor === "white";
+    const castled = moves.find((san, i) => (i % 2 === 0) === isWhite && san.startsWith("O-O"));
+    if (!castled) result.never += 1;
+    else if (castled === "O-O") result.kingside += 1;
+    else result.queenside += 1;
   }
 
   return result;

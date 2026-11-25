@@ -16,7 +16,7 @@ import { defineConfig } from "vite";
 //   - default (`npm run dev`, `npm run build`): no account attached. This is
 //     what the public site ships.
 //   - playtest (`npm run dev:playtest`, port 5175): seeds the owner's
-//     exported games from web/playtest/*.json on load. The flag is a build-time
+//     games from web/playtest/games-backup.json.gz on load. The flag is a build-time
 //     constant, so the default build never contains the seed code or the file.
 export default defineConfig(({ mode }) => {
   const playtest = mode === "playtest";
