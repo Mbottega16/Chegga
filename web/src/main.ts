@@ -70,6 +70,7 @@ import {
 import type { GameRecord, MoveAnalysisRecord, ExportedData, SavedPuzzleRecord } from "./db";
 import { Engine } from "./engine";
 import { DEMO_USERNAME, clearDemoData, isDemoActive, loadDemoData } from "./demoData";
+import { seedPlaytestData } from "./playtestSeed";
 import { ChessComClient } from "./chessComClient";
 import { syncGames, quickSyncRecentGames } from "./syncService";
 import { analyzeGame, DEFAULT_ANALYSIS_OPTIONS, classify, cpEquivalent, DISPLAY_CLAMP_CP } from "./engineAnalysis";
@@ -5697,6 +5698,14 @@ document.querySelector("#replay-tutorial")?.addEventListener("click", (e) => {
 });
 
 // Deployed via Vercel, connected to GitHub for auto-deploy (2026-08-26).
+
+// Playtest build only: seed the exported games, then reload once so the pickers see them.
+// The default build compiles this to nothing (see playtestSeed.ts).
+void seedPlaytestData()
+  .then((imported) => {
+    if (imported) window.location.reload();
+  })
+  .catch((err) => console.warn("Playtest seed skipped:", err));
 
 // Register Service Worker for PWA & offline asset caching in production only; clean up in dev/test
 if (import.meta.env.PROD && typeof navigator !== "undefined" && "serviceWorker" in navigator && window.location.protocol.startsWith("http")) {
