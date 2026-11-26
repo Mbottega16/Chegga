@@ -8,7 +8,7 @@ import {
   worstHumanStepIndex,
   computeStorylineMoments,
 } from "../../src/gameReview";
-import { renderEvalGraph, renderStorylineBar } from "../../src/gameReviewView";
+import { renderEvalGraph, renderTurningPoint, turningPointSentences } from "../../src/gameReviewView";
 import { move } from "./_factories";
 
 // 1. e4 e5 2. Nf3 Nc6 3. Bb5 — five half-moves, three of them White's.
@@ -212,6 +212,43 @@ describe("renderEvalGraph", () => {
     emptyReview.steps = [];
     expect(renderEvalGraph(emptyReview, -1)).toBe("");
   });
+
+  const phased = (phases: ("opening" | "middlegame" | "endgame")[]) =>
+    buildReview(
+      PGN,
+      GRADES.map((g, i) => ({ ...g, gamePhase: phases[i] })),
+      "white",
+    );
+
+  it("puts the phase names in their own strip under the chart, never inside it", () => {
+    const html = renderEvalGraph(phased(["opening", "opening", "middlegame", "middlegame", "endgame"]), 2);
+    const plot = html.slice(html.indexOf("eval-graph-plot"), html.indexOf("eval-phase-strip"));
+    expect(plot).not.toContain("eval-phase-label");
+    expect(html).toMatch(/eval-phase-strip[\s\S]*Middlegame[\s\S]*Endgame/);
+  });
+
+  it("turns a phase name near the right edge to read leftward", () => {
+    const html = renderEvalGraph(phased(["opening", "middlegame", "middlegame", "middlegame", "endgame"]), 2);
+    expect(html).toMatch(/class="eval-phase-label" style="left:20\.00%">Middlegame/);
+    expect(html).toMatch(/class="eval-phase-label eval-phase-label-right" style="left:80\.00%">Endgame/);
+  });
+
+  it("turns both names leftward when facing names would meet in the middle", () => {
+    const html = renderEvalGraph(phased(["opening", "opening", "middlegame", "middlegame", "endgame"]), 2);
+    expect(html).toMatch(/class="eval-phase-label eval-phase-label-right" style="left:40\.00%">Middlegame/);
+    expect(html).toMatch(/class="eval-phase-label eval-phase-label-right" style="left:80\.00%">Endgame/);
+  });
+
+  it("leaves out a phase name too close to the one before", () => {
+    const html = renderEvalGraph(phased(["opening", "opening", "opening", "middlegame", "endgame"]), 2);
+    expect(html).toContain("Middlegame");
+    expect(html).not.toContain(">Endgame<");
+  });
+
+  it("moves the winning-chances tag left of the cursor from 72% across", () => {
+    expect(renderEvalGraph(review, 3)).toContain("eval-graph-tag eval-graph-tag-left"); // cursor at 80%
+    expect(renderEvalGraph(review, 2)).not.toContain("eval-graph-tag-left"); // cursor at 60%
+  });
 });
 
 describe("clock alerts in review", () => {
@@ -237,7 +274,7 @@ describe("clock alerts in review", () => {
   });
 });
 
-describe("computeStorylineMoments & renderStorylineBar", () => {
+describe("computeStorylineMoments & renderTurningPoint", () => {
   const review = buildReview(PGN, GRADES, "white");
 
   it("extracts turning points and blunders into storyline moments", () => {
@@ -248,17 +285,53 @@ describe("computeStorylineMoments & renderStorylineBar", () => {
     expect(blunder!.moveNumber).toBe(2);
   });
 
-  it("renders storyline bar markup with moment chips", () => {
-    const html = renderStorylineBar(review, 2);
-    expect(html).toContain("review-storyline-container");
-    expect(html).toContain("Key Turning Points");
-    expect(html).toContain("storyline-chip");
-    expect(html).toContain("data-review-index");
+  // The same game with evals: Black's 2...Nc6 throws away a level game.
+  const EVAL_GRADES = GRADES.map((g) => ({ ...g }));
+  EVAL_GRADES[0].evalAfterCp = 30;
+  EVAL_GRADES[1].evalAfterCp = 20;
+  EVAL_GRADES[2].evalAfterCp = -140;
+  EVAL_GRADES[3] = { ...EVAL_GRADES[3], evalAfterCp: 320, bestMoveSan: "Nf6", blunderTag: "fork" };
+  EVAL_GRADES[4].evalAfterCp = 300;
+  const NAMED_PGN = `[Event "Test"]\n[White "Ana"]\n[Black "Ben"]\n[TimeControl "0"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bb5`;
+
+  it("renders one clickable card for the decisive move, with no chip ticker", () => {
+    const html = renderTurningPoint(buildReview(NAMED_PGN, EVAL_GRADES, "white"), 0);
+    expect(html).toContain("turning-point-card");
+    expect(html).toContain("Turning Point");
+    expect(html).toContain('data-review-index="3"');
+    expect(html).toContain("2… Nc6");
+    expect(html).not.toContain("storyline-chip");
+    expect(html).not.toContain("Tap moment to jump");
+    expect(html.match(/data-review-index/g)).toHaveLength(1);
   });
 
-  it("returns empty string when review has no steps", () => {
+  it("explains the turning point in plain words, from the reviewer's side", () => {
+    const asWhite = turningPointSentences(buildReview(NAMED_PGN, EVAL_GRADES, "white"), 3);
+    expect(asWhite[0]).toBe("Ben's Nc6 walked into a fork.");
+    expect(asWhite[1]).toMatch(/^Your winning chances rose from \d+% to \d+%\.$/);
+    expect(asWhite[2]).toBe("Nf6 was the better move.");
+    const asBlack = turningPointSentences(buildReview(NAMED_PGN, EVAL_GRADES, "black"), 3);
+    expect(asBlack[0]).toBe("Your Nc6 walked into a fork.");
+    expect(asBlack[1]).toMatch(/^Your winning chances fell from \d+% to \d+%\.$/);
+    for (const line of [...asWhite, ...asBlack]) expect(line).not.toMatch(/[()]/);
+  });
+
+  it("names an unnamed opponent plainly and falls back to the grade without a tag", () => {
+    const grades = EVAL_GRADES.map((g) => ({ ...g }));
+    grades[3] = { ...grades[3], blunderTag: undefined };
+    expect(turningPointSentences(buildReview(PGN, grades, "white"), 3)[0]).toBe("Your opponent's Nc6 was a blunder.");
+  });
+
+  it("marks the card while the viewer is on that move", () => {
+    const r = buildReview(NAMED_PGN, EVAL_GRADES, "white");
+    expect(renderTurningPoint(r, 3)).toContain("turning-point-current");
+    expect(renderTurningPoint(r, 2)).not.toContain("turning-point-current");
+  });
+
+  it("returns an empty string when no single move decided the game", () => {
+    expect(renderTurningPoint(review, 2)).toBe(""); // no evals, so no swing
     const emptyReview = buildReview(PGN, [], "white");
     emptyReview.steps = [];
-    expect(renderStorylineBar(emptyReview, -1)).toBe("");
+    expect(renderTurningPoint(emptyReview, -1)).toBe("");
   });
 });

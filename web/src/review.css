@@ -470,17 +470,28 @@ button.rs-count:focus-visible {
   stroke-width: 1;
   stroke-dasharray: 2 3;
 }
+/* Phase names sit in a strip under the chart, clear of the curve and its dots. */
+.eval-phase-strip {
+  position: relative;
+  height: 16px;
+  margin-top: 3px;
+  overflow: hidden;
+}
 .eval-phase-label {
   position: absolute;
-  top: 3px;
+  top: 0;
   transform: translateX(4px);
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 700;
+  line-height: 16px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #c9ccd2;
+  white-space: nowrap;
+  color: var(--muted);
   pointer-events: none;
-  text-shadow: 0 1px 2px #000;
+}
+.eval-phase-label-right {
+  transform: translateX(calc(-100% - 4px));
 }
 .eval-heat-band.eval-heat-panic {
   fill: #e53935;
@@ -548,10 +559,6 @@ button.rs-count:focus-visible {
 }
 
 /* ---- Fix your mistakes ---- */
-.review-drill-btn {
-  border-color: var(--accent) !important;
-  color: var(--accent-strong) !important;
-}
 .drill-progress {
   display: flex;
   align-items: center;
@@ -674,4 +681,238 @@ button.rs-count:focus-visible {
 }
 .rpb-captured .rpb-piece:last-child {
   margin-right: 4px;
+}
+
+/* ---- Review buttons: an icon at rest, its name on hover or keyboard focus ----
+   The words live in data-tip (the pill) and aria-label (screen readers), so
+   main.ts's setIconButtonLabel can change a label without wiping the icon. */
+#review-panel .icon-btn {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  margin: 0;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: var(--panel-hover);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-size: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+#review-panel .icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+#review-panel .icon-btn:hover:not(:disabled) {
+  background: var(--accent-wash);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+#review-panel .icon-btn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+#review-panel .icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+#review-panel .icon-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+#review-panel [data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: #0b0e14;
+  color: #f1f1ee;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease, visibility 0.12s ease;
+}
+#review-panel [data-tip-below]::after {
+  top: calc(100% + 6px);
+  bottom: auto;
+}
+#review-panel [data-tip]:hover::after,
+#review-panel [data-tip]:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+}
+/* Pills open toward the middle of the panel, so the panel's edge never cuts one. */
+#review-panel .review-practice [data-tip]::after,
+#review-panel .review-nav [data-tip]:first-child::after {
+  left: 0;
+  transform: none;
+}
+#review-panel .review-header-actions [data-tip]::after,
+#review-panel .review-export-actions [data-tip]::after,
+#review-panel .review-nav [data-tip]:last-child::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  #review-panel .icon-btn,
+  #review-panel [data-tip]::after {
+    transition: none;
+  }
+}
+
+/* Header: heatmap, side flip and shortcuts in one row beside the title. */
+#review-panel .review-header-actions {
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+#review-panel .heatmap-btn.icon-btn {
+  width: 40px;
+  margin: 0;
+  background: linear-gradient(135deg, rgba(251, 140, 0, 0.18), rgba(229, 57, 53, 0.18));
+  border-color: rgba(251, 140, 0, 0.6);
+  color: #fb8c00;
+}
+#review-panel .heatmap-btn.icon-btn[aria-pressed="true"] {
+  background: linear-gradient(135deg, #fb8c00, #e53935);
+  border-color: #fb8c00;
+  color: #fff;
+}
+
+/* Step bar: back, back, play in the middle, forward, forward. */
+#review-panel .review-nav {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+#review-panel .review-nav .review-play-btn {
+  width: 52px;
+  min-width: 52px;
+  background: #1d4ed8;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+#review-panel .review-nav .review-play-btn:hover:not(:disabled) {
+  background: #1e40af;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+/* Practice tools on the left, sharing on the right, one strip. */
+.review-tools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 6px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-subtle, var(--border));
+}
+#review-panel .review-tools .review-practice,
+#review-panel .review-tools .review-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+#review-panel .review-tools .review-export-actions {
+  margin-left: auto;
+}
+
+@media (max-width: 1040px) {
+  #review-panel .icon-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  #review-panel .heatmap-btn.icon-btn {
+    width: 44px;
+  }
+  #review-panel .review-nav .icon-btn {
+    flex: 1 1 0;
+  }
+}
+
+/* ---- Turning point: the one move that decided the game ---- */
+.turning-point-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--tp-color);
+  border-radius: var(--radius-sm);
+  background: var(--panel-hover);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.turning-point-card:hover,
+.turning-point-current {
+  border-color: var(--tp-color);
+  background: var(--accent-wash);
+}
+.tp-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.tp-bolt {
+  display: inline-flex;
+  color: var(--tp-color);
+}
+.tp-dot {
+  color: var(--muted);
+}
+.tp-move {
+  font-family: "JetBrains Mono", monospace;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.tp-glyph {
+  font-family: "JetBrains Mono", monospace;
+  color: var(--tp-color);
+  letter-spacing: 0;
+}
+.tp-why {
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--muted);
 }

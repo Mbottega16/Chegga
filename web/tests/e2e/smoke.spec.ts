@@ -39,6 +39,10 @@ test.describe("landing page smoke", () => {
 
   test("the connect form is simplified and reachable by keyboard", async ({ page }) => {
     await page.goto("/");
+    // The form lives in the menu; on a phone the menu starts as a closed drawer.
+    const toggle = page.locator("#studio-nav-toggle");
+    if ((await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
+    await expect(page.locator(".shell-nav #sync-section")).toBeVisible();
     await expect(page.locator("#sync-section h2")).toHaveText("Get connected.");
     await expect(page.locator("#sync-section .card-teaser")).toHaveText(
       "Enter your Chess.com or Lichess username to load your recent games and track your progress.",
@@ -47,7 +51,7 @@ test.describe("landing page smoke", () => {
     await expect(page.locator("#analyze-recent-form")).toHaveCount(0);
 
     const username = page.locator("#username");
-    await username.focus();
+    await page.locator('.studio-nav-link[href="#sync-section"]').click(); // "Getting Connected." focuses the field
     await expect(username).toBeFocused();
     await username.fill("MagnusCarlsen");
     await expect(page.locator("#sync-site")).toBeVisible();
@@ -72,16 +76,19 @@ test.describe("landing page smoke", () => {
       "#review-next",
       "#review-last",
       "#review-autoplay",
-      "#review-worst",
+      "#review-heatmap-btn",
       "#review-why",
-      "#review-before",
       "#review-candidates",
       "#review-try",
       "#review-save",
-      "#review-save-key",
       "#try-panel",
     ]) {
       await expect(page.locator(id)).toBeAttached();
+    }
+    // Removed on purpose: the worst-move, fix-your-mistakes and save-key-moments
+    // buttons, and the "position before" checkbox (the heatmap button does that).
+    for (const id of ["#review-worst", "#review-drill", "#review-save-key", "#review-before"]) {
+      await expect(page.locator(id)).toHaveCount(0);
     }
     await expect(page.locator("#try-panel")).toBeHidden();
   });

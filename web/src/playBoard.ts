@@ -21,7 +21,7 @@
 import { Chess, type Square } from "chess.js";
 import { playPieceHtml, pieceImgUrl, PIECE_GLYPH } from "./pieceSet";
 import { effectsEnabled, flash, confetti } from "./juice";
-import { trailControls, trailFadeStops, trailPath } from "./trailGeometry";
+import { splitTrail, trailFadeStops } from "./trailGeometry";
 import { getClassGlyph, MOVE_QUALITY_TITLES } from "./classificationColors";
 
 const SELECTED_COLOR = "#3a4a2e";
@@ -1247,18 +1247,12 @@ export class PlayBoard {
       const to = center(t.to);
       const width = TRAIL_WIDTH[t.tier] ?? 1.2;
       const opacity = TRAIL_OPACITY[t.tier] ?? 0.6;
-      // The head points along the curve's final direction, and the shaft stops
-      // at the head's base so its round end never pokes through the tip.
-      const [, c2] = trailControls(from, to);
-      const len = Math.hypot(to.x - c2.x, to.y - c2.y) || 1;
-      const dx = (to.x - c2.x) / len;
-      const dy = (to.y - c2.y) / len;
+      // Subdivide the exact curve so the arrowhead aligns with the shaft's tangent
+      // and never bows off the board edge on either orientation.
       const head = width * 1.5 + 1.6;
-      const tip = { x: to.x + dx * 1.4, y: to.y + dy * 1.4 };
-      const base = { x: tip.x - dx * head, y: tip.y - dy * head };
+      const { shaft, base, tip, dx, dy } = splitTrail(from, to, head);
       const half = head * 0.62;
       const points = `${n(tip.x)},${n(tip.y)} ${n(base.x - dy * half)},${n(base.y + dx * half)} ${n(base.x + dy * half)},${n(base.y - dx * half)}`;
-      const shaft = trailPath(from, base);
       const gradientId = `play-trail-fade-${this.uid}-${i}`;
       const stops = trailFadeStops()
         .map((s) => `<stop offset="${s.offset}" stop-color="${t.color}" stop-opacity="${s.opacity}"/>`)
@@ -1267,7 +1261,7 @@ export class PlayBoard {
         `<linearGradient id="${gradientId}" gradientUnits="userSpaceOnUse" x1="${n(from.x)}" y1="${n(from.y)}" x2="${n(base.x)}" y2="${n(base.y)}">${stops}</linearGradient>`,
       );
       const strong = t.tier === "best" || t.tier === "brilliant";
-      const badge = { x: Math.min(97, to.x + 4), y: Math.max(3, to.y - 4) };
+      const badge = { x: Math.min(96, Math.max(4, to.x + 4)), y: Math.min(96, Math.max(4, to.y - 4)) };
       const text = [t.played ? "Played" : "", t.label ?? MOVE_QUALITY_TITLES[t.tier] ?? ""].filter(Boolean).join(" · ");
       const labelWidth = text.length * 1.45 + 2.4;
       const labelX = Math.min(100 - labelWidth / 2 - 0.5, Math.max(labelWidth / 2 + 0.5, to.x));

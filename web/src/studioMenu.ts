@@ -10,7 +10,7 @@ const SLIDE_OUT_MS = 170;
 const SLIDE_MS = 260;
 const EASE = "cubic-bezier(0.22, 0.8, 0.24, 1)";
 
-export type PanelTab = "games" | "analysis" | "connect";
+export type PanelTab = "games" | "analysis";
 
 const byId = (id: string) => document.getElementById(id);
 const shell = () => byId("studio-grid");
@@ -100,7 +100,7 @@ export function setStudioMenuCollapsed(collapsed: boolean, save = true, animate 
   toggle.setAttribute("aria-expanded", String(!collapsed));
   toggle.title = collapsed ? "Open the menu" : "Close the menu";
   const change = () => grid.classList.toggle("menu-collapsed", collapsed);
-  if (animate) slide(parts("#studio-nav-list, .shell-nav .brand, .shell-nav .header-actions"), "left", collapsed, change);
+  if (animate) slide(parts("#studio-nav-list, .shell-nav .brand, .shell-nav #sync-section, .shell-nav .header-actions"), "left", collapsed, change);
   else change();
   if (save && !window.matchMedia(NARROW_QUERY).matches) remember(NAV_KEY, collapsed);
 }
@@ -134,6 +134,12 @@ export function showViewFor(id: string): HTMLElement | null {
   const grid = shell();
   const target = id ? byId(id) : null;
   if (!grid || !target || !grid.contains(target)) return target;
+  if (target.closest(".shell-nav")) {
+    grid.dataset.view = "board";
+    setStudioMenuCollapsed(false, false);
+    delete target.dataset.collapsed;
+    return target;
+  }
   grid.dataset.view = target.closest<HTMLElement>("[data-shell-view]")?.dataset.shellView ?? "board";
   const tab = target.closest<HTMLElement>("[data-panel]")?.dataset.panel as PanelTab | undefined;
   if (tab) {
@@ -215,10 +221,11 @@ export function setupStudioMenu(): void {
         if (l === link) l.setAttribute("aria-current", "location");
         else l.removeAttribute("aria-current");
       });
-      if (narrow.matches) setStudioMenuCollapsed(true, false);
+      if (narrow.matches && id !== "sync-section") setStudioMenuCollapsed(true, false);
       if (!target) return;
       if (target instanceof HTMLDetailsElement) target.open = true;
       if (narrow.matches || shell()!.dataset.view !== "board") target.scrollIntoView({ block: "start" });
+      if (id === "sync-section") byId("username")?.focus();
       flashTarget(target);
     });
   });

@@ -69,14 +69,40 @@ test.describe("menu and side panel", () => {
     await expect(page.locator("#play-section")).toBeVisible();
   });
 
-  test("the panel tabs switch with a click and the arrow keys", async ({ page }) => {
+  test("the panel has two tabs, Games and Analysis, that switch with a click and the arrow keys", async ({ page }) => {
     await page.goto("/");
+    await expect(page.locator('.panel-tabs [role="tab"]')).toHaveText(["Games", "Analysis"]);
     await expect(page.locator("#import-section")).toBeVisible();
-    await page.locator("#tab-connect").click();
-    await expect(page.locator("#username")).toBeVisible();
+    await page.locator("#tab-analysis").click();
+    await expect(page.locator("#panel-analysis")).toBeVisible();
     await expect(page.locator("#import-section")).toBeHidden();
-    await page.locator("#tab-connect").press("ArrowRight");
+    await page.locator("#tab-analysis").press("ArrowRight");
     await expect(page.locator("#tab-games")).toHaveAttribute("aria-selected", "true");
+  });
+
+  test("Get connected sits in the menu, and its menu entry focuses the username", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator(".shell-nav #sync-section")).toHaveCount(1);
+    await expect(page.locator("#side-panel #sync-section")).toHaveCount(0);
+    await openMenu(page);
+    await menuLink(page, "Getting Connected.").click();
+    await expect(page.locator("#sync-section")).toBeVisible();
+    await expect(page.locator("#username")).toBeFocused();
+  });
+
+  test("folded rails show only their arrows, with no sideways words", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator(".rail-label")).toHaveCount(0);
+  });
+
+  test("desktop: the menu docks flush to the window's left edge, full height", async ({ page }) => {
+    test.skip(!isWide(page), "the docked menu is the desktop layout");
+    await page.goto("/");
+    const nav = (await page.locator("#studio-grid > .shell-nav").boundingBox())!;
+    expect(Math.round(nav.x)).toBe(0);
+    expect(Math.round(nav.y)).toBe(0);
+    expect(Math.round(nav.height)).toBe(page.viewportSize()!.height);
+    await expect(page.locator("#sync-section")).toBeVisible();
   });
 
   test("desktop: both sides fold, the board keeps its size, and the choice is remembered", async ({ page }) => {
@@ -87,6 +113,7 @@ test.describe("menu and side panel", () => {
     await page.locator("#studio-nav-toggle").click();
     await page.locator("#side-panel-toggle").click();
     await expect(page.locator("#studio-nav-list")).toBeHidden();
+    await expect(page.locator("#sync-section")).toBeHidden();
     await expect(page.locator("#import-section")).toBeHidden();
     await expect.poll(async () => Math.round((await board.boundingBox())!.x)).not.toBe(Math.round(before.x));
     expect(Math.round((await board.boundingBox())!.width)).toBe(Math.round(before.width));

@@ -61,6 +61,54 @@ export const iconPlay = svgIcon(
   `<polygon points="5 3 19 12 5 21 5 3" fill="currentColor"></polygon>`
 );
 
+export const iconPause = svgIcon(
+  `<rect x="6" y="4" width="4" height="16" fill="currentColor"></rect><rect x="14" y="4" width="4" height="16" fill="currentColor"></rect>`
+);
+
+export const iconSkipBack = svgIcon(
+  `<polygon points="19 20 9 12 19 4 19 20" fill="currentColor"></polygon><line x1="5" y1="19" x2="5" y2="5"></line>`
+);
+
+export const iconStepBack = svgIcon(
+  `<polyline points="15 18 9 12 15 6"></polyline>`
+);
+
+export const iconStepForward = svgIcon(
+  `<polyline points="9 18 15 12 9 6"></polyline>`
+);
+
+export const iconSkipForward = svgIcon(
+  `<polygon points="5 4 15 12 5 20 5 4" fill="currentColor"></polygon><line x1="19" y1="5" x2="19" y2="19"></line>`
+);
+
+export const iconFlip = svgIcon(
+  `<path d="M7 16V4m0 0L3 8m4-4l4 4"></path><path d="M17 8v12m0 0l4-4m-4 4l-4-4"></path>`
+);
+
+export const iconFlame = svgIcon(
+  `<path d="M12 2c1.5 3 4 5 4 9a6 6 0 1 1-12 0c0-4 2.5-6 4-9 1 2 2.5 3 4 3s1.5-1 0-3z"></path>`
+);
+
+export const iconLink = svgIcon(
+  `<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>`
+);
+
+export const iconSummary = svgIcon(
+  `<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line>`
+);
+
+export const iconBookmark = svgIcon(
+  `<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>`
+);
+
+export const iconAlert = svgIcon(
+  `<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>`
+);
+
+export const iconRadar = svgIcon(
+  `<circle cx="12" cy="12" r="9"></circle><path d="M12 3v4M12 17v4M3 12h4M17 12h4"></path><circle cx="12" cy="12" r="2.5"></circle>`
+);
+
 export const iconBot = svgIcon(
   `<rect x="4" y="8" width="16" height="12" rx="2"></rect><path d="M2 14h2M20 14h2M9 13v2M15 13v2M12 5v3M9 3h6"></path>`
 );

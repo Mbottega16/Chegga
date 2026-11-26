@@ -65,7 +65,7 @@ Run from `web/` (or use root `npm test` / `npm run build` which proxy to `web/`)
 
 ```powershell
 cd web
-npm test               # Vitest unit suite (332 tests) — MUST pass before any commit
+npm test               # Vitest unit suite (389 tests) — MUST pass before any commit
 npm run build          # TypeScript typecheck (tsc) + Vite production build
 npm run test:smoke     # Playwright E2E smoke suite (review picker, tutorial, sync, mobile)
 npm run pre-push       # Full pre-push gate (npm test && npm run build) — runs automatically on git push
@@ -105,14 +105,19 @@ To prevent multi-megabyte data blobs and archived legacy apps from slowing down 
 
 *Overwrite this at the end of every session; move the previous handoff into `HISTORY.md` first.*
 
-- **Last Worked On (2026-11-26, PC, Antigravity):** Rebased the PC mobile `.review-buttons` fix (`web/src/mobile.css`) onto Mac `origin/main` (`27af3fb..9eff407` — playtest seed mode, `splash.ts` knight startup screen, Customize/Feedback dialogs, folding right games panel, last-10 list + search, real captured-piece art, 10-line `renderTrails` move heatmap, movetext stats load speedup, and the `9eff407` one-screen `shell.css` layout).
-- **Current State:** Vitest 371/371 pass (32 files); `tsc && vite build` clean. Open items from prior runs:
-  - `9eff407` (`shell.css` one-screen layout, committed as-is from Mac's working tree) needs visual playtest review and Playwright verification.
-  - Pre-existing E2E failures from prior runs: 9 stale `live-verify.spec.ts` tests, `smoke.spec.ts:119` on WebKit, and 4 WebKit memory flakes when running with 2 workers (use `--workers=1` on 8 GB PC).
-  - **Known defect (not fixed):** `web/public/sw.js` opens IndexedDB at version 4, while `db.ts` is at version 5, and its config key does not fit `syncState`. Closed-app background sync cannot work.
+- **Last Worked On (2026-11-26, PC, Claude):** the owner's UI review list.
+  - **Menu:** flush to the left edge, full height; "Get connected." moved into it (hidden when folded). Side panel tabs: Games, Analysis. No sideways rail words. The whole sidebar scrolls (`.section-nav` wraps, so a squeezed menu split in two).
+  - **Review buttons:** icons only; the name shows in a hover/focus pill (`data-tip`) and `aria-label`. Use `setIconButtonLabel()` (`main.ts`) to change one. Step bar: start, back, play (dark blue, centre), forward, end.
+  - **Removed:** worst move, fix your mistakes, save key moments, the "position before" checkbox (heatmap button / `B` do it), the idle "Ready" line. `W` and `F` shortcuts remain.
+  - **Evaluation Flow:** phase names in a strip under the chart, reading leftward near the right edge; opaque sticky step bar.
+  - **Turning point:** one card (`renderTurningPoint`, `turningPointSentences`) replaces the chip ticker.
+  - **Trails:** `chooseTrailBend` / `splitTrail` tested (board-safe bow, no arrowhead kink).
+- **Current State:** Vitest 389/389; build clean. Playwright `studio-layout`, `smoke`, `review-picker`: all pass on desktop, mobile and WebKit. Two `review-picker` tests now pick the right tab first.
+  - Not touched: 9 stale `live-verify.spec.ts` tests.
+  - **Known defect:** `web/public/sw.js` opens IndexedDB at version 4 (`db.ts` is 5), and its config key does not fit `syncState`. Closed-app background sync cannot work.
 - **Next Up:**
-  1. Review the `9eff407` one-screen `shell.css` layout and playtest build (`npm run dev:playtest`, port 5175).
-  2. Update/verify Playwright E2E suites against the new layout (`live-verify.spec.ts`, `smoke.spec.ts:119` on WebKit, `studio-layout.spec.ts`).
-  3. Fix the `web/public/sw.js` IndexedDB version and config storage.
-  4. Real-device phone check of the heatmap, 3D pinch-zoom, eval-curve scrubbing, and large real-account sync on Safari/WebKit.
-  5. Requirement work in `REQUIREMENTS.md`, in the order `PLAN.md` sets.
+  1. Owner playtest of the review screen (`npm run dev:playtest`, port 5175).
+  2. Rewrite the stale `live-verify.spec.ts` tests for the one-screen layout.
+  3. Fix the `sw.js` IndexedDB version and config storage.
+  4. Real-phone check: heatmap, 3D pinch-zoom, eval-curve scrubbing, large-account sync on Safari.
+  5. `REQUIREMENTS.md` work, in the order `PLAN.md` sets.

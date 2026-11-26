@@ -41,6 +41,21 @@ import {
   iconDownload,
   iconImage,
   iconChevron,
+  iconPlay,
+  iconPause,
+  iconSkipBack,
+  iconStepBack,
+  iconStepForward,
+  iconSkipForward,
+  iconFlip,
+  iconFlame,
+  iconLink,
+  iconSummary,
+  iconBookmark,
+  iconAlert,
+  iconRadar,
+  iconTarget,
+  iconCheck,
 } from "./icons";
 import { setupStudioMenu, revealSection, selectPanelTab, showBoard } from "./studioMenu";
 import { saveBgSyncConfig, setupBackgroundSync } from "./backgroundSync";
@@ -198,7 +213,6 @@ import {
   shouldShowBetterMove,
   betterMoveArrowFitsAfterBoard,
   canPracticeStep,
-  keyMoments,
   worstHumanStepIndex,
   getPunishmentForStep,
   REVIEW_QUALITY_LABELS,
@@ -207,7 +221,7 @@ import {
 } from "./gameReview";
 import {
   renderEvalGraph,
-  renderStorylineBar,
+  renderTurningPoint,
   renderCandidateList,
   renderBlunderDna,
 } from "./gameReviewView";
@@ -423,13 +437,44 @@ app.innerHTML = `
             </a>
           </div>
         </nav>
+      <section class="card studio-sync-card" id="sync-section" data-tier="primary" data-non-collapsible="true">
+        <div class="sync-card-header">
+          <h2>Get connected.</h2>
+          <button type="button" class="sync-expand-toggle" id="sync-expand-toggle" title="Collapse connection panel" aria-label="Expand or collapse connection panel">
+            <span class="sync-toggle-icon">✕</span>
+          </button>
+        </div>
+        <p class="card-teaser" data-card-teaser>Enter your Chess.com or Lichess username to load your recent games and track your progress.</p>
+        <form id="sync-form" class="sync-form-grid">
+          <div class="sync-inputs-row">
+            <label for="sync-site" class="sr-only">Where you play</label>
+            <select id="sync-site">
+              <option value="chesscom">Chess.com</option>
+              <option value="lichess">Lichess</option>
+            </select>
+            <label for="username" class="sr-only">Chess.com or Lichess username</label>
+            <input id="username" type="text" placeholder="Username (e.g. MichaelBottega)" autocomplete="off" required />
+          </div>
+          <button type="submit" id="sync-btn" class="sr-only">Sync games</button>
+        </form>
+        <p id="sync-log" class="status-line"></p>
+        <div id="sync-progress"></div>
+        <p id="full-sync-prompt" class="status-line status-ok" style="display:none">
+          <span id="full-sync-prompt-text"></span> <button type="button" id="full-sync-btn">Get my full history</button>
+        </p>
+        <p id="lichess-history" class="status-line status-ok" style="display:none">
+          <span id="lichess-history-text"></span> <button type="button" id="lichess-history-btn">Get my full history</button>
+          <button type="button" id="lichess-history-cancel" style="display:none">Cancel</button>
+        </p>
+        <p id="background-analyze-log" class="status-line status-ok" style="display:none"></p>
+        <div id="background-analyze-progress"></div>
+      </section>
       <div class="header-actions">
         <button type="button" id="hero-analyze-btn" class="header-action-btn" title="Sync & analyze games in the background">${iconConnect} <span id="header-sync-label">Sync</span></button>
         <button type="button" id="theme-toggle-btn" class="header-theme-btn" title="Toggle theme mode (Dark / Light / OLED)">
           <span id="theme-toggle-icon">${iconMoon}</span> <span id="theme-toggle-label">Dark</span>
         </button>
       </div>
-        <span class="rail-label" aria-hidden="true">Menu</span>
       </div>
 
       <div class="studio-stage-column">
@@ -457,12 +502,10 @@ app.innerHTML = `
           <div class="panel-tabs" role="tablist" aria-label="Side panel">
             <button type="button" role="tab" id="tab-games" aria-controls="panel-games" aria-selected="true">Games</button>
             <button type="button" role="tab" id="tab-analysis" aria-controls="panel-analysis" aria-selected="false" tabindex="-1">Analysis</button>
-            <button type="button" role="tab" id="tab-connect" aria-controls="panel-connect" aria-selected="false" tabindex="-1">Connect</button>
           </div>
           <button type="button" class="side-panel-toggle" id="side-panel-toggle" aria-expanded="true" title="Collapse the side panel" aria-label="Collapse or expand the side panel">
             <span class="side-panel-chevron" aria-hidden="true">${iconChevron}</span>
           </button>
-          <span class="rail-label" aria-hidden="true">Panel</span>
         </div>
         <div class="side-panel-body">
           <div class="panel-page" role="tabpanel" id="panel-games" data-panel="games" aria-labelledby="tab-games">
@@ -507,11 +550,11 @@ app.innerHTML = `
                 <div class="review-header-bar">
                   <h3 class="review-heading">Game Review</h3>
                   <div class="review-header-actions">
-                    <button type="button" class="kbd-help-btn" id="review-flip-side" title="See the same review from the other player's side">Review as Black</button>
-                    <button type="button" class="kbd-help-btn" id="review-kbd-help-btn" title="View keyboard shortcuts">⌨ Shortcuts</button>
+                    <button type="button" class="icon-btn heatmap-btn" id="review-heatmap-btn" aria-pressed="false" aria-label="Move heatmap" data-tip="Move heatmap" data-tip-below>${iconFlame}</button>
+                    <button type="button" class="icon-btn" id="review-flip-side" aria-label="Review as Black" data-tip="Review as Black" data-tip-below>${iconFlip}</button>
+                    <button type="button" class="icon-btn" id="review-kbd-help-btn" aria-label="Keyboard shortcuts" data-tip="Keyboard shortcuts" data-tip-below>${iconKeyboard}</button>
                   </div>
                 </div>
-                <button type="button" id="review-heatmap-btn" class="heatmap-btn" aria-pressed="false">🔥 Move heatmap</button>
                 <p class="heatmap-legend" id="heatmap-legend" hidden>
                   ${["brilliant", "best", "excellent", "good", "inaccuracy", "mistake", "blunder"]
                     .map((t) => `<span class="hm-key" data-tier="${t}"><i></i>${t[0].toUpperCase() + t.slice(1)}</span>`)
@@ -526,13 +569,11 @@ app.innerHTML = `
                   <div id="review-blunder-dna-host" style="display:none"></div>
                 </div>
                 <div class="review-buttons review-nav">
-                  <button type="button" id="review-first" aria-label="Jump to the starting position">⏮</button>
-                  <button type="button" id="review-prev" aria-label="Previous move">◀</button>
-                  <button type="button" id="review-next" aria-label="Next move">▶</button>
-                  <button type="button" id="review-last" aria-label="Jump to the last move">⏭</button>
-                  <button type="button" id="review-autoplay" class="btn-ghost">▶ Play it back</button>
-                  <button type="button" id="review-worst" class="btn-ghost">Your worst move</button>
-                  <button type="button" id="review-drill" class="btn-ghost review-drill-btn" style="display:none">Fix your mistakes</button>
+                  <button type="button" class="icon-btn" id="review-first" aria-label="Jump to the starting position" data-tip="Start">${iconSkipBack}</button>
+                  <button type="button" class="icon-btn" id="review-prev" aria-label="Previous move" data-tip="Previous move">${iconStepBack}</button>
+                  <button type="button" class="icon-btn review-play-btn" id="review-autoplay" aria-label="Play it back" data-tip="Play it back">${iconPlay}</button>
+                  <button type="button" class="icon-btn" id="review-next" aria-label="Next move" data-tip="Next move">${iconStepForward}</button>
+                  <button type="button" class="icon-btn" id="review-last" aria-label="Jump to the last move" data-tip="Last move">${iconSkipForward}</button>
                 </div>
                 <div id="review-shortcuts-help" class="review-shortcuts-help" style="display:none">
                   <div class="shortcuts-header">
@@ -541,10 +582,10 @@ app.innerHTML = `
                   </div>
                   <div class="shortcuts-grid">
                     <div><kbd>←</kbd> / <kbd>→</kbd></div><div>Previous / Next move</div>
-                    <div><kbd>↓</kbd> / <kbd>↑</kbd></div><div>Cycle candidate moves (in Before view)</div>
+                    <div><kbd>↓</kbd> / <kbd>↑</kbd></div><div>Cycle candidate moves (heatmap on)</div>
                     <div><kbd>Home</kbd> / <kbd>End</kbd></div><div>First / Last move</div>
                     <div><kbd>Space</kbd></div><div>Play back game (autoplay)</div>
-                    <div><kbd>B</kbd></div><div>Toggle "Before" view &amp; candidates</div>
+                    <div><kbd>B</kbd></div><div>Move heatmap on / off</div>
                     <div><kbd>W</kbd></div><div>Jump to your worst move</div>
                     <div><kbd>F</kbd></div><div>Fix your mistakes, one by one</div>
                     <div><kbd>L</kbd></div><div>Copy a link to this review</div>
@@ -557,21 +598,21 @@ app.innerHTML = `
                   </div>
                 </div>
                 <div id="review-moves-host"></div>
-                <label class="play-checkbox-label review-before-label"><input type="checkbox" id="review-before" /> Show position before move + best candidates</label>
                 <div id="review-candidates"></div>
-                <div class="review-buttons review-practice">
-                  <button type="button" id="review-punishment" class="btn-quiet punishment-btn" style="display:none" title="Watch opponent's refutation move on the board">Show Refutation</button>
-                  <button type="button" id="review-threat-radar" class="btn-quiet threat-radar-btn" style="display:none" title="Highlight tactical tension web on the board">Threat Radar</button>
-                  <button type="button" id="review-try" class="btn-quiet" style="display:none">Try this position</button>
-                  <button type="button" id="review-save" class="btn-quiet" style="display:none">Save this position</button>
-                  <button type="button" id="review-save-key" class="btn-quiet" style="display:none">Save key moments</button>
-                </div>
-                <div class="review-export-actions">
-                  <button type="button" id="review-share-link-btn" class="btn-quiet" title="Copy a link that opens this game's review for anyone">${iconShare} Copy link</button>
-                  <button type="button" id="review-share-card-btn" class="btn-quiet" title="Export high-res graphic game review card">${iconImage} Export card</button>
-                  <button type="button" id="review-share-summary-btn" class="btn-quiet" title="Copy shareable summary card">${iconShare} Share summary</button>
-                  <button type="button" id="review-copy-pgn-btn" class="btn-quiet" title="Copy annotated PGN to clipboard">${iconCopy} Copy PGN</button>
-                  <button type="button" id="review-download-pgn-btn" class="btn-quiet" title="Download annotated .pgn file">${iconDownload} Download .pgn</button>
+                <div class="review-tools">
+                  <div class="review-buttons review-practice">
+                    <button type="button" id="review-punishment" class="icon-btn punishment-btn" style="display:none" aria-label="Show the refutation" data-tip="Show the refutation">${iconAlert}</button>
+                    <button type="button" id="review-threat-radar" class="icon-btn threat-radar-btn" style="display:none" aria-label="Threat radar" data-tip="Threat radar">${iconRadar}</button>
+                    <button type="button" id="review-try" class="icon-btn" style="display:none" aria-label="Try this position" data-tip="Try this position">${iconTarget}</button>
+                    <button type="button" id="review-save" class="icon-btn" style="display:none" aria-label="Save this position" data-tip="Save this position">${iconBookmark}</button>
+                  </div>
+                  <div class="review-export-actions">
+                    <button type="button" id="review-share-link-btn" class="icon-btn" aria-label="Copy a link to this review" data-tip="Copy link">${iconLink}</button>
+                    <button type="button" id="review-share-card-btn" class="icon-btn" aria-label="Export a review card image" data-tip="Export card">${iconImage}</button>
+                    <button type="button" id="review-share-summary-btn" class="icon-btn" aria-label="Copy a shareable summary" data-tip="Share summary">${iconSummary}</button>
+                    <button type="button" id="review-copy-pgn-btn" class="icon-btn" aria-label="Copy the annotated PGN" data-tip="Copy PGN">${iconCopy}</button>
+                    <button type="button" id="review-download-pgn-btn" class="icon-btn" aria-label="Download the .pgn file" data-tip="Download .pgn">${iconDownload}</button>
+                  </div>
                 </div>
                 <p id="review-export-status" class="status-line status-ok" style="display:none"></p>
               </div>
@@ -640,40 +681,6 @@ app.innerHTML = `
               </details>
             </div>
           </div>
-          </div>
-          <div class="panel-page" role="tabpanel" id="panel-connect" data-panel="connect" aria-labelledby="tab-connect" hidden>
-      <section class="card studio-sync-card" id="sync-section" data-tier="primary" data-non-collapsible="true">
-        <div class="sync-card-header">
-          <h2>Get connected.</h2>
-          <button type="button" class="sync-expand-toggle" id="sync-expand-toggle" title="Collapse connection panel" aria-label="Expand or collapse connection panel">
-            <span class="sync-toggle-icon">✕</span>
-          </button>
-        </div>
-        <p class="card-teaser" data-card-teaser>Enter your Chess.com or Lichess username to load your recent games and track your progress.</p>
-        <form id="sync-form" class="sync-form-grid">
-          <div class="sync-inputs-row">
-            <label for="sync-site" class="sr-only">Where you play</label>
-            <select id="sync-site">
-              <option value="chesscom">Chess.com</option>
-              <option value="lichess">Lichess</option>
-            </select>
-            <label for="username" class="sr-only">Chess.com or Lichess username</label>
-            <input id="username" type="text" placeholder="Username (e.g. MichaelBottega)" autocomplete="off" required />
-          </div>
-          <button type="submit" id="sync-btn" class="sr-only">Sync games</button>
-        </form>
-        <p id="sync-log" class="status-line"></p>
-        <div id="sync-progress"></div>
-        <p id="full-sync-prompt" class="status-line status-ok" style="display:none">
-          <span id="full-sync-prompt-text"></span> <button type="button" id="full-sync-btn">Get my full history</button>
-        </p>
-        <p id="lichess-history" class="status-line status-ok" style="display:none">
-          <span id="lichess-history-text"></span> <button type="button" id="lichess-history-btn">Get my full history</button>
-          <button type="button" id="lichess-history-cancel" style="display:none">Cancel</button>
-        </p>
-        <p id="background-analyze-log" class="status-line status-ok" style="display:none"></p>
-        <div id="background-analyze-progress"></div>
-      </section>
           </div>
         </div>
       </div>
@@ -1596,7 +1603,6 @@ const reviewCaption = document.querySelector<HTMLParagraphElement>("#review-capt
 const reviewSummaryHost = document.querySelector<HTMLDivElement>("#review-summary-host")!;
 const reviewMovesHost = document.querySelector<HTMLDivElement>("#review-moves-host")!;
 const reviewFlipSideBtn = document.querySelector<HTMLButtonElement>("#review-flip-side")!;
-const reviewDrillBtn = document.querySelector<HTMLButtonElement>("#review-drill")!;
 const reviewShareLinkBtn = document.querySelector<HTMLButtonElement>("#review-share-link-btn")!;
 const playLayout = document.querySelector<HTMLDivElement>("#play-layout")!;
 const reviewEvalBarHost = document.querySelector<HTMLDivElement>("#review-eval-bar-host")!;
@@ -1607,16 +1613,13 @@ const reviewPrevBtn = document.querySelector<HTMLButtonElement>("#review-prev")!
 const reviewNextBtn = document.querySelector<HTMLButtonElement>("#review-next")!;
 const reviewLastBtn = document.querySelector<HTMLButtonElement>("#review-last")!;
 const reviewAutoplayBtn = document.querySelector<HTMLButtonElement>("#review-autoplay")!;
-const reviewWorstBtn = document.querySelector<HTMLButtonElement>("#review-worst")!;
 const reviewWhy = document.querySelector<HTMLParagraphElement>("#review-why")!;
 const reviewBlunderDnaHost = document.querySelector<HTMLDivElement>("#review-blunder-dna-host")!;
-const reviewBeforeCheckbox = document.querySelector<HTMLInputElement>("#review-before")!;
 const reviewCandidatesHost = document.querySelector<HTMLDivElement>("#review-candidates")!;
 const reviewPunishmentBtn = document.querySelector<HTMLButtonElement>("#review-punishment")!;
 const reviewThreatRadarBtn = document.querySelector<HTMLButtonElement>("#review-threat-radar")!;
 const reviewTryBtn = document.querySelector<HTMLButtonElement>("#review-try")!;
 const reviewSaveBtn = document.querySelector<HTMLButtonElement>("#review-save")!;
-const reviewSaveKeyBtn = document.querySelector<HTMLButtonElement>("#review-save-key")!;
 const reviewShareCardBtn = document.querySelector<HTMLButtonElement>("#review-share-card-btn")!;
 const reviewShareSummaryBtn = document.querySelector<HTMLButtonElement>("#review-share-summary-btn")!;
 const reviewCopyPgnBtn = document.querySelector<HTMLButtonElement>("#review-copy-pgn-btn")!;
@@ -1652,12 +1655,21 @@ let reviewCandidates: Candidate[] = [];
 let candidateRequestId = 0;
 const CANDIDATE_DEBOUNCE_MS = 250; // don't start a search for a position the viewer is only skimming past
 
+/** The review's buttons are icons at rest. Their words live in the hover tip
+ * and the accessible name, so a label change never wipes the icon. */
+function setIconButtonLabel(btn: HTMLButtonElement, label: string, icon?: string) {
+  btn.dataset.tip = label;
+  btn.setAttribute("aria-label", label);
+  if (icon !== undefined) btn.innerHTML = icon;
+}
+
 function stopReviewAutoplay() {
   if (reviewAutoplayTimer !== null) {
     window.clearInterval(reviewAutoplayTimer);
     reviewAutoplayTimer = null;
   }
-  reviewAutoplayBtn.textContent = "▶ Play it back";
+  setIconButtonLabel(reviewAutoplayBtn, "Play it back", iconPlay);
+  reviewAutoplayBtn.setAttribute("aria-pressed", "false");
 }
 
 function toggleReviewAutoplay() {
@@ -1668,7 +1680,8 @@ function toggleReviewAutoplay() {
   }
   // Pressing play at the end replays from the top rather than doing nothing.
   if (reviewIndex >= review.steps.length - 1) showReviewStep(-1);
-  reviewAutoplayBtn.textContent = "⏸ Pause";
+  setIconButtonLabel(reviewAutoplayBtn, "Pause", iconPause);
+  reviewAutoplayBtn.setAttribute("aria-pressed", "true");
   reviewAutoplayTimer = window.setInterval(() => {
     if (!review || reviewIndex >= review.steps.length - 1) {
       stopReviewAutoplay();
@@ -1761,15 +1774,14 @@ function updateReviewActions(step: ReviewStep | null) {
   if (canPractice && review) {
     const p = puzzleFromStep(review, step!);
     const saved = !!p && savedIds.has(p.id);
-    reviewSaveBtn.textContent = saved ? "Saved ✓" : "Save this position";
+    setIconButtonLabel(reviewSaveBtn, saved ? "Saved ✓" : "Save this position", saved ? iconCheck : iconBookmark);
     reviewSaveBtn.disabled = saved;
   }
-  reviewSaveKeyBtn.style.display = review && keyMoments(review).length ? "" : "none";
 
   const punishment = review && reviewIndex >= 0 ? getPunishmentForStep(review, reviewIndex) : null;
   if (punishment && !reviewShowBefore) {
     reviewPunishmentBtn.style.display = "";
-    reviewPunishmentBtn.textContent = `Show Refutation (${punishment.punishmentSan})`;
+    setIconButtonLabel(reviewPunishmentBtn, `Show the refutation (${punishment.punishmentSan})`);
   } else {
     reviewPunishmentBtn.style.display = "none";
   }
@@ -1777,7 +1789,7 @@ function updateReviewActions(step: ReviewStep | null) {
   const hasTacticalLines = !reviewShowBefore && !!step?.blunderDna?.tacticalLines?.length;
   if (hasTacticalLines) {
     reviewThreatRadarBtn.style.display = "";
-    reviewThreatRadarBtn.textContent = "Threat Radar";
+    setIconButtonLabel(reviewThreatRadarBtn, "Threat radar");
   } else {
     reviewThreatRadarBtn.style.display = "none";
   }
@@ -1887,7 +1899,7 @@ function showReviewStep(index: number) {
   }
   updateReviewActions(step);
   reviewStripHost.innerHTML = renderEvalGraph(review, clamped);
-  reviewMovesHost.innerHTML = renderReviewMoveList(review, clamped) + renderStorylineBar(review, clamped);
+  reviewMovesHost.innerHTML = renderReviewMoveList(review, clamped) + renderTurningPoint(review, clamped);
   keepCurrentMoveInView();
   renderBoardFurniture(review, clamped);
   const atStart = clamped < 0;
@@ -1911,11 +1923,8 @@ function enterReview(next: ReviewGame) {
   board.reset(next.humanColor, next.startFen); // orientation follows whose review this is
   reviewPanel.style.display = "";
   reviewSummaryHost.innerHTML = renderGameSummary(next, summarizeGame(next));
-  reviewWorstBtn.style.display = worstHumanStepIndex(next) >= 0 ? "" : "none";
-  reviewFlipSideBtn.textContent = next.humanColor === "white" ? "Review as Black" : "Review as White";
-  const mistakes = drillSteps(next).length;
-  reviewDrillBtn.style.display = mistakes ? "" : "none";
-  reviewDrillBtn.textContent = `Fix your mistakes (${mistakes})`;
+  setIconButtonLabel(reviewFlipSideBtn, next.humanColor === "white" ? "Review as Black" : "Review as White");
+  setStatus(playStatus, ""); // the idle "Ready" line has nothing to say during a review
   setBoardFurnitureVisible(true);
   showReviewStep(next.steps.length - 1);
 }
@@ -2030,12 +2039,6 @@ reviewLastBtn.addEventListener("click", () => {
   if (review) showReviewStep(review.steps.length - 1);
 });
 reviewAutoplayBtn.addEventListener("click", toggleReviewAutoplay);
-reviewWorstBtn.addEventListener("click", () => {
-  if (!review) return;
-  stopReviewAutoplay();
-  const worst = worstHumanStepIndex(review);
-  if (worst >= 0) showReviewStep(worst);
-});
 for (const host of [reviewStripHost, reviewMovesHost]) {
   host.addEventListener("click", (e) => {
     const chip = (e.target as HTMLElement).closest<HTMLElement>("[data-review-index]");
@@ -2110,8 +2113,7 @@ document.addEventListener("keydown", (e) => {
     toggleReviewAutoplay();
   } else if (e.key === "b" || e.key === "B") {
     e.preventDefault();
-    reviewBeforeCheckbox.checked = !reviewBeforeCheckbox.checked;
-    reviewBeforeCheckbox.dispatchEvent(new Event("change"));
+    setReviewHeatmap(!reviewShowBefore);
   } else if (e.key === "w" || e.key === "W") {
     e.preventDefault();
     stopReviewAutoplay();
@@ -2234,27 +2236,29 @@ window.addEventListener("pointercancel", () => {
 const heatmapBtn = document.querySelector<HTMLButtonElement>("#review-heatmap-btn")!;
 const heatmapLegend = document.querySelector<HTMLParagraphElement>("#heatmap-legend")!;
 heatmapBtn.addEventListener("click", () => {
-  reviewBeforeCheckbox.checked = !reviewBeforeCheckbox.checked;
-  reviewBeforeCheckbox.dispatchEvent(new Event("change"));
-  if (reviewBeforeCheckbox.checked) showBoard();
+  setReviewHeatmap(!reviewShowBefore);
+  if (reviewShowBefore) showBoard();
 });
 
 function syncHeatmapControls() {
-  heatmapBtn.setAttribute("aria-pressed", String(reviewBeforeCheckbox.checked));
-  heatmapLegend.hidden = !reviewBeforeCheckbox.checked;
+  heatmapBtn.setAttribute("aria-pressed", String(reviewShowBefore));
+  setIconButtonLabel(heatmapBtn, reviewShowBefore ? "Hide the move heatmap" : "Move heatmap");
+  heatmapLegend.hidden = !reviewShowBefore;
   for (const key of heatmapLegend.querySelectorAll<HTMLElement>("[data-tier]")) {
     key.style.setProperty("--hm", getClassColor(key.dataset.tier!)); // follows the colorblind toggle
   }
 }
 
-reviewBeforeCheckbox.addEventListener("change", () => {
+/** The move heatmap shows the position the move was chosen in, with the
+ * engine's ranked candidates shaded on the board. */
+function setReviewHeatmap(on: boolean) {
+  reviewShowBefore = on;
   syncHeatmapControls();
-  reviewShowBefore = reviewBeforeCheckbox.checked;
   if (review) {
     stopReviewAutoplay();
     showReviewStep(reviewIndex);
   }
-});
+}
 
 reviewCandidatesHost.addEventListener("click", (e) => {
   const chip = (e.target as HTMLElement).closest<HTMLElement>("[data-candidate]");
@@ -2426,14 +2430,6 @@ reviewSaveBtn.addEventListener("click", () => {
   const step = currentReviewStep();
   const p = review && step ? puzzleFromStep(review, step, reviewOpening) : null;
   if (p) void saveReviewPuzzles([p]);
-});
-
-reviewSaveKeyBtn.addEventListener("click", () => {
-  if (!review) return;
-  const puzzles = keyMoments(review)
-    .map((s) => puzzleFromStep(review!, s, reviewOpening))
-    .filter((p): p is NonNullable<typeof p> => p !== null);
-  void saveReviewPuzzles(puzzles);
 });
 
 savedPositionsHost.addEventListener("click", async (e) => {
@@ -2665,8 +2661,6 @@ drillNextBtn.addEventListener("click", () => {
   startTry(drill.queue[drill.at]);
 });
 
-reviewDrillBtn.addEventListener("click", startDrill);
-
 reviewTryBtn.addEventListener("click", () => {
   const step = currentReviewStep();
   const p = review && step ? puzzleFromStep(review, step, reviewOpening) : null;
@@ -2681,7 +2675,7 @@ reviewPunishmentBtn.addEventListener("click", () => {
   isViewingPunishment = !isViewingPunishment;
   if (isViewingPunishment) {
     reviewPunishmentBtn.classList.add("active");
-    reviewPunishmentBtn.textContent = "↩ Back to Played Move";
+    setIconButtonLabel(reviewPunishmentBtn, "Back to the played move");
     playBoard.showPosition(punishment.fenAfterPunishment, { from: punishment.from, to: punishment.to });
     playBoard.showArrows([{ from: punishment.from, to: punishment.to, color: "rgba(244, 63, 94, 0.95)", width: 3.2 }]);
     reviewCaption.innerHTML = `<span class="punishment-caption-badge">Refutation (${punishment.source}):</span> <strong>${punishment.punishmentSan}</strong> punishes the error.`;
@@ -2699,7 +2693,7 @@ reviewThreatRadarBtn.addEventListener("click", () => {
   isViewingThreatRadar = !isViewingThreatRadar;
   if (isViewingThreatRadar) {
     reviewThreatRadarBtn.classList.add("active");
-    reviewThreatRadarBtn.textContent = "Hide Tension Web";
+    setIconButtonLabel(reviewThreatRadarBtn, "Hide the threat radar");
     const arrows = step.blunderDna.tacticalLines.map((line) => ({
       from: line.from,
       to: line.to,
@@ -2709,7 +2703,7 @@ reviewThreatRadarBtn.addEventListener("click", () => {
     playBoard.showArrows(arrows, { animate: true });
   } else {
     reviewThreatRadarBtn.classList.remove("active");
-    reviewThreatRadarBtn.textContent = "Threat Radar";
+    setIconButtonLabel(reviewThreatRadarBtn, "Threat radar");
     if (step && shouldShowBetterMove(step) && step.bestMoveUci && betterMoveArrowFitsAfterBoard(step)) {
       playBoard.showArrow(step.bestMoveUci.slice(0, 2) as Square, step.bestMoveUci.slice(2, 4) as Square);
     } else {
@@ -5751,7 +5745,6 @@ if (showTutorialThisLoad) {
 } else if (!playBoard) {
   const initBoard = ensurePlayBoard();
   initBoard.reset("white");
-  setStatus(playStatus, "Ready — Play vs. Bot or pick a game to review");
 }
 document.querySelector("#replay-tutorial")?.addEventListener("click", (e) => {
   e.preventDefault();

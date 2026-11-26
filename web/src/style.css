@@ -1629,96 +1629,6 @@ input[type="range"] {
    The timeline is the shape of one game's quality: one chip per
    half-move, the reviewer's own moves tall and colored by tier, the
    opponent's short and neutral, so the reviewer's own run reads first. */
-/* ---- Review Storyline & Key Turning Points Ticker ---- */
-.review-storyline-container {
-  margin: 0 0 10px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 8px 10px;
-}
-.storyline-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-}
-.storyline-title {
-  font-family: var(--font-sans);
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text);
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.storyline-icon {
-  color: var(--accent);
-  font-size: 0.85rem;
-}
-.storyline-hint {
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-.storyline-track {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 2px 2px 4px;
-  scrollbar-width: thin;
-}
-.storyline-chip {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--bg);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  padding: 4px 8px;
-  cursor: pointer;
-  font-family: var(--font-sans);
-  transition: all 0.15s ease;
-  position: relative;
-}
-.storyline-chip:hover {
-  border-color: var(--chip-accent);
-  background: var(--panel-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-}
-.storyline-chip-active {
-  border-color: var(--chip-accent) !important;
-  background: var(--panel-hover) !important;
-  box-shadow: 0 0 0 1px var(--chip-accent), 0 0 10px rgba(227, 168, 87, 0.2) !important;
-}
-.storyline-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: "JetBrains Mono", monospace;
-  font-weight: 900;
-  font-size: 0.75rem;
-  color: var(--chip-accent);
-  background: rgba(255, 255, 255, 0.06);
-  padding: 1px 4px;
-  border-radius: 4px;
-}
-.storyline-move {
-  font-family: "JetBrains Mono", monospace;
-  font-weight: 700;
-  font-size: 0.75rem;
-  color: var(--text);
-}
-.storyline-headline {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--muted);
-}
-
 /* ---- Evaluation Advantage Curve (gameReviewView.ts) ---- */
 .eval-graph-container {
   margin: 0 0 10px;
@@ -1730,6 +1640,8 @@ input[type="range"] {
 }
 .eval-graph-header {
   display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
   justify-content: space-between;
   align-items: center;
   font-family: monospace;
@@ -3149,9 +3061,6 @@ section.card[data-tier="primary"]:hover { transform: translateY(-1px); }
   padding: 8px 10px;
   margin: 0 0 10px;
 }
-.review-before-label {
-  margin: 4px 0 10px;
-}
 .candidate-list {
   display: flex;
   flex-wrap: wrap;
@@ -4372,15 +4281,6 @@ section.card,
 .review-header-bar .review-heading {
   margin: 0;
 }
-
-.review-header-bar .kbd-help-btn {
-  width: auto;
-  height: auto;
-  border-radius: 6px;
-  padding: 3px 8px;
-  font-size: 0.75rem;
-}
-
 .review-broadcast-banner {
   padding: 11px 14px;
   margin: 10px 0 12px;

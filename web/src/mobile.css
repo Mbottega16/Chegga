@@ -592,33 +592,16 @@ body {
   }
 
   /* Stepper review buttons: minimum 44px thumb-friendly touch targets.
-     A flex row that wraps, not a 4-column grid. The row holds four icon
-     buttons and three text buttons ("Play it back", "Your worst move",
-     "Fix your mistakes"). In a quarter-width grid cell (~70px) a text
-     label cannot fit: it spills over its neighbours and swallows their
-     taps. "Fix your mistakes" covered "Your worst move", so the
-     review-picker e2e could not tap it. Earlier, a plain 1fr grid also
-     blew out to ~423px inside a ~332px sidebar and covered the
-     #review-before checkbox. Sized to their content, the buttons wrap
-     onto a new line instead of spilling. */
+     A flex row that wraps, not a fixed-column grid: a fixed cell too
+     narrow for its button spills over its neighbours and swallows their
+     taps (an old text button once covered the one beside it, and the
+     review-picker e2e could not tap it). Sized to their content, the
+     buttons wrap onto a new line instead of spilling. */
   .review-buttons {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     margin: 12px 0 8px;
-  }
-
-  /* The "show position before move" checkbox gets the same 44px thumb
-     target as the other review controls, clearance from the button rows
-     around it, and the same scroll-margin the cards use, so a
-     scroll-into-view never parks it under the nav strip. */
-  .review-before-label {
-    position: relative;
-    z-index: 1;
-    min-height: 44px;
-    align-items: center;
-    margin: 8px 0 12px;
-    scroll-margin-top: 68px;
   }
 
   .review-buttons button {

@@ -19,6 +19,13 @@ This repo is public, so private planning notes stay in the owner's vault, not he
 
 ---
 
+## 2026-11-26 — Rebase onto the Mac layout, Desktop launchers, splash logo
+*PC · Antigravity · commits `0af4d07`, `0e8b6a5`, `fbb4a48`, `d028319`*
+- **Changed:** rebased the PC phone fix for `.review-buttons` (`mobile.css`) onto the Mac's `9eff407` one-screen layout. Added paired Desktop launchers for the default (5174) and playtest (5175) builds, with IPv6 (`::1`) loopback detection. Split Vite's dev `cacheDir` per mode and animated the classic logo bars on the splash.
+- **Started, not committed:** review-control icons (`icons.ts`), edge-safe trail curves (`trailGeometry.ts`, `playBoard.ts`), and a two-tab side panel (`studioMenu.ts`). The next session finished them.
+- **Verified:** Vitest 371/371 (32 files); `tsc && vite build` clean.
+- **Left open:** the UI review list the owner gave (left menu, review buttons, Evaluation Flow, turning points), handed to Claude as a plan in the owner's vault.
+
 ## 2026-11-25 / 2026-11-26 — Playtest round, startup splash, and one-screen shell layout
 *Mac · Claude · commits `27af3fb`, `2fad757`, `bbdeba0`, `784370d`, `b32e895`, `9eff407`*
 - **Changed:** Removed Operating/Playing view toggle (single layout), added Customize/Feedback dialogs, folding right games panel, last-10 list with search, real captured-piece art, new 10-line move heatmap (`renderTrails` in `playBoard.ts`), movetext-based stats load speedup (~4 min -> <5 s), `playtest` seed mode (`npm run dev:playtest`, `fetch-playtest-games.mjs`, `playtestSeed.ts`), `splash.ts` knight startup screen, and `9eff407` one-screen `shell.css` layout commit.

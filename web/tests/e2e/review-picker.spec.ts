@@ -98,14 +98,19 @@ test.describe("game picker and review", () => {
     await expect(page.locator("#review-panel")).toBeVisible({ timeout: 100_000 });
     await expect(page.locator("#picker-status")).toHaveText("");
 
-    // --- the reason for the worst move names the piece ---
-    await page.locator("#review-worst").click();
+    // --- the review names the turning point in one card ---
+    await expect(page.locator("#review-moves-host .turning-point-card")).toHaveCount(1);
+    await expect(page.locator("#review-moves-host .turning-point-card .tp-why")).toContainText("winning chances");
+
+    // --- the reason for the worst move names the piece (W jumps to it) ---
+    await page.keyboard.press("w");
     await expect(page.locator("#review-caption")).toContainText("Blunder");
     await expect(page.locator("#review-why")).toBeVisible();
     await expect(page.locator("#review-why")).toContainText("queen on e5");
 
     // --- before view: the ranked candidates are shaded and listed ---
-    await page.locator("#review-before").check();
+    await page.locator("#review-heatmap-btn").click();
+    await expect(page.locator("#review-heatmap-btn")).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator("#review-caption")).toContainText("Position before");
     await expect(page.locator("#review-candidates .candidate-chip").first()).toBeVisible({ timeout: 30_000 });
     expect(await page.locator("#review-candidates .candidate-chip").count()).toBeGreaterThanOrEqual(3);
@@ -140,7 +145,7 @@ test.describe("game picker and review", () => {
     // --- save it, and it shows up under Saved positions ---
     await page.locator("#review-save").click();
     await expect(page.locator("#saved-positions .saved-row")).toHaveCount(1);
-    await expect(page.locator("#review-save")).toHaveText("Saved ✓");
+    await expect(page.locator("#review-save")).toHaveAttribute("aria-label", "Saved ✓");
 
     // --- and it survives a reload, practiceable with no game open ---
     await page.reload();
@@ -153,7 +158,8 @@ test.describe("game picker and review", () => {
     await page.locator("#try-done").click();
     await expect(page.locator("#try-panel")).toBeHidden();
 
-    // --- remove it ---
+    // --- remove it (saved positions live on the Games tab) ---
+    await page.locator("#tab-games").click();
     await page.locator("[data-saved-remove]").first().click();
     await expect(page.locator("#saved-positions .saved-row")).toHaveCount(0);
 
@@ -166,7 +172,9 @@ test.describe("game picker and review", () => {
 
     await seedAndLoad(page);
 
-    // Start a bot game and make a move; the bot answers.
+    // Start a bot game and make a move; the bot answers. (The bot's controls
+    // live on the Analysis tab.)
+    await page.locator("#tab-analysis").click();
     await page.locator("#bot-new-game-btn").click();
     await expect(page.locator("#play-status")).toContainText("Your move", { timeout: 15_000 });
     await playMove(page, "e2", "e4");
@@ -174,6 +182,7 @@ test.describe("game picker and review", () => {
     await expect(page.locator("#play-status")).toContainText("Your move", { timeout: 30_000 }); // the bot has replied
 
     // Opening a synced game takes over the board and offers the game back.
+    await page.locator("#tab-games").click();
     await page.locator("#picker-section .picker-card").click();
     await expect(page.locator("#review-panel")).toBeVisible({ timeout: 100_000 });
     await expect(page.locator("#resume-banner")).toBeVisible();

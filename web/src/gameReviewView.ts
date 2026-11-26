@@ -19,6 +19,7 @@ import {
 } from "./gameReview";
 import { formatCandidateEval, isShadedTier, type Candidate } from "./candidateMoves";
 import type { BlunderDna } from "./blunderTagger";
+import { iconZap } from "./icons";
 
 function escapeAttr(text: string): string {
   return text.replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c]!);
@@ -26,6 +27,18 @@ function escapeAttr(text: string): string {
 
 /** Tiers worth a marker on the chart: the moves that changed the game. */
 const CHART_MARKED_TIERS = new Set(["brilliant", "inaccuracy", "mistake", "miss", "blunder"]);
+
+/** Chart x (0-100) past which a phase name reads leftward from its line. */
+const PHASE_LABEL_FLIP_AT = 70;
+/** The least chart width (0-100) one phase name needs: "Middlegame" fills
+ * about this much of the narrowest (phone-width) chart. Two names closer than
+ * this, the second is left out. */
+const PHASE_LABEL_MIN_GAP = 24;
+/** A rightward name followed by a leftward one closer than this would meet
+ * in the middle, so the first turns leftward too. */
+const PHASE_LABEL_FACING_GAP = 45;
+/** Chart x (0-100) past which the "White 87%" tag sits left of the cursor. */
+const CURSOR_TAG_FLIP_AT = 72;
 
 /** The game as one picture: White's winning chances over time.
  *
@@ -69,9 +82,29 @@ export function renderEvalGraph(review: ReviewGame, currentIndex: number): strin
   const phaseLines = phaseStarts
     .map((p) => `<line x1="${x(p.pos).toFixed(2)}" y1="0" x2="${x(p.pos).toFixed(2)}" y2="40" class="eval-phase-line" vector-effect="non-scaling-stroke"/>`)
     .join("");
-  const phaseLabels = phaseStarts
-    .map((p) => `<span class="eval-phase-label" style="left:${x(p.pos).toFixed(2)}%">${p.label === "middlegame" ? "Middlegame" : "Endgame"}</span>`)
+  // The names sit in their own strip under the chart, clear of the curve and
+  // its dots. Each reads rightward from its dashed line, except near the right
+  // edge, where it reads leftward so it never runs off the chart. Two names
+  // that would touch: the first turns leftward too, or, with no room for
+  // that, the second is left out (its dashed line still shows).
+  const labels: { px: number; text: string; leftward: boolean }[] = [];
+  for (const p of phaseStarts) {
+    const label = { px: x(p.pos), text: p.label === "middlegame" ? "Middlegame" : "Endgame", leftward: x(p.pos) > PHASE_LABEL_FLIP_AT };
+    const prev = labels.at(-1);
+    if (prev) {
+      const gap = label.px - prev.px;
+      if (gap < PHASE_LABEL_MIN_GAP) continue;
+      if (label.leftward && !prev.leftward && gap < PHASE_LABEL_FACING_GAP) {
+        if (prev.px < PHASE_LABEL_MIN_GAP) continue;
+        prev.leftward = true;
+      }
+    }
+    labels.push(label);
+  }
+  const phaseLabels = labels
+    .map((l) => `<span class="eval-phase-label${l.leftward ? " eval-phase-label-right" : ""}" style="left:${l.px.toFixed(2)}%">${l.text}</span>`)
     .join("");
+  const phaseStrip = phaseLabels ? `<div class="eval-phase-strip">${phaseLabels}</div>` : "";
 
   const dots = review.steps
     .map((step, i) => {
@@ -92,7 +125,7 @@ export function renderEvalGraph(review: ReviewGame, currentIndex: number): strin
     const w = wins[curPos];
     const pct = Math.round(w >= 50 ? w : 100 - w);
     const who = Math.abs(w - 50) < 2 ? "Level" : `${w >= 50 ? "White" : "Black"} ${pct}%`;
-    cursorTag = `<span class="eval-graph-cursor-dot" style="left:${cx.toFixed(2)}%;top:${((y(w) / 40) * 100).toFixed(2)}%"></span><span class="eval-graph-tag${cx > 80 ? " eval-graph-tag-left" : ""}" style="left:${cx.toFixed(2)}%">${who}</span>`;
+    cursorTag = `<span class="eval-graph-cursor-dot" style="left:${cx.toFixed(2)}%;top:${((y(w) / 40) * 100).toFixed(2)}%"></span><span class="eval-graph-tag${cx > CURSOR_TAG_FLIP_AT ? " eval-graph-tag-left" : ""}" style="left:${cx.toFixed(2)}%">${who}</span>`;
   }
 
   return `
@@ -111,10 +144,10 @@ export function renderEvalGraph(review: ReviewGame, currentIndex: number): strin
           <path d="${line}" class="eval-line" vector-effect="non-scaling-stroke"/>
           ${cursorSvg}
         </svg>
-        ${phaseLabels}
         ${dots}
         ${cursorTag}
       </div>
+      ${phaseStrip}
     </div>`;
 }
 
@@ -231,35 +264,73 @@ export function renderThreatRadarAction(opts: { hasThreats: boolean; isActive: b
 
 
 
-/** Renders an interactive storyline ticker of the game's turning points and critical blunders/brilliancies. */
-export function renderStorylineBar(review: ReviewGame, currentIndex: number): string {
-  const moments = computeStorylineMoments(review);
-  if (!moments.length) return "";
+/** What a blunder tag did, as the end of a sentence about the move. */
+const TAG_PHRASE: Record<string, string> = {
+  missed_mate: "missed a forced mate",
+  allowed_mate: "allowed a forced mate",
+  fork: "walked into a fork",
+  pin: "allowed a pin",
+  skewer: "allowed a skewer",
+  back_rank: "left the back rank weak",
+  trapped_piece: "left a piece trapped",
+  hung_material: "left material hanging",
+  missed_capture: "missed a capture",
+};
 
-  const items = moments
-    .map((m) => {
-      const isCurrent = currentIndex === m.index;
-      const moveStr = `${m.moveNumber}${m.side === "white" ? "." : "..."} ${m.san}`;
-      const color = m.classification ? getClassColor(m.classification) : "var(--accent)";
-      return `
-        <button type="button" class="storyline-chip ${isCurrent ? "storyline-chip-active" : ""}" data-review-index="${m.index}" style="--chip-accent:${color}" title="Jump to move ${moveStr}: ${escapeAttr(m.headline)}">
-          <span class="storyline-badge">${m.badge}</span>
-          <span class="storyline-move">${moveStr}</span>
-          <span class="storyline-headline">${escapeAttr(m.headline)}</span>
-        </button>
-      `;
-    })
-    .join("");
+const TIER_NOUN: Record<string, string> = {
+  brilliant: "a brilliant move",
+  best: "the best move",
+  excellent: "an excellent move",
+  good: "a good move",
+  inaccuracy: "an inaccuracy",
+  mistake: "a mistake",
+  blunder: "a blunder",
+  miss: "a missed chance",
+};
 
+/** Two or three short sentences on why the game's turning point decided it:
+ * what the move did, how the reviewer's winning chances moved, and what the
+ * engine preferred. Plain words, no engine numbers in brackets. */
+export function turningPointSentences(review: ReviewGame, index: number): string[] {
+  const step = review.steps[index];
+  if (!step) return [];
+  const name = review.players[step.side]?.name;
+  const mover = step.isHuman ? "Your" : name ? `${name}'s` : "Your opponent's";
+  const tier = step.tier ?? step.classification;
+  const tag = step.blunderTag ? TAG_PHRASE[step.blunderTag] : undefined;
+  const what = tag ?? (tier && TIER_NOUN[tier] ? `was ${TIER_NOUN[tier]}` : "changed the game");
+  const out = [`${mover} ${step.san} ${what}.`];
+
+  const wins = positionWinChances(review);
+  const mine = (w: number) => Math.round(review.humanColor === "white" ? w : 100 - w);
+  const before = mine(wins[index]);
+  const after = mine(wins[index + 1]);
+  if (before !== after) {
+    out.push(`Your winning chances ${after > before ? "rose" : "fell"} from ${before}% to ${after}%.`);
+  }
+  if (step.bestMoveSan && step.bestMoveSan !== step.san && shouldNameBetterMove(tier)) {
+    out.push(`${step.bestMoveSan} was the better move.`);
+  }
+  return out;
+}
+
+const shouldNameBetterMove = (tier?: string) => tier === "inaccuracy" || tier === "mistake" || tier === "blunder" || tier === "miss";
+
+/** The game's one decisive moment, as a card that jumps to it on a click:
+ * the move and a short plain-English reason it turned the game. Empty when
+ * no single move decided it. */
+export function renderTurningPoint(review: ReviewGame, currentIndex: number): string {
+  const moment = computeStorylineMoments(review).find((m) => m.kind === "turning_point");
+  if (!moment) return "";
+  const moveStr = `${moment.moveNumber}${moment.side === "white" ? "." : "…"} ${moment.san}`;
+  const tier = review.steps[moment.index]?.tier ?? moment.classification;
+  const color = tier ? getClassColor(tier) : "var(--accent)";
+  const glyph = tier ? getClassGlyph(tier) : "";
+  const why = turningPointSentences(review, moment.index).join(" ");
+  const current = currentIndex === moment.index ? " turning-point-current" : "";
   return `
-    <div class="review-storyline-container" role="region" aria-label="Key turning points and story moments">
-      <div class="storyline-header">
-        <span class="storyline-title">Key Turning Points</span>
-        <span class="storyline-hint">Tap moment to jump</span>
-      </div>
-      <div class="storyline-track">
-        ${items}
-      </div>
-    </div>
-  `;
+    <button type="button" class="turning-point-card${current}" data-review-index="${moment.index}" style="--tp-color:${color}" aria-label="${escapeAttr(`Turning point, ${moveStr}. ${why} Jump to this move.`)}">
+      <span class="tp-head"><span class="tp-bolt">${iconZap}</span> Turning Point <span class="tp-dot" aria-hidden="true">·</span> <span class="tp-move">${escapeAttr(moveStr)}</span>${glyph ? ` <span class="tp-glyph" aria-hidden="true">${glyph}</span>` : ""}</span>
+      <span class="tp-why">${escapeAttr(why)}</span>
+    </button>`;
 }
