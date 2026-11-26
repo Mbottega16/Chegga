@@ -71,6 +71,7 @@ import type { GameRecord, MoveAnalysisRecord, ExportedData, SavedPuzzleRecord } 
 import { Engine } from "./engine";
 import { DEMO_USERNAME, clearDemoData, isDemoActive, loadDemoData } from "./demoData";
 import { seedPlaytestData } from "./playtestSeed";
+import { reloadBehindSplash, splashReady } from "./splash";
 import { ChessComClient } from "./chessComClient";
 import { syncGames, quickSyncRecentGames } from "./syncService";
 import { analyzeGame, DEFAULT_ANALYSIS_OPTIONS, classify, cpEquivalent, DISPLAY_CLAMP_CP } from "./engineAnalysis";
@@ -3754,9 +3755,10 @@ demoClearBtn.addEventListener("click", async () => {
       setStatus(syncLog, `Couldn't load your saved data: ${err.message ?? err}`, "error");
       return;
     }
+    splashReady(); // the catch-up below runs in the background
     await runSync(saved); // then catch up with anything new
   }
-})();
+})().finally(splashReady);
 
 // --- Data export/import (backs up the browser-only IndexedDB copy) ---
 
@@ -5785,7 +5787,7 @@ document.querySelector("#replay-tutorial")?.addEventListener("click", (e) => {
 // The default build compiles this to nothing (see playtestSeed.ts).
 void seedPlaytestData()
   .then((imported) => {
-    if (imported) window.location.reload();
+    if (imported) reloadBehindSplash();
   })
   .catch((err) => console.warn("Playtest seed skipped:", err));
 

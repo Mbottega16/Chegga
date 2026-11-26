@@ -10,6 +10,7 @@
 
 import { importAllData, openDb, type ExportedData } from "./db";
 import { TUTORIAL_KEY } from "./firstRun";
+import { holdSplash } from "./splash";
 
 declare const __PLAYTEST__: boolean;
 
@@ -39,26 +40,37 @@ const SEEDED_KEY = "chegga-web:playtest-seed";
  * when it imported something, so the caller can reload and show it. */
 export async function seedPlaytestData(): Promise<boolean> {
   if (!__PLAYTEST__) return false;
-  const files = import.meta.glob<string>("../playtest/games-backup.json.gz", { query: "?url", import: "default" });
-  const load = Object.values(files)[0];
-  if (!load) return false;
-  const url = await load();
-  // The asset URL carries a content hash, so a visit with nothing new skips the download.
-  if (localStorage.getItem(SEEDED_KEY) === url) return false;
+  // A first visit has nothing to show until the games are in, so the start-up
+  // screen waits. On success the caller reloads with the screen still up.
+  const release = localStorage.getItem(SEEDED_KEY)
+    ? undefined
+    : holdSplash("Loading your games… The first visit takes about half a minute.");
+  let imported = false;
+  try {
+    const files = import.meta.glob<string>("../playtest/games-backup.json.gz", { query: "?url", import: "default" });
+    const load = Object.values(files)[0];
+    if (!load) return false;
+    const url = await load();
+    // The asset URL carries a content hash, so a visit with nothing new skips the download.
+    if (localStorage.getItem(SEEDED_KEY) === url) return false;
 
-  const data = await readBackup(url);
-  const db = await openDb();
-  const stored = await storedGameIds(db);
-  const games = data.games.filter((g) => !stored.has(g.chessComUuid));
-  if (games.length) {
-    await importAllData(db, { ...data, games, syncState: stored.size ? [] : data.syncState });
+    const data = await readBackup(url);
+    const db = await openDb();
+    const stored = await storedGameIds(db);
+    const games = data.games.filter((g) => !stored.has(g.chessComUuid));
+    if (games.length) {
+      await importAllData(db, { ...data, games, syncState: stored.size ? [] : data.syncState });
+    }
+    db.close();
+
+    // The app only shows games for a remembered username, so set it.
+    localStorage.setItem("chegga-web:last-username", data.syncState[0].username);
+    localStorage.setItem("chegga-web:last-site", "chesscom");
+    localStorage.setItem(TUTORIAL_KEY, "done");
+    localStorage.setItem(SEEDED_KEY, url);
+    imported = games.length > 0;
+    return imported;
+  } finally {
+    if (!imported) release?.();
   }
-  db.close();
-
-  // The app only shows games for a remembered username, so set it.
-  localStorage.setItem("chegga-web:last-username", data.syncState[0].username);
-  localStorage.setItem("chegga-web:last-site", "chesscom");
-  localStorage.setItem(TUTORIAL_KEY, "done");
-  localStorage.setItem(SEEDED_KEY, url);
-  return games.length > 0;
 }

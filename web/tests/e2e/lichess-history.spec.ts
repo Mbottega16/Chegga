@@ -65,6 +65,8 @@ test.describe("Lichess full history", () => {
   test("appears only for Lichess, grows as it runs, cancels, and resumes to completion", async ({ page, browserName }) => {
     await stubLichessHistory(page, TOTAL_GAMES);
     await page.goto("/");
+    // The forced clicks below would otherwise land on the start-up screen.
+    await expect(page.locator("#splash")).toHaveCount(0);
     await expect(page.locator("#main-content")).toBeVisible();
 
     const control = page.locator("#lichess-history");
