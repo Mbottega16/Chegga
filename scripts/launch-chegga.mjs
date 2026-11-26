@@ -13,9 +13,10 @@ const MODES = {
 };
 
 const modeKey = process.argv[2];
+const noOpen = process.argv.includes("--no-open");
 const mode = MODES[modeKey];
 if (!mode) {
-  console.error("Usage: node scripts/launch-chegga.mjs <default|playtest>");
+  console.error("Usage: node scripts/launch-chegga.mjs <default|playtest> [--no-open]");
   process.exit(1);
 }
 
@@ -30,9 +31,9 @@ if (modeKey === "playtest") {
   }
 }
 
-function isPortOpen(port) {
-  return new Promise((resolve) => {
-    const socket = net.createConnection({ host: "127.0.0.1", port });
+function canConnect(host, port) {
+  return new Promise((resolve, reject) => {
+    const socket = net.createConnection({ host, port });
     socket.setTimeout(300);
     socket.once("connect", () => {
       socket.destroy();
@@ -40,11 +41,16 @@ function isPortOpen(port) {
     });
     const onFail = () => {
       socket.destroy();
-      resolve(false);
+      reject(new Error("closed"));
     };
     socket.once("error", onFail);
     socket.once("timeout", onFail);
   });
+}
+
+// Vite binds ::1 (IPv6 localhost) by default on Windows, so probe both loopbacks.
+function isPortOpen(port) {
+  return Promise.any([canConnect("::1", port), canConnect("127.0.0.1", port)]).catch(() => false);
 }
 
 function startDevServer() {
@@ -74,7 +80,7 @@ function openBrowser() {
 if (!(await isPortOpen(mode.port))) {
   console.log(`Starting Chegga (${mode.label}) on ${url}...`);
   startDevServer();
-  const deadline = Date.now() + 20_000;
+  const deadline = Date.now() + 45_000;
   while (Date.now() < deadline) {
     if (await isPortOpen(mode.port)) break;
     await new Promise((r) => setTimeout(r, 200));
@@ -85,4 +91,4 @@ if (!(await isPortOpen(mode.port))) {
   }
 }
 
-openBrowser();
+if (!noOpen) openBrowser();
