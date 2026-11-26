@@ -1,0 +1,553 @@
+/* Chegga Web — the one-screen layout: the menu on the left, the eval bar and
+   board in the middle, a tabbed panel on the right. Daily Training and the
+   Studio Lab are their own screens, opened from the menu. */
+
+/* ---- Which screen is showing (every width) ---- */
+#studio-grid[data-view="board"] > .shell-view,
+#studio-grid[data-view="training"] > .shell-view:not([data-shell-view="training"]),
+#studio-grid[data-view="lab"] > .shell-view:not([data-shell-view="lab"]),
+#studio-grid:not([data-view="board"]) > .studio-stage-column,
+#studio-grid:not([data-view="board"]) > .studio-right-column {
+  display: none;
+}
+.panel-page[hidden] {
+  display: none;
+}
+.shell-view {
+  min-width: 0;
+}
+
+/* ---- Menu: an icon with its name beside it, always ---- */
+#studio-grid .shell-nav .header {
+  display: block;
+  position: static;
+  margin: 0;
+  padding: 2px 4px 10px;
+  border: none;
+  background: none;
+}
+#studio-grid .shell-nav .brand-badge {
+  display: none;
+}
+#studio-grid #studio-nav-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  position: static;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.studio-nav-header {
+  margin: 0 0 4px;
+}
+.studio-nav-heading {
+  margin: 0;
+  font-size: 0.75rem;
+}
+.studio-nav-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.studio-nav-toggle:hover {
+  color: var(--accent-strong);
+  background: var(--accent-wash);
+}
+.studio-nav-chevron,
+.side-panel-chevron {
+  display: inline-flex;
+}
+.studio-nav-chevron {
+  transform: rotate(90deg);
+}
+#studio-grid .studio-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#studio-grid .studio-nav-link {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+  text-decoration: none;
+  white-space: normal;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+#studio-grid .studio-nav-link:hover {
+  background: var(--accent-wash);
+  color: var(--text);
+}
+#studio-grid .studio-nav-link.active {
+  background: var(--accent-wash);
+  color: var(--accent-strong);
+}
+#studio-grid .studio-nav-link .nav-icon {
+  flex: 0 0 20px;
+  display: inline-flex;
+  justify-content: center;
+  color: var(--accent);
+}
+#studio-grid .shell-nav .header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 10px;
+}
+.rail-label {
+  display: none;
+}
+
+/* ---- Side panel: tabs ---- */
+.side-panel-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.panel-tabs {
+  flex: 1;
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+}
+.panel-tabs [role="tab"] {
+  flex: 1;
+  min-height: 38px;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.panel-tabs [role="tab"]:hover {
+  color: var(--text);
+  background: var(--accent-wash);
+}
+.panel-tabs [role="tab"][aria-selected="true"] {
+  color: var(--accent-strong);
+  background: var(--accent-wash);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.side-panel-toggle {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.side-panel-toggle:hover {
+  color: var(--accent-strong);
+  background: var(--accent-wash);
+}
+.side-panel-chevron {
+  transform: rotate(-90deg);
+}
+.side-panel-body {
+  padding: 4px 12px 16px;
+  min-width: 0;
+}
+
+/* ---- Inside the panel: tighter than the old full-page cards ---- */
+#studio-grid .panel-page > section.card,
+#studio-grid .panel-page .studio-picker-card,
+#studio-grid .panel-page .studio-import-card {
+  margin: 0;
+  padding: 10px 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+#studio-grid .panel-page h2 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+#studio-grid .sync-expand-toggle {
+  display: none; /* the panel has its own fold button */
+}
+/* The pasted game and "which side" fields are the same size. */
+#studio-grid .import-form textarea,
+#studio-grid .import-row select {
+  display: block;
+  width: 100%;
+  height: 44px;
+  min-height: 44px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  line-height: 22px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+#studio-grid .import-form textarea {
+  resize: none;
+  white-space: nowrap;
+  overflow: hidden;
+}
+#studio-grid .import-row {
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+#studio-grid .import-row select {
+  flex: 0 0 44px;
+}
+#studio-grid .import-row button {
+  width: 100%;
+  min-height: 40px;
+}
+#studio-grid .recent-row {
+  min-height: 40px;
+  padding: 4px 10px;
+}
+/* Previously played games: a small board beside the details, not above them. */
+#studio-grid #picker-section .picker-card-top {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+#studio-grid #picker-section .picker-mini-board-wrap {
+  width: 92px;
+}
+#studio-grid #picker-section .picker-card {
+  padding: 8px;
+}
+
+/* Play vs. Bot controls sit above the live engine lines, and drop below the
+   review while one is open. */
+#studio-grid #panel-analysis:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#studio-grid .studio-stage-footer-controls {
+  order: -1;
+  margin: 0;
+  padding: 10px 0;
+  border: none;
+  border-bottom: 1px solid var(--border);
+}
+#studio-grid.is-reviewing .studio-stage-footer-controls {
+  order: 2;
+  border-bottom: none;
+  border-top: 1px solid var(--border);
+}
+#studio-grid .play-sidebar {
+  min-width: 0;
+  flex: 0 0 auto;
+}
+#studio-grid .play-controls-primary {
+  flex-wrap: wrap;
+}
+#studio-grid .play-controls-primary input[type="range"] {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+
+/* ---- Daily Training screen ---- */
+.shell-view[data-shell-view="training"] #today-section {
+  padding: 16px 20px;
+}
+.today-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px 20px;
+}
+.today-item {
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  padding: 10px 4px;
+  gap: 12px;
+}
+
+/* ---- The stage: just the eval bar, the board and the two player strips ---- */
+#studio-grid #play-section {
+  height: auto;
+  margin: 0;
+  padding: 0;
+  display: block;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+#studio-grid #play-section .play-layout {
+  display: block;
+  container-type: normal;
+}
+
+/* ---- Wide screens: everything on one screen ---- */
+@media (min-width: 1041px) {
+  .wrap {
+    max-width: none;
+    margin: 0;
+    padding: 0 12px;
+  }
+  #studio-grid {
+    --nav-w: 196px;
+    /* One square: whatever fits the window's height, without squeezing the
+       panel. The same whether the side panels are open or not, so folding
+       them slides the board instead of resizing it. */
+    --sq: max(40px, min(calc((100vh - 112px) / 8), calc((100vw - 196px - 350px - 112px) / 8), 120px));
+    display: grid;
+    grid-template-columns: var(--nav-w) max-content minmax(350px, 520px);
+    grid-template-rows: auto;
+    justify-content: center;
+    align-items: start;
+    gap: 12px;
+    width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    padding: 12px 0;
+    box-sizing: border-box;
+  }
+  #studio-grid > * {
+    grid-row: 1;
+  }
+  #studio-grid > .shell-nav {
+    grid-column: 1;
+  }
+  #studio-grid > .studio-stage-column {
+    grid-column: 2;
+    /* when the window's width sets the board size, share the spare height */
+    justify-content: center;
+    height: calc(100vh - 24px);
+  }
+  #studio-grid > .studio-right-column {
+    grid-column: 3;
+  }
+  #studio-grid > .shell-view {
+    grid-column: 2;
+  }
+  #studio-grid:not([data-view="board"]) {
+    grid-template-columns: var(--nav-w) minmax(0, 1200px);
+  }
+  #studio-grid.menu-collapsed {
+    --nav-w: 52px;
+  }
+  #studio-grid[data-view="board"].side-collapsed {
+    grid-template-columns: var(--nav-w) max-content 52px;
+  }
+
+  #studio-grid > .shell-nav,
+  #studio-grid > .studio-right-column {
+    position: sticky;
+    top: 12px;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 24px);
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+  }
+  #studio-grid:not([data-view="board"]) > .studio-right-column {
+    display: none;
+  }
+  #studio-grid > .shell-nav {
+    padding: 10px 8px;
+    gap: 0;
+  }
+  #studio-grid .shell-nav #studio-nav-panel {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .side-panel-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  #studio-grid #play-section .play-layout .play-board {
+    grid-template-columns: repeat(8, var(--sq));
+    grid-template-rows: repeat(8, var(--sq));
+  }
+  #studio-grid #play-section .play-layout .play-piece {
+    font-size: calc(var(--sq) * 0.69);
+  }
+
+  /* Folded: a slim strip with the button to open it again. The two sides
+     fold the same way, so the board stays centered between them. */
+  #studio-grid.menu-collapsed .shell-nav {
+    padding: 10px 6px;
+    align-items: center;
+  }
+  #studio-grid.menu-collapsed .shell-nav .brand,
+  #studio-grid.menu-collapsed .shell-nav .header-actions,
+  #studio-grid.menu-collapsed .studio-nav-list,
+  #studio-grid.menu-collapsed .studio-nav-heading-text {
+    display: none;
+  }
+  #studio-grid.menu-collapsed .shell-nav .header {
+    display: none;
+  }
+  #studio-grid.menu-collapsed .shell-nav #studio-nav-panel {
+    flex: 0 0 auto;
+  }
+  #studio-grid.menu-collapsed .studio-nav-toggle {
+    width: 38px;
+    min-height: 38px;
+    padding: 0;
+    justify-content: center;
+  }
+  #studio-grid.menu-collapsed .studio-nav-chevron {
+    transform: rotate(-90deg);
+  }
+  #studio-grid.side-collapsed .side-panel-body,
+  #studio-grid.side-collapsed .panel-tabs {
+    display: none;
+  }
+  #studio-grid.side-collapsed .side-panel-bar {
+    flex-direction: column;
+    border-bottom: none;
+    padding: 10px 6px;
+  }
+  #studio-grid.side-collapsed .side-panel-chevron {
+    transform: rotate(90deg);
+  }
+  #studio-grid.menu-collapsed .shell-nav > .rail-label,
+  #studio-grid.side-collapsed .side-panel-bar .rail-label {
+    display: block;
+    margin-top: 12px;
+    writing-mode: vertical-rl;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+}
+
+/* ---- Phones and small tablets: one column ---- */
+@media (max-width: 1040px) {
+  #studio-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  #studio-grid > * {
+    width: 100%;
+    min-width: 0;
+  }
+  #studio-grid.menu-collapsed .studio-nav-list {
+    display: none;
+  }
+  #studio-grid .studio-nav-toggle {
+    min-height: 44px;
+  }
+  #studio-grid.menu-collapsed .studio-nav-chevron {
+    transform: none;
+  }
+  .side-panel-toggle {
+    display: none;
+  }
+  .panel-tabs [role="tab"] {
+    min-height: 44px;
+  }
+  #studio-grid .import-form textarea,
+  #studio-grid .import-row select,
+  #studio-grid .recent-head input {
+    font-size: 16px; /* stops iOS zooming on focus */
+  }
+}
+@media (min-width: 601px) and (max-width: 1040px) {
+  #studio-grid #play-section .play-layout {
+    container-type: inline-size;
+  }
+}
+
+/* The eval number stays on one line inside the narrow bar. */
+#studio-grid .review-eval-label {
+  white-space: nowrap;
+  font-size: 0.68rem;
+  letter-spacing: -0.06em;
+}
+#studio-grid .heatmap-btn {
+  margin: 0 0 8px;
+}
+/* The move arrows stay in reach while the review scrolls. */
+@media (min-width: 1041px) {
+  #studio-grid .review-nav {
+    position: sticky;
+    bottom: -16px;
+    z-index: 5;
+    margin: 8px -12px 0;
+    padding: 10px 12px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+  }
+}
+/* Phones: the name and the two buttons share one row above the menu. */
+@media (max-width: 1040px) {
+  #studio-grid > .shell-nav {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 4px 8px;
+  }
+  #studio-grid .shell-nav .header {
+    grid-area: 1 / 1;
+    padding: 0;
+  }
+  #studio-grid .shell-nav .header-actions {
+    grid-area: 1 / 2;
+    flex-wrap: nowrap;
+    padding: 0;
+  }
+  #studio-grid .shell-nav #studio-nav-panel {
+    grid-area: 2 / 1 / 3 / 3;
+  }
+}

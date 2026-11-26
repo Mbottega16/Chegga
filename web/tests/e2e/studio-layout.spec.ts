@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
-// Studio 2x3 Launchpad Window (studioMenu.ts), the folding games panel,
-// borderless edge-to-edge sections, synced-game cards, and WAVE checks.
+// The one-screen shell (studioMenu.ts): menu, board and tabbed side panel,
+// synced-game cards, and WAVE checks.
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -15,19 +15,26 @@ test.beforeEach(async ({ page }) => {
 
 const isWide = (page: Page) => (page.viewportSize()?.width ?? 0) > 1040;
 
-test.describe("Studio Menu 2x3 Window & Fold", () => {
-  test("lists every menu tab, with Customize and Feedback right after Getting Connected", async ({ page }) => {
+const openMenu = async (page: Page) => {
+  const toggle = page.locator("#studio-nav-toggle");
+  if ((await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
+};
+const menuLink = (page: Page, name: string) => page.locator("#studio-nav-list").getByText(name, { exact: true });
+
+test.describe("menu and side panel", () => {
+  test("every menu entry shows its name, with Customize and Feedback after Getting Connected", async ({ page }) => {
     await page.goto("/");
-    const names = await page.locator("#studio-nav-list .launchpad-tile .nav-text").allTextContents();
+    await openMenu(page);
+    const names = await page.locator("#studio-nav-list .nav-text").allTextContents();
     expect(names).toHaveLength(7);
     expect(names.slice(3, 6)).toEqual(["Getting Connected.", "Customize", "Feedback"]);
+    for (const name of names) await expect(menuLink(page, name)).toBeVisible(); // not only on hover
     await expect(page.locator("#orientation-switcher")).toHaveCount(0);
   });
 
-  test("the Customize tab opens the appearance controls and closes again", async ({ page }) => {
+  test("the Customize entry opens the appearance controls and closes again", async ({ page }) => {
     await page.goto("/");
-    const toggle = page.locator("#studio-nav-toggle");
-    if ((await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
+    await openMenu(page);
     await page.locator('[data-dialog="customize-dialog"]').click();
     await expect(page.locator("#customize-dialog #board-theme")).toBeVisible();
     await expect(page.locator("#customize-dialog #piece-set")).toBeVisible();
@@ -35,43 +42,70 @@ test.describe("Studio Menu 2x3 Window & Fold", () => {
     await expect(page.locator("#customize-dialog")).toBeHidden();
   });
 
-  test("desktop: the games panel folds into a rail, is remembered, and reopens", async ({ page }) => {
-    test.skip(!isWide(page), "the rail is the desktop layout");
+  test("the menu opens Training and the Lab as their own screens", async ({ page }) => {
     await page.goto("/");
-    const before = (await page.locator(".studio-stage-column").boundingBox())!.width;
-    await page.locator("#side-panel-toggle").click();
+    await expect(page.locator("#today-section")).toBeHidden();
+    await openMenu(page);
+    await menuLink(page, "Daily Training Sets").click();
+    await expect(page.locator("#today-section")).toBeVisible();
+    await expect(page.locator("#play-section")).toBeHidden();
+    await openMenu(page);
+    await menuLink(page, "What's Coming Soon").click();
+    await expect(page.locator("#coming-soon-section")).toBeVisible();
+    await expect(page.locator("#today-section")).toBeHidden();
+    await openMenu(page);
+    await menuLink(page, "Play vs. Bot").click();
+    await expect(page.locator("#play-section")).toBeVisible();
+    await expect(page.locator("#panel-analysis")).toBeVisible();
+    await expect(page.locator("#coming-soon-section")).toBeHidden();
+  });
+
+  test("Back returns to the screen before", async ({ page }) => {
+    await page.goto("/");
+    await openMenu(page);
+    await menuLink(page, "Daily Training Sets").click();
+    await expect(page.locator("#today-section")).toBeVisible();
+    await page.goBack();
+    await expect(page.locator("#play-section")).toBeVisible();
+  });
+
+  test("the panel tabs switch with a click and the arrow keys", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator("#import-section")).toBeVisible();
+    await page.locator("#tab-connect").click();
+    await expect(page.locator("#username")).toBeVisible();
     await expect(page.locator("#import-section")).toBeHidden();
-    await expect(page.locator("#picker-section")).toBeHidden();
-    expect((await page.locator(".studio-stage-column").boundingBox())!.width).toBeGreaterThan(before + 100);
+    await page.locator("#tab-connect").press("ArrowRight");
+    await expect(page.locator("#tab-games")).toHaveAttribute("aria-selected", "true");
+  });
+
+  test("desktop: both sides fold, the board keeps its size, and the choice is remembered", async ({ page }) => {
+    test.skip(!isWide(page), "folding is the desktop layout");
+    await page.goto("/");
+    const board = page.locator("#play-board-wrap");
+    const before = (await board.boundingBox())!;
+    await page.locator("#studio-nav-toggle").click();
+    await page.locator("#side-panel-toggle").click();
+    await expect(page.locator("#studio-nav-list")).toBeHidden();
+    await expect(page.locator("#import-section")).toBeHidden();
+    await expect.poll(async () => Math.round((await board.boundingBox())!.x)).not.toBe(Math.round(before.x));
+    expect(Math.round((await board.boundingBox())!.width)).toBe(Math.round(before.width));
     await page.reload();
+    await expect(page.locator("#studio-nav-toggle")).toHaveAttribute("aria-expanded", "false");
     await expect(page.locator("#side-panel-toggle")).toHaveAttribute("aria-expanded", "false");
-    await page.locator('[data-side-open="import-section"]').click();
+    await page.locator("#side-panel-toggle").click();
     await expect(page.locator("#import-section")).toBeVisible();
   });
 
-  test("desktop: folds into an icon rail, widens the stage, and is remembered", async ({ page }) => {
-    test.skip(!isWide(page), "the rail is the desktop layout");
+  test("desktop: the board screen fits the window with no page scroll", async ({ page }) => {
+    test.skip(!isWide(page), "one screen is the desktop layout");
     await page.goto("/");
-    const toggle = page.locator("#studio-nav-toggle");
-    await expect(toggle).toHaveAttribute("aria-expanded", "true");
-    const stageBefore = (await page.locator(".studio-stage-column").boundingBox())!.width;
-
-    await toggle.click();
-    await expect(toggle).toHaveAttribute("aria-expanded", "false");
-    await expect(page.locator("#today-section")).toBeHidden();
-    await expect(page.locator("#sync-section")).toBeHidden();
-    // The links stay in the rail, as icons.
-    await expect(page.locator(".studio-nav-link").first()).toBeVisible();
-    const stageAfter = (await page.locator(".studio-stage-column").boundingBox())!.width;
-    expect(stageAfter).toBeGreaterThan(stageBefore + 100);
-
-    await page.reload();
-    await expect(page.locator("#studio-nav-toggle")).toHaveAttribute("aria-expanded", "false");
-
-    // A rail link to a folded-away card opens the menu first.
-    await page.locator('.studio-nav-link[href="#today-section"]').click();
-    await expect(page.locator("#studio-nav-toggle")).toHaveAttribute("aria-expanded", "true");
-    await expect(page.locator("#today-section")).toBeVisible();
+    await expect(page.locator("#splash")).toHaveCount(0);
+    const over = await page.evaluate(() => ({
+      down: document.documentElement.scrollHeight - innerHeight,
+      across: document.documentElement.scrollWidth - innerWidth,
+    }));
+    expect(over).toEqual({ down: 0, across: 0 });
   });
 
   test("narrow screens: the menu starts as a closed drawer", async ({ page }) => {
@@ -80,17 +114,14 @@ test.describe("Studio Menu 2x3 Window & Fold", () => {
     const toggle = page.locator("#studio-nav-toggle");
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
     await expect(page.locator("#studio-nav-list")).toBeHidden();
-
     await toggle.click();
-    await expect(toggle).toHaveAttribute("aria-expanded", "true");
     await expect(page.locator("#studio-nav-list")).toBeVisible();
   });
 });
 
 test("a menu click moves the highlight and flashes its target", async ({ page }) => {
   await page.goto("/");
-  const toggle = page.locator("#studio-nav-toggle");
-  if ((await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
+  await openMenu(page);
   const link = page.locator('.studio-nav-link[href="#play-section"]');
   await link.click();
   await expect(link).toHaveClass(/active/);

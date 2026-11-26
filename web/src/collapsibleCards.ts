@@ -13,6 +13,8 @@
 // doesn't re-expand everything you'd already tidied away — same
 // per-viewer-convenience tier as the remembered username.
 
+import { showViewFor } from "./studioMenu";
+
 const STATE_KEY_PREFIX = "chegga-web:card-collapsed:";
 
 // Every card defaults collapsed on first load -- except these. "Your
@@ -73,6 +75,7 @@ function saveCollapsed(id: string, collapsed: boolean): void {
 export function expandCard(cardId: string): void {
   const card = document.getElementById(cardId);
   if (!card) return;
+  showViewFor(cardId); // it may sit on another screen or panel tab
   // A card parked behind the front-page "Coming soon" declutter (see
   // `data-coming-soon` in style.css) is still fully wired underneath --
   // an explicit deep link (a "Your focus" prescription, a #open= hash,

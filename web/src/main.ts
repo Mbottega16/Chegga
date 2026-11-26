@@ -16,6 +16,7 @@ installErrorOverlay(); // first, before anything else can throw
 import "./style.css";
 import "./review.css"; // the review screen's board furniture, summary, move list, chart, drill
 import "./mobile.css"; // small-viewport pass — loaded after style.css so equal-specificity rules win
+import "./shell.css"; // the one-screen layout: menu, board, tabbed side panel
 import { showEmptyStates, emptyFor, clearEmptyFor, wireEmptyStateCtas } from "./emptyStates";
 import { wireMiniBoardReplay } from "./miniBoardSvg";
 import { renderLabBentoGrid } from "./labBento";
@@ -41,7 +42,7 @@ import {
   iconImage,
   iconChevron,
 } from "./icons";
-import { setupStudioMenu, revealSection, showBoard } from "./studioMenu";
+import { setupStudioMenu, revealSection, selectPanelTab, showBoard } from "./studioMenu";
 import { saveBgSyncConfig, setupBackgroundSync } from "./backgroundSync";
 import { renderReviewCardCanvas, copyReviewCardImage, downloadReviewCardImage } from "./shareCard";
 import {
@@ -177,7 +178,6 @@ import {
 import {
   analyzePosition,
   getAnalysisEngine,
-  evalBarWhiteFraction,
   formatEval,
   bestMoveSquares,
   describeLines,
@@ -213,6 +213,7 @@ import {
 } from "./gameReviewView";
 import {
   renderEvalBar,
+  renderLiveEvalBar,
   renderPlayerBar,
   renderGameSummary,
   renderMoveList as renderReviewMoveList,
@@ -305,38 +306,6 @@ const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
   <a href="#main-content" class="skip-link">Skip to main content</a>
   <div class="wrap">
-    <header class="header">
-      <div class="brand">
-        <svg class="brand-mark" width="34" height="34" viewBox="0 0 64 64" aria-hidden="true">
-          <defs>
-            <linearGradient id="brand-grad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#22d3ee" />
-              <stop offset="100%" stop-color="#e3a857" />
-            </linearGradient>
-          </defs>
-          <rect width="64" height="64" rx="15" fill="#101520" stroke="#283347" stroke-width="2" />
-          <rect x="12" y="12" width="10" height="10" rx="2" fill="#22d3ee" />
-          <rect x="32" y="12" width="10" height="10" rx="2" fill="#e3a857" />
-          <rect x="22" y="22" width="10" height="10" rx="2" fill="#e3a857" />
-          <rect x="42" y="22" width="10" height="10" rx="2" fill="#22d3ee" />
-          <rect x="12" y="32" width="10" height="10" rx="2" fill="#e3a857" />
-          <rect x="32" y="32" width="10" height="10" rx="2" fill="#22d3ee" />
-          <rect x="22" y="42" width="10" height="10" rx="2" fill="#22d3ee" />
-          <rect x="42" y="42" width="10" height="10" rx="2" fill="#e3a857" />
-          <rect x="11" y="11" width="42" height="42" rx="4" fill="none" stroke="url(#brand-grad)" stroke-width="2" />
-        </svg>
-        <div class="brand-title-group">
-          <h1><span class="text-accent">Chegga</span></h1>
-          <span class="brand-badge">CHESS STUDIO</span>
-        </div>
-      </div>
-      <div class="header-actions">
-        <button type="button" id="hero-analyze-btn" class="header-action-btn" title="Sync & analyze games in the background">${iconConnect} <span id="header-sync-label">Sync</span></button>
-        <button type="button" id="theme-toggle-btn" class="header-theme-btn" title="Toggle theme mode (Dark / Light / OLED)">
-          <span id="theme-toggle-icon">${iconMoon}</span> <span id="theme-toggle-label">Dark</span>
-        </button>
-      </div>
-    </header>
 
     <p id="demo-banner" class="demo-banner" role="status" style="display:none">
       <span>You're viewing <strong>sample data</strong> — a made-up player, not a real account. Connect your own to see your games.</span>
@@ -393,115 +362,75 @@ app.innerHTML = `
     </dialog>
 
     <main id="main-content">
-    <div class="studio-workspace-grid" id="studio-grid">
-      <div class="studio-left-column">
-        <nav class="card studio-nav-card section-nav" id="studio-nav-panel" aria-label="Studio Menu">
+    <div class="studio-workspace-grid" id="studio-grid" data-view="board">
+      <div class="studio-left-column shell-nav">
+    <header class="header">
+      <div class="brand">
+        <svg class="brand-mark" width="34" height="34" viewBox="0 0 64 64" aria-hidden="true">
+          <defs>
+            <linearGradient id="brand-grad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#22d3ee" />
+              <stop offset="100%" stop-color="#e3a857" />
+            </linearGradient>
+          </defs>
+          <rect width="64" height="64" rx="15" fill="#101520" stroke="#283347" stroke-width="2" />
+          <rect x="12" y="12" width="10" height="10" rx="2" fill="#22d3ee" />
+          <rect x="32" y="12" width="10" height="10" rx="2" fill="#e3a857" />
+          <rect x="22" y="22" width="10" height="10" rx="2" fill="#e3a857" />
+          <rect x="42" y="22" width="10" height="10" rx="2" fill="#22d3ee" />
+          <rect x="12" y="32" width="10" height="10" rx="2" fill="#e3a857" />
+          <rect x="32" y="32" width="10" height="10" rx="2" fill="#22d3ee" />
+          <rect x="22" y="42" width="10" height="10" rx="2" fill="#22d3ee" />
+          <rect x="42" y="42" width="10" height="10" rx="2" fill="#e3a857" />
+          <rect x="11" y="11" width="42" height="42" rx="4" fill="none" stroke="url(#brand-grad)" stroke-width="2" />
+        </svg>
+        <div class="brand-title-group">
+          <h1><span class="text-accent">Chegga</span></h1>
+          <span class="brand-badge">CHESS STUDIO</span>
+        </div>
+      </div>
+    </header>
+        <nav class="studio-nav-card section-nav" id="studio-nav-panel" aria-label="Studio Menu">
           <div class="studio-nav-header">
             <h2 class="studio-nav-heading">
               <button type="button" class="studio-nav-toggle" id="studio-nav-toggle" aria-expanded="true" aria-controls="studio-nav-list">
-                <span class="studio-nav-heading-text">Studio Menu</span>
+                <span class="studio-nav-heading-text">Menu</span>
                 <span class="studio-nav-chevron">${iconChevron}</span>
               </button>
             </h2>
           </div>
-          <div class="studio-nav-list launchpad-grid-2x3" id="studio-nav-list">
-            <a href="#picker-section" class="studio-nav-link launchpad-tile active">
-              <div class="launchpad-tile-top">
-                <span class="nav-icon">${iconGames}</span>
-                <span class="launchpad-tile-kicker">Game Library</span>
-              </div>
-              <strong class="nav-text">Previously Played Games</strong>
-              <span class="launchpad-tile-desc">Look over a previously played game, paste a PGN or Lichess link, and step through move evaluations.</span>
+          <div class="studio-nav-list" id="studio-nav-list">
+            <a href="#picker-section" class="studio-nav-link active">
+              <span class="nav-icon">${iconGames}</span><span class="nav-text">Previously Played Games</span>
             </a>
-            <a href="#today-section" class="studio-nav-link launchpad-tile">
-              <div class="launchpad-tile-top">
-                <span class="nav-icon">${iconToday}</span>
-                <span class="launchpad-tile-kicker">Daily Practice</span>
-              </div>
-              <strong class="nav-text">Daily Training Sets</strong>
-              <span class="launchpad-tile-desc">Complete today's personalized training set, spaced-repetition blunders, and endgame drills.</span>
+            <a href="#today-section" class="studio-nav-link">
+              <span class="nav-icon">${iconToday}</span><span class="nav-text">Daily Training Sets</span>
             </a>
-            <a href="#play-section" class="studio-nav-link launchpad-tile">
-              <div class="launchpad-tile-top">
-                <span class="nav-icon">${iconStage}</span>
-                <span class="launchpad-tile-kicker">Stockfish</span>
-              </div>
-              <strong class="nav-text">Play vs. Bot</strong>
-              <span class="launchpad-tile-desc">Jump to the board to challenge Stockfish or study a position.</span>
+            <a href="#play-section" class="studio-nav-link" data-open-tab="analysis">
+              <span class="nav-icon">${iconStage}</span><span class="nav-text">Play vs. Bot</span>
             </a>
-            <a href="#sync-section" class="studio-nav-link launchpad-tile">
-              <div class="launchpad-tile-top">
-                <span class="nav-icon">${iconConnect}</span>
-                <span class="launchpad-tile-kicker">Account Sync</span>
-              </div>
-              <strong class="nav-text">Getting Connected.</strong>
-              <span class="launchpad-tile-desc">Enter your Chess.com or Lichess username to load your recent games in the background.</span>
+            <a href="#sync-section" class="studio-nav-link">
+              <span class="nav-icon">${iconConnect}</span><span class="nav-text">Getting Connected.</span>
             </a>
-            <button type="button" class="studio-nav-link launchpad-tile" data-dialog="customize-dialog" aria-haspopup="dialog">
-              <div class="launchpad-tile-top">
-                <span class="nav-icon">${iconTools}</span>
-                <span class="launchpad-tile-kicker">Make It Yours</span>
-              </div>
-              <strong class="nav-text">Customize</strong>
-              <span class="launchpad-tile-desc">Board colors, piece style, light or dark mode, accent color, sound and effects.</span>
+            <button type="button" class="studio-nav-link" data-dialog="customize-dialog" aria-haspopup="dialog">
+              <span class="nav-icon">${iconTools}</span><span class="nav-text">Customize</span>
             </button>
-            <button type="button" class="studio-nav-link launchpad-tile" data-dialog="feedback-dialog" aria-haspopup="dialog">
-              <div class="launchpad-tile-top">
-                <span class="nav-icon">${iconFeedback}</span>
-                <span class="launchpad-tile-kicker">Tell Me</span>
-              </div>
-              <strong class="nav-text">Feedback</strong>
-              <span class="launchpad-tile-desc">Report a bug or suggest what to change next.</span>
+            <button type="button" class="studio-nav-link" data-dialog="feedback-dialog" aria-haspopup="dialog">
+              <span class="nav-icon">${iconFeedback}</span><span class="nav-text">Feedback</span>
             </button>
-            <a href="#coming-soon-section" class="studio-nav-link launchpad-tile">
-              <div class="launchpad-tile-top">
-                <span class="nav-icon">${iconLab}</span>
-                <span class="launchpad-tile-kicker">Studio Lab Suite</span>
-              </div>
-              <strong class="nav-text">What's Coming Soon</strong>
-              <span class="launchpad-tile-desc">Explore the 15 upcoming Studio Lab tools, the 74-node Curriculum Map, and tactical reference guides.</span>
+            <a href="#coming-soon-section" class="studio-nav-link">
+              <span class="nav-icon">${iconLab}</span><span class="nav-text">What's Coming Soon</span>
             </a>
           </div>
         </nav>
-
-        <section class="card studio-today-card" id="today-section" data-tier="primary">
-          <h2>Daily Training Set</h2>
-          <div id="today-output"></div>
-        </section>
+      <div class="header-actions">
+        <button type="button" id="hero-analyze-btn" class="header-action-btn" title="Sync & analyze games in the background">${iconConnect} <span id="header-sync-label">Sync</span></button>
+        <button type="button" id="theme-toggle-btn" class="header-theme-btn" title="Toggle theme mode (Dark / Light / OLED)">
+          <span id="theme-toggle-icon">${iconMoon}</span> <span id="theme-toggle-label">Dark</span>
+        </button>
       </div>
-
-      <section class="card studio-sync-card" id="sync-section" data-tier="primary" data-non-collapsible="true">
-        <div class="sync-card-header">
-          <h2>Get connected.</h2>
-          <button type="button" class="sync-expand-toggle" id="sync-expand-toggle" title="Collapse connection panel" aria-label="Expand or collapse connection panel">
-            <span class="sync-toggle-icon">✕</span>
-          </button>
-        </div>
-        <p class="card-teaser" data-card-teaser>Enter your Chess.com or Lichess username to load your recent games and track your progress.</p>
-        <form id="sync-form" class="sync-form-grid">
-          <div class="sync-inputs-row">
-            <label for="sync-site" class="sr-only">Where you play</label>
-            <select id="sync-site">
-              <option value="chesscom">Chess.com</option>
-              <option value="lichess">Lichess</option>
-            </select>
-            <label for="username" class="sr-only">Chess.com or Lichess username</label>
-            <input id="username" type="text" placeholder="Username (e.g. MichaelBottega)" autocomplete="off" required />
-          </div>
-          <button type="submit" id="sync-btn" class="sr-only">Sync games</button>
-        </form>
-        <p id="sync-log" class="status-line"></p>
-        <div id="sync-progress"></div>
-        <p id="full-sync-prompt" class="status-line status-ok" style="display:none">
-          <span id="full-sync-prompt-text"></span> <button type="button" id="full-sync-btn">Get my full history</button>
-        </p>
-        <p id="lichess-history" class="status-line status-ok" style="display:none">
-          <span id="lichess-history-text"></span> <button type="button" id="lichess-history-btn">Get my full history</button>
-          <button type="button" id="lichess-history-cancel" style="display:none">Cancel</button>
-        </p>
-        <p id="background-analyze-log" class="status-line status-ok" style="display:none"></p>
-        <div id="background-analyze-progress"></div>
-      </section>
+        <span class="rail-label" aria-hidden="true">Menu</span>
+      </div>
 
       <div class="studio-stage-column">
         <section class="card studio-stage-card" id="play-section" data-tier="primary" data-non-collapsible="true">
@@ -514,11 +443,65 @@ app.innerHTML = `
             <div class="board-column">
               <div id="review-player-top" class="review-player-slot" hidden></div>
               <div class="board-row">
-                <div id="review-eval-bar-host" class="review-eval-bar-host" hidden></div>
+                <div id="review-eval-bar-host" class="review-eval-bar-host"></div>
                 <div class="play-board-wrap" id="play-board-wrap"></div>
               </div>
               <div id="review-player-bottom" class="review-player-slot" hidden></div>
             </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="studio-right-column" id="side-panel">
+        <div class="side-panel-bar">
+          <div class="panel-tabs" role="tablist" aria-label="Side panel">
+            <button type="button" role="tab" id="tab-games" aria-controls="panel-games" aria-selected="true">Games</button>
+            <button type="button" role="tab" id="tab-analysis" aria-controls="panel-analysis" aria-selected="false" tabindex="-1">Analysis</button>
+            <button type="button" role="tab" id="tab-connect" aria-controls="panel-connect" aria-selected="false" tabindex="-1">Connect</button>
+          </div>
+          <button type="button" class="side-panel-toggle" id="side-panel-toggle" aria-expanded="true" title="Collapse the side panel" aria-label="Collapse or expand the side panel">
+            <span class="side-panel-chevron" aria-hidden="true">${iconChevron}</span>
+          </button>
+          <span class="rail-label" aria-hidden="true">Panel</span>
+        </div>
+        <div class="side-panel-body">
+          <div class="panel-page" role="tabpanel" id="panel-games" data-panel="games" aria-labelledby="tab-games">
+        <section class="card studio-import-card" id="import-section" data-tier="primary" data-non-collapsible="true">
+          <h2 class="import-heading">Review any game</h2>
+          <form id="import-form" class="import-form">
+            <label for="import-input" class="sr-only">A PGN or a Lichess game link</label>
+            <textarea id="import-input" rows="2" spellcheck="false" autocomplete="off" placeholder="Paste a PGN or a lichess.org game link"></textarea>
+            <div class="import-row">
+              <label for="import-side" class="sr-only">Review as</label>
+              <select id="import-side">
+                <option value="auto">As: auto</option>
+                <option value="white">As White</option>
+                <option value="black">As Black</option>
+              </select>
+              <button type="submit" id="import-btn">Review</button>
+            </div>
+          </form>
+          <div id="import-progress"></div>
+          <p id="import-status" class="status-line" role="status"></p>
+          <div class="recent-games" id="recent-games" hidden>
+            <div class="recent-head">
+              <h3 id="recent-heading">Last 10 games</h3>
+              <label for="recent-search" class="sr-only">Search your games by opening or opponent</label>
+              <input type="search" id="recent-search" name="recent-search" placeholder="Opening or opponent…" autocomplete="off" spellcheck="false" />
+            </div>
+            <ul class="recent-list" id="recent-list"></ul>
+          </div>
+        </section>
+        <section class="card studio-picker-card" id="picker-section" data-tier="primary" data-non-collapsible="true">
+          <div class="picker-card-header">
+            <h2>Previously Played Games</h2>
+          </div>
+          <div id="picker-output"></div>
+          <p id="picker-status" class="status-line" role="status"></p>
+          <div id="saved-positions"></div>
+        </section>
+          </div>
+          <div class="panel-page" role="tabpanel" id="panel-analysis" data-panel="analysis" aria-labelledby="tab-analysis" hidden>
             <div class="play-sidebar">
               <div id="review-panel" style="display:none">
                 <div class="review-header-bar">
@@ -528,13 +511,6 @@ app.innerHTML = `
                     <button type="button" class="kbd-help-btn" id="review-kbd-help-btn" title="View keyboard shortcuts">⌨ Shortcuts</button>
                   </div>
                 </div>
-                <div id="review-summary-host"></div>
-                <div id="review-strip-host"></div>
-                <div class="review-broadcast-banner">
-                  <p id="review-caption" class="review-caption" aria-live="polite" aria-atomic="true"></p>
-                  <p id="review-why" class="review-why" style="display:none"></p>
-                  <div id="review-blunder-dna-host" style="display:none"></div>
-                </div>
                 <button type="button" id="review-heatmap-btn" class="heatmap-btn" aria-pressed="false">🔥 Move heatmap</button>
                 <p class="heatmap-legend" id="heatmap-legend" hidden>
                   ${["brilliant", "best", "excellent", "good", "inaccuracy", "mistake", "blunder"]
@@ -542,7 +518,14 @@ app.innerHTML = `
                     .join("")}
                   <span class="hm-hint">Point at or tap a piece to bring its moves to the front. The dashed edge marks the move played.</span>
                 </p>
-                <div class="review-buttons">
+                <div id="review-summary-host"></div>
+                <div id="review-strip-host"></div>
+                <div class="review-broadcast-banner">
+                  <p id="review-caption" class="review-caption" aria-live="polite" aria-atomic="true"></p>
+                  <p id="review-why" class="review-why" style="display:none"></p>
+                  <div id="review-blunder-dna-host" style="display:none"></div>
+                </div>
+                <div class="review-buttons review-nav">
                   <button type="button" id="review-first" aria-label="Jump to the starting position">⏮</button>
                   <button type="button" id="review-prev" aria-label="Previous move">◀</button>
                   <button type="button" id="review-next" aria-label="Next move">▶</button>
@@ -619,19 +602,17 @@ app.innerHTML = `
                 <p id="post-game-export-status" class="status-line status-ok" style="display:none"></p>
               </div>
             </div>
-          </div>
-
           <div class="studio-stage-footer-controls">
             <h2>Play vs. Bot &amp; Game Review</h2>
             <div class="play-controls play-controls-primary">
               <label for="bot-elo">Bot</label>
               <input type="range" id="bot-elo" min="100" max="3000" step="10" value="800" />
               <span id="bot-elo-value" class="play-elo-value">800 Elo</span>
-              <label for="bot-color">Side</label>
+              <span class="control-pair"><label for="bot-color">Side</label>
               <select id="bot-color">
                 <option value="white">White</option>
                 <option value="black">Black</option>
-              </select>
+              </select></span>
               <button type="button" id="bot-new-game-btn">New game</button>
               <button type="button" id="bot-undo-btn" class="btn-quiet">Undo</button>
               <details class="studio-settings-drawer">
@@ -659,54 +640,51 @@ app.innerHTML = `
               </details>
             </div>
           </div>
-        </section>
-      </div>
-
-      <div class="studio-right-column">
-        <div class="side-panel-bar">
-          <button type="button" class="side-panel-toggle" id="side-panel-toggle" aria-expanded="true" title="Collapse the games panel" aria-label="Collapse or expand the games panel">
-            <span class="side-panel-chevron" aria-hidden="true">${iconChevron}</span>
+          </div>
+          <div class="panel-page" role="tabpanel" id="panel-connect" data-panel="connect" aria-labelledby="tab-connect" hidden>
+      <section class="card studio-sync-card" id="sync-section" data-tier="primary" data-non-collapsible="true">
+        <div class="sync-card-header">
+          <h2>Get connected.</h2>
+          <button type="button" class="sync-expand-toggle" id="sync-expand-toggle" title="Collapse connection panel" aria-label="Expand or collapse connection panel">
+            <span class="sync-toggle-icon">✕</span>
           </button>
-          <button type="button" class="side-panel-rail-btn" data-side-open="import-section" title="Review any game" aria-label="Review any game">${iconStage}</button>
-          <button type="button" class="side-panel-rail-btn" data-side-open="picker-section" title="Previously Played Games" aria-label="Previously Played Games">${iconGames}</button>
         </div>
-        <section class="card studio-import-card" id="import-section" data-tier="primary" data-non-collapsible="true">
-          <h2 class="import-heading">Review any game</h2>
-          <form id="import-form" class="import-form">
-            <label for="import-input" class="sr-only">A PGN or a Lichess game link</label>
-            <textarea id="import-input" rows="2" spellcheck="false" autocomplete="off" placeholder="Paste a PGN or a lichess.org game link"></textarea>
-            <div class="import-row">
-              <label for="import-side" class="sr-only">Review as</label>
-              <select id="import-side">
-                <option value="auto">As: auto</option>
-                <option value="white">As White</option>
-                <option value="black">As Black</option>
-              </select>
-              <button type="submit" id="import-btn">Review</button>
-            </div>
-          </form>
-          <div id="import-progress"></div>
-          <p id="import-status" class="status-line" role="status"></p>
-          <div class="recent-games" id="recent-games" hidden>
-            <div class="recent-head">
-              <h3 id="recent-heading">Last 10 games</h3>
-              <label for="recent-search" class="sr-only">Search your games by opening or opponent</label>
-              <input type="search" id="recent-search" name="recent-search" placeholder="Opening or opponent…" autocomplete="off" spellcheck="false" />
-            </div>
-            <ul class="recent-list" id="recent-list"></ul>
+        <p class="card-teaser" data-card-teaser>Enter your Chess.com or Lichess username to load your recent games and track your progress.</p>
+        <form id="sync-form" class="sync-form-grid">
+          <div class="sync-inputs-row">
+            <label for="sync-site" class="sr-only">Where you play</label>
+            <select id="sync-site">
+              <option value="chesscom">Chess.com</option>
+              <option value="lichess">Lichess</option>
+            </select>
+            <label for="username" class="sr-only">Chess.com or Lichess username</label>
+            <input id="username" type="text" placeholder="Username (e.g. MichaelBottega)" autocomplete="off" required />
           </div>
-        </section>
-        <section class="card studio-picker-card" id="picker-section" data-tier="primary" data-non-collapsible="true">
-          <div class="picker-card-header">
-            <h2>Previously Played Games</h2>
+          <button type="submit" id="sync-btn" class="sr-only">Sync games</button>
+        </form>
+        <p id="sync-log" class="status-line"></p>
+        <div id="sync-progress"></div>
+        <p id="full-sync-prompt" class="status-line status-ok" style="display:none">
+          <span id="full-sync-prompt-text"></span> <button type="button" id="full-sync-btn">Get my full history</button>
+        </p>
+        <p id="lichess-history" class="status-line status-ok" style="display:none">
+          <span id="lichess-history-text"></span> <button type="button" id="lichess-history-btn">Get my full history</button>
+          <button type="button" id="lichess-history-cancel" style="display:none">Cancel</button>
+        </p>
+        <p id="background-analyze-log" class="status-line status-ok" style="display:none"></p>
+        <div id="background-analyze-progress"></div>
+      </section>
           </div>
-          <div id="picker-output"></div>
-          <p id="picker-status" class="status-line" role="status"></p>
-          <div id="saved-positions"></div>
+        </div>
+      </div>
+
+      <div class="shell-view" data-shell-view="training">
+        <section class="card studio-today-card" id="today-section" data-tier="primary">
+          <h2>Daily Training Set</h2>
+          <div id="today-output"></div>
         </section>
       </div>
-    </div>
-
+      <div class="shell-view" data-shell-view="lab">
     <div class="studio-bento-row">
       <section class="card studio-focus-card" id="focus-section" data-tier="primary" style="display:none">
         <h2>Your Focus</h2>
@@ -804,37 +782,6 @@ app.innerHTML = `
       </div>
       <div id="redemption-output"></div>
     </section>
-
-    <!-- 3D board full-screen view. Off the normal page flow (position:fixed
-         in style.css) -- opened by the "3D board" checkbox above, not a
-         separate route. Status/hang-warning/analysis/move-list are the
-         SAME DOM nodes from play-section above, re-parented in and back
-         out (see openFullscreen3D/closeFullscreen3D), so nothing here
-         duplicates their rendering. -->
-    <div id="play-fullscreen" class="play-fullscreen" style="display:none">
-      <div class="play-fullscreen-board" id="play-fullscreen-board"></div>
-      <div class="play-fullscreen-side">
-        <div class="play-fullscreen-side-header">
-          <span class="play-fullscreen-title">Play vs. bot — 3D</span>
-          <button type="button" id="fullscreen-exit-btn" class="fullscreen-exit-btn" aria-label="Exit full-screen 3D view">✕</button>
-        </div>
-        <div class="play-fullscreen-controls">
-          <button type="button" id="fullscreen-new-game-btn">New game</button>
-          <button type="button" id="fullscreen-undo-btn" class="btn-quiet">Undo</button>
-        </div>
-        <p class="tagline" style="margin:0">Drag to rotate, scroll or pinch to zoom, click a piece then a square to move.</p>
-        <div id="fullscreen-promotion" class="fullscreen-promotion" style="display:none">
-          <p class="status-line" style="margin:0 0 8px">Promote to:</p>
-          <div class="fullscreen-promotion-choices">
-            <button type="button" data-promote="q">Queen</button>
-            <button type="button" data-promote="r">Rook</button>
-            <button type="button" data-promote="b">Bishop</button>
-            <button type="button" data-promote="n">Knight</button>
-          </div>
-        </div>
-        <div id="fullscreen-slot" class="play-fullscreen-slot"></div>
-      </div>
-    </div>
 
     <section class="card" id="vision-section" data-tier="secondary" data-coming-soon="true" style="display:none">
       <h2>Vision trainer — is anything hanging?</h2>
@@ -1032,8 +979,6 @@ app.innerHTML = `
           </div>
         </details>
       </div>
-    </div>
-    </main>
     <footer class="site-footer">
       <p>
         Puzzle data from the <a href="https://database.lichess.org" target="_blank" rel="noopener">Lichess open database</a> (CC0).
@@ -1044,11 +989,47 @@ app.innerHTML = `
         <a href="?tutorial=1" id="replay-tutorial">Replay the tutorial</a>
       </p>
     </footer>
+      </div>
+    </div>
+
+    <!-- 3D board full-screen view. Off the normal page flow (position:fixed
+         in style.css) -- opened by the "3D board" checkbox above, not a
+         separate route. Status/hang-warning/analysis/move-list are the
+         SAME DOM nodes from play-section above, re-parented in and back
+         out (see openFullscreen3D/closeFullscreen3D), so nothing here
+         duplicates their rendering. -->
+    <div id="play-fullscreen" class="play-fullscreen" style="display:none">
+      <div class="play-fullscreen-board" id="play-fullscreen-board"></div>
+      <div class="play-fullscreen-side">
+        <div class="play-fullscreen-side-header">
+          <span class="play-fullscreen-title">Play vs. bot — 3D</span>
+          <button type="button" id="fullscreen-exit-btn" class="fullscreen-exit-btn" aria-label="Exit full-screen 3D view">✕</button>
+        </div>
+        <div class="play-fullscreen-controls">
+          <button type="button" id="fullscreen-new-game-btn">New game</button>
+          <button type="button" id="fullscreen-undo-btn" class="btn-quiet">Undo</button>
+        </div>
+        <p class="tagline" style="margin:0">Drag to rotate, scroll or pinch to zoom, click a piece then a square to move.</p>
+        <div id="fullscreen-promotion" class="fullscreen-promotion" style="display:none">
+          <p class="status-line" style="margin:0 0 8px">Promote to:</p>
+          <div class="fullscreen-promotion-choices">
+            <button type="button" data-promote="q">Queen</button>
+            <button type="button" data-promote="r">Rook</button>
+            <button type="button" data-promote="b">Bishop</button>
+            <button type="button" data-promote="n">Knight</button>
+          </div>
+        </div>
+        <div id="fullscreen-slot" class="play-fullscreen-slot"></div>
+      </div>
+    </div>
+
+    </main>
   </div>
 `;
 
 setupCollapsibleCards();
 setupStudioMenu();
+document.querySelector("#review-eval-bar-host")!.innerHTML = renderLiveEvalBar("white");
 setupMobileTaglines();
 wireEmptyStateCtas();
 wireMiniBoardReplay(document);
@@ -1480,23 +1461,15 @@ async function updateAnalysisPanel(board: PlayBoard, justMovedTo?: Square, justM
     if (justMovedTo) applyMoveQualityJuice(board, justMovedTo, sideToMove, result, justMovedUci);
     lastPositionEval = { cp: result.whiteRelativeCp, mate: result.whiteRelativeMate, fen };
 
-    const whiteFraction = evalBarWhiteFraction(result.whiteRelativeCp, result.whiteRelativeMate);
     const lines = describeLines(fen, result);
     const best = bestMoveSquares(result);
     board.showArrow(best?.from, best?.to);
 
-    const evalLabel = formatEval(result.whiteRelativeCp, result.whiteRelativeMate);
     const linesHtml = lines
       .map((l, i) => `<div class="status-line">${i + 1}. ${l.san} (${formatEval(l.cp, l.mate)})</div>`)
       .join("");
-    analysisOutput.innerHTML = `
-      <div class="eval-bar-wrap">
-        <div class="eval-bar-white" style="width:${(whiteFraction * 100).toFixed(1)}%"></div>
-        <div class="eval-bar-black" style="width:${(100 - whiteFraction * 100).toFixed(1)}%"></div>
-        <span class="eval-bar-label">${evalLabel}</span>
-      </div>
-      <div class="eval-lines">${linesHtml}</div>
-    `;
+    reviewEvalBarHost.innerHTML = renderLiveEvalBar(humanColor, { cp: result.whiteRelativeCp, mate: result.whiteRelativeMate });
+    analysisOutput.innerHTML = `<div class="eval-lines">${linesHtml}</div>`;
   } catch (err: any) {
     lastPositionEval = null;
     analysisOutput.innerHTML = `<p class="status-line status-error">Analysis failed: ${err.message ?? err}</p>`;
@@ -1958,12 +1931,13 @@ function renderBoardFurniture(r: ReviewGame, index: number) {
 }
 
 function setBoardFurnitureVisible(visible: boolean) {
-  reviewEvalBarHost.hidden = !visible;
   reviewPlayerTop.hidden = !visible;
   reviewPlayerBottom.hidden = !visible;
   playLayout.classList.toggle("is-reviewing", visible);
+  document.querySelector("#studio-grid")!.classList.toggle("is-reviewing", visible);
+  if (visible) selectPanelTab("analysis");
   if (!visible) {
-    reviewEvalBarHost.innerHTML = "";
+    reviewEvalBarHost.innerHTML = renderLiveEvalBar(humanColor);
     reviewPlayerTop.innerHTML = "";
     reviewPlayerBottom.innerHTML = "";
   }
@@ -2567,6 +2541,7 @@ function startTry(p: Puzzle) {
   board3dInstance?.setPosition(board.getFen());
   refreshBoard3DSelection(board);
   tryPanel.style.display = "";
+  selectPanelTab("analysis");
   tryStatus.textContent = `Your turn as ${p.sideToMove}. Find a better move than ${p.playedSan} — it cost ${(p.centipawnLoss / 100).toFixed(1)} pawns in the game.`;
   tryAgainBtn.style.display = "none";
   tryShowBtn.style.display = "none";
@@ -3167,6 +3142,8 @@ function ensurePlayBoard(): PlayBoard {
 
 botNewGameBtn.addEventListener("click", async () => {
   showBoard();
+  selectPanelTab("analysis");
+  reviewEvalBarHost.innerHTML = renderLiveEvalBar(botColorSelect.value === "black" ? "black" : "white");
   humanColor = botColorSelect.value === "black" ? "black" : "white";
   sanHistory = [];
   gameReportedThisGame = false;

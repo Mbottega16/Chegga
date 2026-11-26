@@ -28,11 +28,11 @@
 /* While a review is open the eval bar takes 30px of the row, so the board
    gives it back (the same container-unit sizing as style.css). */
 @media (min-width: 601px) {
-  .studio-stage-card .play-layout.is-reviewing .play-board {
+  .studio-stage-card .play-layout .play-board {
     grid-template-columns: repeat(8, min(84px, calc((100cqi - 70px) / 8)));
     grid-template-rows: repeat(8, min(84px, calc((100cqi - 70px) / 8)));
   }
-  .studio-stage-card .play-layout.is-reviewing .play-piece {
+  .studio-stage-card .play-layout .play-piece {
     font-size: min(58px, calc((100cqi - 64px) / 8 * 0.69));
   }
 }
@@ -599,14 +599,14 @@ button.rs-count:focus-visible {
   }
   /* mobile.css sizes squares as (100vw - 72px) / 8; the eval bar and its
      gap take 30px more of the row while a review is open. */
-  .play-layout.is-reviewing .play-board {
+  .play-layout .play-board {
     grid-template-columns: repeat(8, min(calc((100vw - 102px) / 8), 52px)) !important;
     grid-template-rows: repeat(8, min(calc((100vw - 102px) / 8), 52px)) !important;
   }
-  .play-layout.is-reviewing .play-piece {
+  .play-layout .play-piece {
     font-size: min(calc((100vw - 102px) / 8 * 0.74), 38px) !important;
   }
-  .play-layout.is-reviewing .play-board-wrap {
+  .play-layout .play-board-wrap {
     margin-bottom: 0 !important;
   }
   .rpb {

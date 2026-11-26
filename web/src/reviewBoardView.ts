@@ -43,26 +43,40 @@ export function formatEval(cp: number | undefined, mate: number | undefined): st
   return `${pawns > 0 ? "+" : ""}${text}`;
 }
 
+function evalBarHtml(white: number, label: string, spoken: string, orientation: Side): string {
+  const whiteAhead = white >= 50;
+  // The label sits at the leading side's end of the bar.
+  const labelEnd = (orientation === "white") === whiteAhead ? "bottom" : "top";
+  return `<div class="review-eval-bar" data-orientation="${orientation}" role="img" aria-label="${esc(spoken)}">
+    <div class="review-eval-fill" style="height:${white.toFixed(1)}%"></div>
+    <span class="review-eval-label review-eval-label-${labelEnd} ${whiteAhead ? "on-white" : "on-black"}" aria-hidden="true">${esc(label)}</span>
+  </div>`;
+}
+
 /** The vertical bar beside the board. White's share is White's winning
  * chance; it grows from whichever edge White sits on. */
 export function renderEvalBar(review: ReviewGame, index: number, orientation: Side): string {
   const ev = evalAt(review, index);
   const white = ev ? winChance(ev.cp, ev.mate) : 50;
   const label = ev ? formatEval(ev.cp, ev.mate) : "0.0";
-  const whiteAhead = white >= 50;
-  const leader = whiteAhead ? "White" : "Black";
+  const leader = white >= 50 ? "White" : "Black";
   const spoken = !ev
     ? "Evaluation not available"
     : Math.abs(white - 50) < 2
       ? `Evaluation ${label}: about level`
       : `Evaluation ${label}: ${leader} is better`;
-  // The label sits at the leading side's end of the bar.
-  const labelAtWhiteEnd = whiteAhead;
-  const labelEnd = (orientation === "white") === labelAtWhiteEnd ? "bottom" : "top";
-  return `<div class="review-eval-bar" data-orientation="${orientation}" role="img" aria-label="${esc(spoken)}">
-    <div class="review-eval-fill" style="height:${white.toFixed(1)}%"></div>
-    <span class="review-eval-label review-eval-label-${labelEnd} ${labelAtWhiteEnd ? "on-white" : "on-black"}" aria-hidden="true">${esc(label)}</span>
-  </div>`;
+  return evalBarHtml(white, label, spoken, orientation);
+}
+
+/** The same bar outside a review: level at rest, or following the engine
+ * during a bot game. */
+export function renderLiveEvalBar(
+  orientation: Side,
+  live?: { cp: number | undefined; mate: number | undefined },
+): string {
+  const white = live ? winChance(live.cp, live.mate) : 50;
+  const label = live ? formatEval(live.cp, live.mate) : "0.0";
+  return evalBarHtml(white, label, `Evaluation ${label}`, orientation);
 }
 
 const CAPTURE_GLYPH: Record<Side, Record<string, string>> = {
