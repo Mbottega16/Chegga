@@ -48,7 +48,7 @@ Chegga was consolidated on 2026-08-28 so that `web/` is the entire product. On 2
 | `board3d.ts` | Three.js 360° 3D board (`LatheGeometry` Staunton pieces, orbit/pinch zoom, full-screen overlay, shared CSS theme variables). |
 | `engine.ts`, `engineAnalysis.ts` | Web Worker Stockfish UCI bridge (depth 14, MultiPV 3 candidate lines, lazy WASM initialization). |
 | `gameReview.ts`, `gameReviewView.ts` | Turn-by-turn review timeline, broadcast classification banner, glowing SVG evaluation curve with time-trouble heat bands & scrubbing (`8f5c65b`, `c98ab4a`), PGN + NAG export & shareable summary cards (`f6042de`). |
-| `gamePicker.ts`, `gamePickerView.ts`, `miniBoardSvg.ts` | Visual card picker with 8×8 SVG mini-board position previews (`miniBoardSvg.ts`), result/status badges, 5-pip Leitner mastery meters on Saved Positions, and instant demo dataset (`b540947`). |
+| `gamePicker.ts`, `gamePickerView.ts`, `miniBoardSvg.ts`, `opponentAvatars.ts` | Visual card picker with 8×8 SVG mini-board position previews (`miniBoardSvg.ts`), result/status badges, 5-pip Leitner mastery meters on Saved Positions, and instant demo dataset (`b540947`). The last-10 list shows each Chess.com opponent's profile picture (`opponentAvatars.ts`), initials otherwise. |
 | `todayView.ts`, `profileView.ts`, `emptyStates.ts` | SVG circular daily training ring (`todayView.ts`), radial move-quality donut chart + 2×2 bento analytics (`profileView.ts`), and graphic SVG empty-state illustrations (`emptyStates.ts`). |
 | `moveExplanation.ts`, `classificationColors.ts` | Rule-based tactical explanations (forks, pins, hanging pieces — no LLM API cost) and colorblind-safe move classification palette (Brilliant, Great, Best, Excellent, Good, Book, Inaccuracy, Mistake, Miss, Blunder). |
 | `juice.ts`, `soundEffects.ts` | Particle bursts, celebration overlays, and synthesized Web Audio tactile clicks/chimes. |
@@ -65,7 +65,7 @@ Run from `web/` (or use root `npm test` / `npm run build` which proxy to `web/`)
 
 ```powershell
 cd web
-npm test               # Vitest unit suite (389 tests) — MUST pass before any commit
+npm test               # Vitest unit suite (409 tests) — MUST pass before any commit
 npm run build          # TypeScript typecheck (tsc) + Vite production build
 npm run test:smoke     # Playwright E2E smoke suite (review picker, tutorial, sync, mobile)
 npm run pre-push       # Full pre-push gate (npm test && npm run build) — runs automatically on git push
@@ -91,7 +91,7 @@ To prevent multi-megabyte data blobs and archived legacy apps from slowing down 
 
 1. **VS Code Simple Browser HMR Trap:** Vite HMR causes "dead buttons" when previewing inside VS Code's Simple Browser webview. Always use `npm run dev:vscode` (static build + preview) for Simple Browser, or test in a real browser / Playwright.
 2. **Zero Server / Zero LLM Spend:** Everything runs client-side. The Anthropic coaching service is mocked/parked by decision (`ANTHROPIC_API_KEY` unset). Move explanations must stay deterministic and rule-based in `moveExplanation.ts`.
-3. **Privacy Pitch vs. Third-Party Widgets:** Chegga's core pitch is "nothing leaves your device." Featurebase and Tally feedback embeds live only in the optional feedback card.
+3. **Privacy Pitch vs. Third-Party Widgets:** Chegga's core pitch is "nothing leaves your device." Featurebase and Tally feedback embeds live only in the optional feedback card. Opponent pictures are the one image the app loads from another site: Chess.com's own image server, sent with no referrer, looked up one at a time and cached for a week (`opponentAvatars.ts`). Lichess has no pictures.
 4. **Accessibility & Colorblind Safety:** Every move classification must pair color from `classificationColors.ts` with its distinct glyph badge (`!!`, `!`, `✦`, `✓`, `?!`, `?`, `??`, `📖`), and board changes must preserve 64-square ARIA labels and keyboard navigation.
 5. **Lazy-Load Heavy Assets:** Both Stockfish WASM and `curated-puzzles.json` (16.2 MB) must remain lazy-loaded on first use so initial page load stays ~76 KB gzipped.
 6. **Three different heatmaps — don't conflate them:** the play-vs-bot **square control**
@@ -105,19 +105,15 @@ To prevent multi-megabyte data blobs and archived legacy apps from slowing down 
 
 *Overwrite this at the end of every session; move the previous handoff into `HISTORY.md` first.*
 
-- **Last Worked On (2026-11-26, PC, Claude):** the owner's UI review list.
-  - **Menu:** flush to the left edge, full height; "Get connected." moved into it (hidden when folded). Side panel tabs: Games, Analysis. No sideways rail words. The whole sidebar scrolls (`.section-nav` wraps, so a squeezed menu split in two).
-  - **Review buttons:** icons only; the name shows in a hover/focus pill (`data-tip`) and `aria-label`. Use `setIconButtonLabel()` (`main.ts`) to change one. Step bar: start, back, play (dark blue, centre), forward, end.
-  - **Removed:** worst move, fix your mistakes, save key moments, the "position before" checkbox (heatmap button / `B` do it), the idle "Ready" line. `W` and `F` shortcuts remain.
-  - **Evaluation Flow:** phase names in a strip under the chart, reading leftward near the right edge; opaque sticky step bar.
-  - **Turning point:** one card (`renderTurningPoint`, `turningPointSentences`) replaces the chip ticker.
-  - **Trails:** `chooseTrailBend` / `splitTrail` tested (board-safe bow, no arrowhead kink).
-- **Current State:** Vitest 389/389; build clean. Playwright `studio-layout`, `smoke`, `review-picker`: all pass on desktop, mobile and WebKit. Two `review-picker` tests now pick the right tab first.
-  - Not touched: 9 stale `live-verify.spec.ts` tests.
+- **Last Worked On (2026-11-26, PC, Claude):** opponents' profile pictures in the "Last 10 games" list (the earlier review UI pass is in `HISTORY.md`).
+  - `opponentAvatars.ts` looks each Chess.com opponent up with `GET /pub/player/{name}` (`ChessComClient.getPlayer`): one at a time, never during a game download. Every answer, "no picture" included, is cached for a week in localStorage (`chegga-web:opponent-avatars`). A rate limit or network error stops lookups until the next visit.
+  - Only https links on `chesscomfiles.com` reach an `<img>`, checked again when the cache is read back; images load with no referrer. Lichess players, the sample games and players with no picture show initials. `PickerCard.site` now says where a game was played.
+- **Current State:** Vitest 409/409; build clean. Playwright `review-picker` (with a new picture test), `smoke`, `studio-layout`, `lichess-history`: pass on desktop, mobile and WebKit. On phones the `lichess-history` tests now open the menu drawer first.
+  - Failing before and after this session (checked on `d028319`): `tutorial.spec.ts:282` and `opening-insight.spec.ts:170` (their targets sit in hidden views), plus 9 stale `live-verify.spec.ts` tests.
   - **Known defect:** `web/public/sw.js` opens IndexedDB at version 4 (`db.ts` is 5), and its config key does not fit `syncState`. Closed-app background sync cannot work.
 - **Next Up:**
-  1. Owner playtest of the review screen (`npm run dev:playtest`, port 5175).
-  2. Rewrite the stale `live-verify.spec.ts` tests for the one-screen layout.
+  1. Owner playtest of the pictures and the review screen (`npm run dev:playtest`, port 5175).
+  2. Fix the e2e tests the one-screen layout broke: `live-verify` (9), `tutorial.spec.ts:282`, `opening-insight.spec.ts:170`.
   3. Fix the `sw.js` IndexedDB version and config storage.
   4. Real-phone check: heatmap, 3D pinch-zoom, eval-curve scrubbing, large-account sync on Safari.
   5. `REQUIREMENTS.md` work, in the order `PLAN.md` sets.

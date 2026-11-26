@@ -119,6 +119,12 @@ export class ChessComClient {
     const data = await this.get<{ games?: ChessComRawGame[] }>(archiveUrl);
     return data.games ?? [];
   }
+
+  /** A player's public profile. Only `avatar` is used (opponentAvatars.ts);
+   * a player with no picture has no `avatar` field. */
+  async getPlayer(username: string): Promise<{ avatar?: unknown }> {
+    return this.get<{ avatar?: unknown }>(`${CHESS_COM_API_BASE}/player/${encodeURIComponent(username.toLowerCase())}`);
+  }
 }
 
 function sleep(ms: number): Promise<void> {

@@ -46,10 +46,12 @@ const GAME = {
   analyzed: false,
 };
 
-async function seedAndLoad(page: Page) {
+/** `moreRoutes` runs after the catch-all Chess.com stub, so its routes win. */
+async function seedAndLoad(page: Page, moreRoutes?: (page: Page) => Promise<void>) {
   await page.route("https://api.chess.com/**", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ archives: [] }) }),
   );
+  await moreRoutes?.(page);
   await page.goto("/");
   await page.waitForTimeout(800); // let the app create its DB
   await page.evaluate(async (game) => {
@@ -76,6 +78,39 @@ async function playMove(page: Page, from: string, to: string) {
   await page.locator(`#play-board-wrap [data-square="${from}"]`).click();
   await page.locator(`#play-board-wrap [data-square="${to}"]`).click();
 }
+
+const AVATAR = "https://images.chesscomfiles.com/uploads/v1/user/e2e-rival.png";
+// A 1x1 PNG, so the picture really loads without the network.
+const PNG_1X1 = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+  "base64",
+);
+
+test("the last-10 list shows a Chess.com opponent's profile picture, and remembers it", async ({ page }) => {
+  const problems: string[] = [];
+  page.on("pageerror", (e) => problems.push(`pageerror: ${e.message}`));
+  let lookups = 0;
+  page.on("request", (r) => {
+    if (r.url() === "https://api.chess.com/pub/player/rival") lookups += 1;
+  });
+  await seedAndLoad(page, async (p) => {
+    await p.route("https://api.chess.com/pub/player/rival", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ username: "rival", avatar: AVATAR }) }),
+    );
+    await p.route(AVATAR, (route) => route.fulfill({ status: 200, contentType: "image/png", body: PNG_1X1 }));
+  });
+
+  const picture = page.locator("#recent-list .recent-avatar img");
+  await expect(picture).toHaveAttribute("src", AVATAR);
+  await expect.poll(() => picture.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
+  expect(lookups).toBe(1);
+
+  // A week-long memory: a reload shows the picture with no new lookup.
+  await page.reload();
+  await expect(picture).toHaveAttribute("src", AVATAR);
+  expect(lookups).toBe(1);
+  expect(problems, problems.join("\n")).toEqual([]);
+});
 
 test.describe("game picker and review", () => {
   test.setTimeout(150_000);

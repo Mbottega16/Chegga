@@ -5859,6 +5859,30 @@ section.card,
 [data-theme="light"] .recent-result-loss {
   color: #b91c1c;
 }
+/* The opponent's Chess.com picture, or their initials (opponentAvatars.ts). */
+.recent-avatar {
+  flex: 0 0 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  overflow: hidden;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: var(--panel-hover);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.recent-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 .recent-main {
   display: flex;
   flex-direction: column;

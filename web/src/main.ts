@@ -89,6 +89,15 @@ import { DEMO_USERNAME, clearDemoData, isDemoActive, loadDemoData } from "./demo
 import { seedPlaytestData } from "./playtestSeed";
 import { reloadBehindSplash, splashReady } from "./splash";
 import { ChessComClient } from "./chessComClient";
+import {
+  avatarKey,
+  fetchChessComAvatar,
+  loadAvatarCache,
+  namesToLookUp,
+  renderAvatarInner,
+  runAvatarLookups,
+  saveAvatarCache,
+} from "./opponentAvatars";
 import { syncGames, quickSyncRecentGames } from "./syncService";
 import { analyzeGame, DEFAULT_ANALYSIS_OPTIONS, classify, cpEquivalent, DISPLAY_CLAMP_CP } from "./engineAnalysis";
 import { computeProfile } from "./profileService";
@@ -2735,7 +2744,8 @@ function renderRecentGames() {
   recentWrap.hidden = pickerGames.length === 0;
   const query = recentSearch.value.trim();
   recentHeading.textContent = query ? "Matching games" : "Last 10 games";
-  recentList.innerHTML = renderRecentList(findRecentGames(pickerGames, query), pickerBusyId, query);
+  recentList.innerHTML = renderRecentList(findRecentGames(pickerGames, query), pickerBusyId, query, avatarCache);
+  void lookUpRecentAvatars();
 }
 
 recentSearch.addEventListener("input", renderRecentGames);
@@ -2743,6 +2753,64 @@ recentList.addEventListener("click", (e) => {
   const row = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-recent-id]");
   if (row) void openPickedGame(row.dataset.recentId!);
 });
+
+// --- Opponents' pictures in the last-10 list (opponentAvatars.ts) ---
+// Chess.com opponents get their profile picture, looked up one at a time and
+// remembered for a week; everyone else shows initials. The sample games are
+// made up, so they are never looked up.
+const avatarCache = loadAvatarCache();
+const avatarClient = new ChessComClient("chegga-web opponent pictures", { minIntervalSeconds: 0.5, maxRetries: 2 });
+let avatarLookupRunning = false;
+let avatarLookupStopped = false; // a rate limit or network error: try again next visit
+
+/** True while a sync is downloading games: the header button says "Syncing…"
+ * until the download ends (the analysis after it does not count), and "Get my
+ * full history" locks its own button. */
+const syncRunning = () =>
+  document.querySelector<HTMLElement>("#hero-analyze-btn")?.dataset.syncState === "syncing" ||
+  document.querySelector<HTMLButtonElement>("#full-sync-btn")?.disabled === true;
+
+function showRecentAvatar(name: string, url: string | null) {
+  const key = avatarKey(name);
+  for (const slot of recentList.querySelectorAll<HTMLElement>("[data-avatar-for]")) {
+    if (slot.dataset.avatarFor === key) slot.innerHTML = renderAvatarInner(name, url);
+  }
+}
+
+async function lookUpRecentAvatars() {
+  if (avatarLookupRunning || avatarLookupStopped || isDemoActive()) return;
+  avatarLookupRunning = true;
+  try {
+    const result = await runAvatarLookups({
+      wanted: () =>
+        isDemoActive() ? [] : namesToLookUp(findRecentGames(pickerGames, recentSearch.value.trim()), avatarCache, Date.now()),
+      fetchAvatar: (name) => fetchChessComAvatar(avatarClient, name),
+      store: (name, url) => {
+        avatarCache[avatarKey(name)] = { url, at: Date.now() };
+        saveAvatarCache(avatarCache);
+        showRecentAvatar(name, url);
+      },
+      busy: syncRunning,
+    });
+    if (result === "stopped") avatarLookupStopped = true;
+  } finally {
+    avatarLookupRunning = false;
+  }
+}
+
+// A picture that will not load (offline, a removed image) falls back to the
+// initials. Load errors do not bubble, so this listens in the capture phase.
+recentList.addEventListener(
+  "error",
+  (e) => {
+    const img = e.target;
+    if (!(img instanceof HTMLImageElement)) return;
+    const slot = img.closest<HTMLElement>("[data-avatar-for]");
+    const name = slot?.closest(".recent-row")?.querySelector(".recent-opponent")?.textContent?.replace(/^vs\s+/, "") ?? "";
+    if (slot) slot.innerHTML = renderAvatarInner(name, null);
+  },
+  true,
+);
 
 function renderPicker() {
   renderRecentGames();

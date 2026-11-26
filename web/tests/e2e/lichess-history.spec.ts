@@ -48,6 +48,13 @@ async function stubLichessHistory(page: Page, total: number) {
 // behaviour under test is the same; only the budget differs.
 const storeBudget = (browserName: string) => (browserName === "webkit" ? 240_000 : 45_000);
 
+/** The connect form lives in the menu; on a phone the menu is a closed drawer. */
+async function openConnectForm(page: Page) {
+  const toggle = page.locator("#studio-nav-toggle");
+  if ((await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
+  await expect(page.locator("#sync-section")).toBeVisible();
+}
+
 test.describe("Lichess full history", () => {
   test.setTimeout(300_000);
 
@@ -75,6 +82,7 @@ test.describe("Lichess full history", () => {
     const syncLog = page.locator("#sync-log");
 
     // Chess.com is the default picker; the Lichess control is not shown.
+    await openConnectForm(page);
     await expect(control).toBeHidden();
 
     await page.locator("#sync-site").selectOption("lichess");
@@ -126,6 +134,7 @@ test.describe("Lichess full history", () => {
     await stubLichessHistory(page, 0);
     await page.goto("/");
     await expect(page.locator("#main-content")).toBeVisible();
+    await openConnectForm(page);
 
     await page.locator("#sync-site").selectOption("lichess");
     await page.locator("#username").fill(USERNAME);
@@ -140,6 +149,7 @@ test.describe("Lichess full history", () => {
     );
     await page.goto("/");
     await expect(page.locator("#main-content")).toBeVisible();
+    await openConnectForm(page);
 
     await page.locator("#sync-site").selectOption("lichess");
     await page.locator("#username").fill("nobody_here");

@@ -11,6 +11,7 @@ import type { PickerCard, PickerFilter } from "./gamePicker";
 import type { SavedPuzzleRecord } from "./db";
 import { describeSavedPuzzle, isDueForReview, describeSpacedBox } from "./savedPuzzles";
 import { extractPreviewFromPgn, renderMiniBoardSvg } from "./miniBoardSvg";
+import { avatarKey, renderAvatarInner, type AvatarCache } from "./opponentAvatars";
 
 function esc(text: string): string {
   return text.replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -76,15 +77,20 @@ function renderCard(card: PickerCard, busyId: string | null): string {
   </button>`;
 }
 
-export function renderRecentList(cards: PickerCard[], busyId: string | null, query: string): string {
+/** `avatars` holds the opponents' known Chess.com pictures (opponentAvatars.ts);
+ * anyone not in it, and every Lichess player, shows their initials. */
+export function renderRecentList(cards: PickerCard[], busyId: string | null, query: string, avatars: AvatarCache = {}): string {
   if (!cards.length) return `<li class="recent-empty">No game matches "${esc(query)}".</li>`;
   return cards
     .map((card) => {
       const busy = busyId === card.id;
       const disabled = !card.supported || (busyId !== null && !busy);
       const detail = busy ? "Analyzing…" : [card.opening ?? "Standard Game", formatDate(card.endTime)].filter(Boolean).join(" · ");
+      const key = avatarKey(card.opponent);
+      const picture = card.site === "chesscom" ? avatars[key]?.url : null;
       return `<li><button type="button" class="recent-row" data-recent-id="${esc(card.id)}" ${disabled ? "disabled" : ""}>
         <span class="recent-result recent-result-${card.result}">${RESULT_LABEL[card.result]}</span>
+        <span class="recent-avatar" data-avatar-for="${esc(key)}">${renderAvatarInner(card.opponent, picture)}</span>
         <span class="recent-main"><span class="recent-opponent">vs ${esc(card.opponent)}</span><span class="recent-detail">${esc(detail)}</span></span>
       </button></li>`;
     })

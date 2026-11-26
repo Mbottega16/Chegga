@@ -6,6 +6,8 @@
 // result. Pure -- the markup is gamePickerView.ts, the wiring is main.ts.
 
 import type { GameRecord } from "./db";
+import type { Site } from "./siteSync";
+import { LICHESS_ID_PREFIX } from "./lichessNormalizer";
 
 export type PickerFilter = "all" | "win" | "loss" | "draw" | "analyzed";
 
@@ -23,6 +25,8 @@ export interface PickerCard {
   /** Only standard chess can be graded; a variant game is listed but not openable. */
   supported: boolean;
   pgn?: string;
+  /** Where it was played: Lichess game ids carry a prefix, Chess.com's do not. */
+  site: Site;
 }
 
 // A carousel of hundreds of cards is a wall, not a picker. The newest games
@@ -45,6 +49,7 @@ export function toPickerCard(g: GameRecord): PickerCard {
     analyzed: g.analyzed,
     supported: g.rules === "chess" && g.pgn.length > 0,
     pgn: g.pgn,
+    site: g.chessComUuid.startsWith(LICHESS_ID_PREFIX) ? "lichess" : "chesscom",
   };
 }
 

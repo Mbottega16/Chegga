@@ -19,6 +19,13 @@ This repo is public, so private planning notes stay in the owner's vault, not he
 
 ---
 
+## 2026-11-26 — Review UI pass: left menu, icon buttons, Evaluation Flow, turning point
+*PC · Claude · commit `e889edd`*
+- **Changed:** the menu docks flush left, full height, and holds "Get connected." (side panel tabs: Games, Analysis; no sideways rail words). Every review control is an icon with a hover/focus pill and `aria-label` (`setIconButtonLabel()` in `main.ts`); play is dark blue in the centre of the step bar. Removed worst move, fix your mistakes, save key moments, the "position before" checkbox and the idle "Ready" line (`W`, `F`, `B` shortcuts remain). Phase names moved to a strip under the chart; the sticky step bar is opaque. One turning-point card (`renderTurningPoint`) replaced the chip ticker. `chooseTrailBend` / `splitTrail` got unit tests.
+- **Why:** the owner's playtest review list, handed over as a plan from the Antigravity session.
+- **Verified:** Vitest 389/389; build clean; `studio-layout`, `smoke`, `review-picker` pass on desktop, mobile and WebKit. Screenshots at 1366, 1920 and 390 px, dark, light and OLED.
+- **Left open:** the 9 stale `live-verify.spec.ts` tests; the `sw.js` IndexedDB version.
+
 ## 2026-11-26 — Rebase onto the Mac layout, Desktop launchers, splash logo
 *PC · Antigravity · commits `0af4d07`, `0e8b6a5`, `fbb4a48`, `d028319`*
 - **Changed:** rebased the PC phone fix for `.review-buttons` (`mobile.css`) onto the Mac's `9eff407` one-screen layout. Added paired Desktop launchers for the default (5174) and playtest (5175) builds, with IPv6 (`::1`) loopback detection. Split Vite's dev `cacheDir` per mode and animated the classic logo bars on the splash.
