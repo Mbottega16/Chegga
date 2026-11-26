@@ -24,6 +24,7 @@ export default defineConfig(({ mode }) => {
     define: {
       __PLAYTEST__: JSON.stringify(playtest),
     },
+    cacheDir: playtest ? "node_modules/.vite-playtest" : "node_modules/.vite",
     server: { port: playtest ? 5175 : 5174, strictPort: true },
     preview: { port: 5174, strictPort: true },
     build: {
