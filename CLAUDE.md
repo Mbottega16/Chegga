@@ -105,14 +105,14 @@ To prevent multi-megabyte data blobs and archived legacy apps from slowing down 
 
 *Overwrite this at the end of every session; move the previous handoff into `HISTORY.md` first.*
 
-- **Last Worked On (2026-11-25, Mac, Claude):** owner's playtest round.
-  - Removed the Operating/Playing view toggle (one layout). Added **Customize** and **Feedback** menu tabs (dialogs; appearance controls moved out of Settings). The right games panel folds into a rail like the menu. Removed the green board frame; "Your Focus" and "Scouting Profile" are hidden by CSS (code still writes to them).
-  - "Review any game" lists the last 10 games, with opening/opponent search over all games. Captured pieces use the real piece art.
-  - New move heatmap (`renderTrails` in `playBoard.ts`): an arrow for every ranked move (10 lines), pulsing and flowing, quality colors and symbols, dashed edge on the move played; pointing at or tapping a piece lifts its arrows.
-  - Speed: two stats replayed every PGN on each load (22k-game account froze about 4 min). They now read the movetext; same load is under 5 s in headless runs.
-  - Playtest build with the owner's games, deployed by hand to a separate Vercel project (see Commands).
-- **Current State:** 371 unit tests pass, build clean. Playwright desktop, mobile and WebKit: the only failures also fail on the previous commit (header Featurebase button, "Play a bot instead" CTA, and `review-picker` on mobile + WebKit at the worst-move step). Not pushed to `main` yet: the public site does not have this round.
+- **Last Worked On (2026-11-26, PC, Antigravity):** Rebased the PC mobile `.review-buttons` fix (`web/src/mobile.css`) onto Mac `origin/main` (`27af3fb..9eff407` — playtest seed mode, `splash.ts` knight startup screen, Customize/Feedback dialogs, folding right games panel, last-10 list + search, real captured-piece art, 10-line `renderTrails` move heatmap, movetext stats load speedup, and the `9eff407` one-screen `shell.css` layout).
+- **Current State:** Vitest 371/371 pass (32 files); `tsc && vite build` clean. Open items from prior runs:
+  - `9eff407` (`shell.css` one-screen layout, committed as-is from Mac's working tree) needs visual playtest review and Playwright verification.
+  - Pre-existing E2E failures from prior runs: 9 stale `live-verify.spec.ts` tests, `smoke.spec.ts:119` on WebKit, and 4 WebKit memory flakes when running with 2 workers (use `--workers=1` on 8 GB PC).
+  - **Known defect (not fixed):** `web/public/sw.js` opens IndexedDB at version 4, while `db.ts` is at version 5, and its config key does not fit `syncState`. Closed-app background sync cannot work.
 - **Next Up:**
-  1. Owner reviews on the personal playtest site; push to `main` only on their yes.
-  2. Fix or retire the pre-existing e2e failures.
-  3. Real-device phone check of the heatmap.
+  1. Review the `9eff407` one-screen `shell.css` layout and playtest build (`npm run dev:playtest`, port 5175).
+  2. Update/verify Playwright E2E suites against the new layout (`live-verify.spec.ts`, `smoke.spec.ts:119` on WebKit, `studio-layout.spec.ts`).
+  3. Fix the `web/public/sw.js` IndexedDB version and config storage.
+  4. Real-device phone check of the heatmap, 3D pinch-zoom, eval-curve scrubbing, and large real-account sync on Safari/WebKit.
+  5. Requirement work in `REQUIREMENTS.md`, in the order `PLAN.md` sets.

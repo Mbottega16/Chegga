@@ -19,18 +19,16 @@ This repo is public, so private planning notes stay in the owner's vault, not he
 
 ---
 
-## 2026-11-23 — front-end overhaul (handoff moved from CLAUDE.md)
-*PC · Antigravity*
-- **Last Worked On (2026-11-23, PC, Antigravity):** Front-end overhaul — borderless edge-to-edge layout, 2×3 entry launchpad window, distinguished Operating vs. Playing orientations, simplified Get Connected panel, top header cleanup, and background/closed-app sync:
-  - Removed outer card borders and miniature inner borders across **Get Connected** (`#sync-section`), **Studio Menu** (`#studio-nav-panel`), **Daily Training Set** (`#today-section`), and **Previously Played Games** (`#picker-section`, `#import-section`), expanding `.wrap` to `max-width: 100%` edge-to-edge with larger, spread-out typography.
-  - Built the **2×3 Panel-Style Launchpad Window** (`#studio-nav-list.launchpad-grid-2x3` in `main.ts` / `studioMenu.ts`) that opens on entry and distinguishes **Operating View** (`data-orientation="operating"`) from **Playing View** (`data-orientation="playing"`), with a header orientation switcher (`#orientation-operating-btn`, `#orientation-playing-btn`) and automatic switch to Playing View when starting/reviewing a game.
-  - Simplified **Get connected.** (`#sync-section`) to the heading, `✕` collapse toggle, description, site selector (`#sync-site`), and username input (`#username`), removing the demo button and batch analyze drawer from that panel.
-  - Cleaned up the top header by removing the redundant **Play**, **Stockfish WASM**, and **Feedback** buttons while keeping **Sync** (`#hero-analyze-btn`) and wiring non-blocking while-playing + Service Worker closed-app background sync (`web/src/backgroundSync.ts`, `web/public/sw.js`).
-- **Current State:** 366 unit tests across 32 files pass; TypeScript + Vite production build clean; Playwright desktop + mobile E2E suites (`smoke.spec.ts` and `studio-layout.spec.ts`, 31 passed, 0 failed) 100% green.
-- **Next Up:**
-  1. Real-device mobile check (iOS/Android touch, 3D pinch-zoom, eval-curve scrubbing) and large real-account sync on Safari/WebKit.
-  2. Try the new 2×3 Operating View vs. Playing View flow with a real Chess.com or Lichess account.
-  3. Optional: rename the Vercel deployment off `chegga-web.vercel.app`.
+## 2026-11-25 / 2026-11-26 — Playtest round, startup splash, and one-screen shell layout
+*Mac · Claude · commits `27af3fb`, `2fad757`, `bbdeba0`, `784370d`, `b32e895`, `9eff407`*
+- **Changed:** Removed Operating/Playing view toggle (single layout), added Customize/Feedback dialogs, folding right games panel, last-10 list with search, real captured-piece art, new 10-line move heatmap (`renderTrails` in `playBoard.ts`), movetext-based stats load speedup (~4 min -> <5 s), `playtest` seed mode (`npm run dev:playtest`, `fetch-playtest-games.mjs`, `playtestSeed.ts`), `splash.ts` knight startup screen, and `9eff407` one-screen `shell.css` layout commit.
+- **Verified (as of `784370d` on Mac):** Vitest 371/371, build clean; `9eff407` committed the 8 remaining working-tree files for handoff to desktop.
+
+## 2026-11-25 — Phone fix for the review buttons; full suite run
+*PC · Claude · commit `6ec73bd`*
+- **Changed:** `web/src/mobile.css` — `.review-buttons` is a wrapping flex row on phones, not a 4-column grid. "Fix your mistakes" no longer covers "Your worst move".
+- **Verified:** Vitest 366/366; build clean; no overlap or overflow at 320/360/390/412 px on Chromium and WebKit; `review-picker` passes on desktop, mobile and WebKit. Full Playwright: 125 passed, 14 failed, 5 skipped.
+- **Found, not fixed:** 9 stale `live-verify` tests; `smoke.spec.ts:119` on WebKit; WebKit memory flakes at 2 workers; `sw.js` opens IndexedDB v4 while `db.ts` is v5.
 
 ## 2026-11-23 — Front-End Overhaul: Borderless Edge-to-Edge Layout, 2x3 Launchpad, Operating vs. Playing Views & Background Sync
 *PC · Antigravity*
