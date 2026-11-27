@@ -14,24 +14,12 @@ test.beforeEach(async ({ page }) => {
 
 
 // Closes out the "owed" click-through from context.md for the
-// 2026-08-28/29/30 pushes: Featurebase panel, Tally iframe, jump-nav
-// offsets under the sticky header, and hero CTA behavior — run against
-// the live deploy with SMOKE_URL=https://chegga-web.vercel.app.
+// 2026-08-28/29/30 pushes: the Tally iframe, jump-nav offsets, and the
+// header Sync button — run against the live deploy with
+// SMOKE_URL=https://chegga-web.vercel.app. (The 2026-11-23 overhaul removed
+// the header Feedback and Play buttons; their tests went with them.)
 
 test.describe("feedback widgets", () => {
-  test("the header Feedback button is visible and opens the Featurebase panel", async ({
-    page,
-  }) => {
-    await page.goto("/");
-    const btn = page.locator("#feedback-btn");
-    await expect(btn).toBeVisible({ timeout: 10_000 });
-    await btn.click();
-    // Featurebase opens its panel as a "Feedback" dialog containing an iframe.
-    const dialog = page.getByRole("dialog", { name: "Feedback" });
-    await expect(dialog).toBeVisible({ timeout: 10_000 });
-    await expect(dialog.locator("iframe")).toBeAttached();
-  });
-
   test("opening the Feedback tab loads the Tally form", async ({ page }) => {
     await page.goto("/");
     const toggle = page.locator("#studio-nav-toggle");
@@ -53,7 +41,7 @@ test.describe("jump nav", () => {
     ["#today-section", "Today"],
     ["#sync-section", "Get started"],
     ["#play-section", "Play"],
-    ["#coming-soon-section", "Coming soon"],
+    ["#lab-section", "Studio Lab"],
   ] as const;
 
   for (const [id, label] of targets) {
@@ -93,25 +81,16 @@ test.describe("hero CTAs", () => {
     await expect(page.locator("#username")).toBeFocused({ timeout: 2_000 });
     await expect(page.locator("#sync-section")).toBeInViewport();
   });
-
-  test("Play a bot instead scrolls to and expands the Play card", async ({ page }) => {
-    await page.goto("/");
-    await page.locator("#hero-play-btn").click();
-    await expect(page.locator("#play-section")).toBeInViewport();
-  });
 });
 
-test.describe("coming soon", () => {
-  test("the Coming soon card lists all 15 parked features and a jump link opens one", async ({
-    page,
-  }) => {
+test.describe("Studio Lab", () => {
+  test("every tool is launched: no card is parked behind a 'Coming soon' gate", async ({ page }) => {
     await page.goto("/");
-    const card = page.locator("#coming-soon-section");
-    await expect(card).toBeAttached();
-    const parked = page.locator("[data-coming-soon='true']");
-    await expect(parked).toHaveCount(15);
-    for (const el of await parked.all()) {
-      await expect(el).toBeHidden();
+    await expect(page.locator("[data-coming-soon]")).toHaveCount(0);
+    await expect(page.locator("#lab-view .lab-tile")).toHaveCount(19);
+    // Each tile opens a card that exists on the page.
+    for (const card of await page.locator("#lab-view .lab-tile").evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.card))) {
+      await expect(page.locator(`#${card}`)).toHaveCount(1);
     }
   });
 });
@@ -128,6 +107,10 @@ test.describe("keyboard tabbing", () => {
     for (let i = 0; i < 40 && !reachedUsername; i++) {
       const id = await page.evaluate(() => document.activeElement?.id || "");
       if (id === "username") reachedUsername = true;
+      // On a phone the form sits in the menu drawer, which starts closed: a
+      // keyboard user opens it with Enter on the menu button, then goes on.
+      else if (id === "studio-nav-toggle" && (await page.locator("#studio-nav-toggle").getAttribute("aria-expanded")) === "false")
+        await page.keyboard.press("Enter");
       else await page.keyboard.press("Tab");
     }
     expect(reachedUsername, "Tab order never reached #username within 40 stops").toBe(true);

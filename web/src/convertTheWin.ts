@@ -24,6 +24,7 @@ export interface ThrownGame {
   peakMoveNumber: number; // full-move number where the peak occurred
   slipSan?: string;
   slipMoveNumber?: number;
+  slipPly?: number; // the slip's half-move number, for opening the review on it
   slipCpLoss?: number;
 }
 
@@ -84,6 +85,7 @@ export function findThrownGames(analyzedGames: GameRecord[], ownMoves: MoveAnaly
       peakMoveNumber: Math.ceil(peakPly / 2),
       slipSan: slip?.san,
       slipMoveNumber: slip ? Math.ceil(slip.ply / 2) : undefined,
+      slipPly: slip?.ply,
       slipCpLoss: slip ? Math.round(slip.centipawnLoss) : undefined,
     });
   }

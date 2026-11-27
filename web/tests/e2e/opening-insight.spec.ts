@@ -155,11 +155,11 @@ async function seedAndLoad(page: Page) {
     },
     { games, moves },
   );
-  // The hash both auto-fills the username on this fresh load and expands
-  // the "Coming soon"-gated Insights card straight past its gate. The
-  // reload is load-bearing: a goto that changes only the hash is an
-  // in-page navigation, so the startup path that restores the username
-  // and calls refreshProfile would never re-run.
+  // The hash both auto-fills the username on this fresh load and opens the
+  // Insights tool in the Studio Lab. The reload is load-bearing: a goto
+  // that changes only the hash is an in-page navigation, so the startup
+  // path that restores the username and calls refreshProfile would never
+  // re-run.
   await page.goto("/#u=tester&open=insights-section");
   await page.reload();
 }
@@ -179,8 +179,8 @@ test.describe("opening weakness -> action", () => {
     const openingItem = insightsOutput.locator(".insight-item", { hasText: FRENCH });
     const gamesBtn = openingItem.locator("[data-open-games-opening]");
     const worstBtn = openingItem.locator("[data-review-worst-game]");
-    await expect(gamesBtn).toHaveText("See these games ↓");
-    await expect(worstBtn).toHaveText("Review the key position ↓");
+    await expect(gamesBtn).toHaveText("See these games →");
+    await expect(worstBtn).toHaveText("Review the key position →");
     // The button carries the actual worst position, not just the game.
     await expect(worstBtn).toHaveAttribute("data-review-worst-game", "fr-1");
     await expect(worstBtn).toHaveAttribute("data-review-worst-ply", "5");
@@ -198,6 +198,14 @@ test.describe("opening weakness -> action", () => {
     await page.locator("[data-picker-clear-opening]").click();
     await expect(cards).toHaveCount(3);
     await expect(page.locator(".picker-opening-focus")).toHaveCount(0);
+
+    // Back to the Insights tool: the picker sits on the board screen, the
+    // Insights card on the Studio Lab screen.
+    const menuToggle = page.locator("#studio-nav-toggle");
+    if ((await menuToggle.getAttribute("aria-expanded")) === "false") await menuToggle.click();
+    await page.locator('#studio-nav-list a[href="#lab-section"]').click();
+    await page.locator('.lab-tile[data-tool="insights"]').click();
+    await expect(worstBtn).toBeVisible();
 
     // --- "Review the key position": opens fr-1 straight on ply 5 (3. Nc3) ---
     await worstBtn.click();

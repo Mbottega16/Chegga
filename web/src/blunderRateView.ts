@@ -86,6 +86,6 @@ export function renderBlunderRate(summary: BlunderRateSummary): string {
     </p>
     ${lineChart(summary)}
     <p class="card-action">
-      <button type="button" class="blunder-practice-btn" data-action='{"kind":"puzzle"}'>Practice your own blunder positions ↓</button>
+      <button type="button" class="blunder-practice-btn" data-action='{"kind":"puzzle"}'>Practice your own blunder positions →</button>
     </p>`;
 }

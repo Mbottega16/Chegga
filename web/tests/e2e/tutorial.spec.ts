@@ -288,6 +288,10 @@ test.describe("first-run tutorial", () => {
       }
     });
     await page.goto("/");
+    // The footer sits at the bottom of the Studio Lab screen, under the tools.
+    const menuToggle = page.locator("#studio-nav-toggle");
+    if ((await menuToggle.getAttribute("aria-expanded")) === "false") await menuToggle.click();
+    await page.locator('#studio-nav-list a[href="#lab-section"]').click();
     await page.locator("#replay-tutorial").click();
     await expect(page.getByRole("dialog")).toBeVisible();
   });

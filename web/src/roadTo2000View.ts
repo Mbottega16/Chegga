@@ -53,7 +53,7 @@ export function renderRoadToTarget(road: RoadToTarget): string {
           <div class="road-factor-track"><div class="road-factor-fill" style="width:${width}%;background:${barColor(share)}"></div></div>
           <p class="road-factor-detail">
             ${f.currentValue}${unit} now → ${f.targetValue}${unit} target. ${esc(f.practice)}
-            <button type="button" class="road-jump-btn" data-action="${esc(JSON.stringify(f.action))}">Practice this ↓</button>
+            <button type="button" class="road-jump-btn" data-action="${esc(JSON.stringify(f.action))}">Practice this →</button>
           </p>
         </div>`;
     })

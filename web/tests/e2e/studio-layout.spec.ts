@@ -50,14 +50,14 @@ test.describe("menu and side panel", () => {
     await expect(page.locator("#today-section")).toBeVisible();
     await expect(page.locator("#play-section")).toBeHidden();
     await openMenu(page);
-    await menuLink(page, "What's Coming Soon").click();
-    await expect(page.locator("#coming-soon-section")).toBeVisible();
+    await menuLink(page, "Studio Lab").click();
+    await expect(page.locator("#lab-section")).toBeVisible();
     await expect(page.locator("#today-section")).toBeHidden();
     await openMenu(page);
     await menuLink(page, "Play vs. Bot").click();
     await expect(page.locator("#play-section")).toBeVisible();
     await expect(page.locator("#panel-analysis")).toBeVisible();
-    await expect(page.locator("#coming-soon-section")).toBeHidden();
+    await expect(page.locator("#lab-section")).toBeHidden();
   });
 
   test("Back returns to the screen before", async ({ page }) => {

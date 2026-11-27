@@ -27,6 +27,11 @@ export function renderThrownGames(games: ThrownGame[]): string {
       const link = g.url
         ? `<a href="${esc(g.url)}" target="_blank" rel="noopener">open ↗</a>`
         : "";
+      // The engine-checked replay here: main.ts's Studio Lab handler opens
+      // [data-review-game] on [data-review-ply] in the game review.
+      const review = g.slipPly
+        ? `<button type="button" class="btn-quiet ctw-review" data-review-game="${esc(g.gameId)}" data-review-ply="${g.slipPly}">Review the slip</button>`
+        : "";
       return `
         <tr>
           <td>${when(g.endTime)}</td>
@@ -35,7 +40,7 @@ export function renderThrownGames(games: ThrownGame[]): string {
           <td class="ctw-peak">+${g.peakEvalPawns}</td>
           <td class="ctw-result ctw-${g.result}">${g.result}</td>
           <td>${slip}</td>
-          <td>${link}</td>
+          <td class="ctw-actions">${review}${link}</td>
         </tr>`;
     })
     .join("");
@@ -44,7 +49,7 @@ export function renderThrownGames(games: ThrownGame[]): string {
     <p class="tagline" style="margin-bottom:14px">
       ${games.length} game${games.length === 1 ? "" : "s"} where you stood clearly winning and it slipped
       (${losses} became losses). Peak = the best evaluation you reached, in pawns, from your side. Replay each from the
-      slip move — on Chess.com via the link, or the engine-checked version here.
+      slip move: "Review the slip" opens the engine-checked review here, and "open" goes to the game on its site.
     </p>
     <div class="ctw-table-wrap">
       <table class="ctw-table">
@@ -53,6 +58,6 @@ export function renderThrownGames(games: ThrownGame[]): string {
       </table>
     </div>
     <p class="card-action">
-      <button type="button" data-action='{"kind":"redemption"}'>Redeem one of these losses ↓</button>
+      <button type="button" data-action='{"kind":"redemption"}'>Redeem one of these losses →</button>
     </p>`;
 }

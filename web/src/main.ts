@@ -19,7 +19,8 @@ import "./mobile.css"; // small-viewport pass — loaded after style.css so equa
 import "./shell.css"; // the one-screen layout: menu, board, tabbed side panel
 import { showEmptyStates, emptyFor, clearEmptyFor, wireEmptyStateCtas } from "./emptyStates";
 import { wireMiniBoardReplay } from "./miniBoardSvg";
-import { renderLabBentoGrid } from "./labBento";
+import { renderLabHub, renderLabToolbar, setupLabView, setLabDataState, setLabToolNote } from "./labView";
+import "./lab.css"; // the Studio Lab: tool list and one open tool
 import {
   iconStage,
   iconConnect,
@@ -170,6 +171,12 @@ import { buildWeeklyPlan, isoWeek, getDoneTasks, setTaskDone, type PlanActionKin
 import { renderWeeklyPlan } from "./weeklyPlanView";
 import { findThrownGames } from "./convertTheWin";
 import { renderThrownGames } from "./convertTheWinView";
+import { computeMotifSummary, motifFor, type MotifSummary } from "./tacticalMotifs";
+import { renderTacticalMotifs } from "./tacticalMotifsView";
+import { computeBlunderDnaProfile } from "./blunderDnaProfile";
+import { renderBlunderDnaProfile } from "./blunderDnaView";
+import { computeClockLeaks } from "./clockLeaks";
+import { renderClockLeaks } from "./clockLeaksView";
 import { getProgress, isDue, recordAttempt, getStreak } from "./puzzleProgress";
 import { ENDGAME_DRILLS, ODDS_OPTIONS, oddsFen } from "./practicePositions";
 import {
@@ -441,8 +448,8 @@ app.innerHTML = `
             <button type="button" class="studio-nav-link" data-dialog="feedback-dialog" aria-haspopup="dialog">
               <span class="nav-icon">${iconFeedback}</span><span class="nav-text">Feedback</span>
             </button>
-            <a href="#coming-soon-section" class="studio-nav-link">
-              <span class="nav-icon">${iconLab}</span><span class="nav-text">What's Coming Soon</span>
+            <a href="#lab-section" class="studio-nav-link">
+              <span class="nav-icon">${iconLab}</span><span class="nav-text">Studio Lab</span>
             </a>
           </div>
         </nav>
@@ -700,31 +707,34 @@ app.innerHTML = `
           <div id="today-output"></div>
         </section>
       </div>
-      <div class="shell-view" data-shell-view="lab">
-    <div class="studio-bento-row">
-      <section class="card studio-focus-card" id="focus-section" data-tier="primary" style="display:none">
-        <h2>Your Focus</h2>
-        <div id="focus-output"></div>
-      </section>
-    </div>
+      <div class="shell-view lab-view" data-shell-view="lab" id="lab-view">
+    ${renderLabHub()}
+    ${renderLabToolbar()}
 
-    <section class="card" id="road-section" data-tier="primary" data-coming-soon="true" style="display:none">
-      <h2>Road to a target rating</h2>
-      <div id="road-output"></div>
+    <!-- "Your Focus" and "Scouting Profile" are removed from the page (style.css
+         hides them); several data paths still write into their markup. -->
+    <section class="card studio-focus-card" id="focus-section" data-tier="primary" style="display:none">
+      <h2>Your Focus</h2>
+      <div id="focus-output"></div>
     </section>
-
-    <section class="card" id="weekly-plan-section" data-tier="primary" data-coming-soon="true" style="display:none">
-      <h2>This week's plan</h2>
-      <div id="weekly-plan-output"></div>
-    </section>
-
     <section class="card studio-profile-card" id="profile-section" data-tier="primary" style="display:none">
       <h2>Scouting Profile</h2>
       <div id="profile-output"></div>
     </section>
 
-    <section class="card" id="puzzle-section" data-tier="primary" data-coming-soon="true" style="display:none">
-      <h2>Puzzle trainer — your own blunders</h2>
+    <!-- The Studio Lab's tools: one shows at a time (labView.ts, labTools.ts). -->
+    <section class="card lab-tool-card" id="road-section" data-lab-tool="road" data-non-collapsible="true" style="display:none">
+      <h2>Road to a target rating</h2>
+      <div id="road-output"></div>
+    </section>
+
+    <section class="card lab-tool-card" id="weekly-plan-section" data-lab-tool="plan" data-non-collapsible="true" style="display:none">
+      <h2>This week's plan</h2>
+      <div id="weekly-plan-output"></div>
+    </section>
+
+    <section class="card lab-tool-card" id="puzzle-section" data-lab-tool="puzzles" data-non-collapsible="true" style="display:none">
+      <h2>Blunder puzzles</h2>
       <p class="tagline" style="margin-bottom:16px">
         Real positions from your own games, right before you made a mistake. Find the move you missed.
       </p>
@@ -749,12 +759,12 @@ app.innerHTML = `
       </div>
     </section>
 
-    <section class="card" id="lichess-puzzle-section" data-tier="primary" data-coming-soon="true">
-      <h2>Themed puzzles — tactics library</h2>
+    <section class="card lab-tool-card" id="lichess-puzzle-section" data-lab-tool="themed" data-non-collapsible="true">
+      <h2>Themed puzzles</h2>
       <p class="tagline" style="margin-bottom:16px">
         ~99,000 puzzles from the <a href="https://database.lichess.org" target="_blank" rel="noopener">Lichess open
-        database</a> (CC0), tagged by tactic and rated. Pick a theme and difficulty — or let "Your focus" and the PK
-        taxonomy point you at one. Nothing is uploaded; the set loads once into this browser.
+        database</a> (CC0), tagged by tactic and rated. Pick a theme and difficulty, or start one from Tactical
+        motifs or the Curriculum Map. Nothing is uploaded; the set loads once into this browser.
       </p>
       <p id="lichess-rating-readout" class="status-line" style="margin-bottom:12px"></p>
       <div class="play-controls">
@@ -783,7 +793,7 @@ app.innerHTML = `
       </div>
     </section>
 
-    <section class="card" id="redemption-section" data-tier="secondary" style="display:none">
+    <section class="card lab-tool-card" id="redemption-section" data-lab-tool="redeem" data-non-collapsible="true" style="display:none">
       <h2>Redeem a loss</h2>
       <p class="tagline" style="margin-bottom:16px">
         Every blunder the engine found in your games, worst first. Pick one, play the position again from the
@@ -799,9 +809,9 @@ app.innerHTML = `
       <div id="redemption-output"></div>
     </section>
 
-    <section class="card" id="vision-section" data-tier="secondary" data-coming-soon="true" style="display:none">
-      <h2>Vision trainer — is anything hanging?</h2>
-      <p class="tagline" style="margin-bottom:16px">Real positions from your own games. Quick yes/no.</p>
+    <section class="card lab-tool-card" id="vision-section" data-lab-tool="vision" data-non-collapsible="true" style="display:none">
+      <h2>Vision trainer</h2>
+      <p class="tagline" style="margin-bottom:16px">Real positions from your own games. Is anything hanging? Quick yes or no.</p>
       <div class="play-layout">
         <div class="play-board-wrap" id="vision-board-wrap"></div>
         <div class="play-sidebar">
@@ -815,7 +825,7 @@ app.innerHTML = `
       </div>
     </section>
 
-    <section class="card" id="opening-section" data-tier="secondary" data-coming-soon="true" style="display:none">
+    <section class="card lab-tool-card" id="opening-section" data-lab-tool="explorer" data-non-collapsible="true" style="display:none">
       <h2>Move explorer</h2>
       <p class="tagline" style="margin-bottom:16px">
         Every line is a move you've made, anywhere in the game — more solid and thicker means you play it more
@@ -828,7 +838,7 @@ app.innerHTML = `
       <div id="opening-output"></div>
     </section>
 
-    <section class="card" id="depth-section" data-tier="secondary" data-coming-soon="true" style="display:none">
+    <section class="card lab-tool-card" id="depth-section" data-lab-tool="heatmap" data-non-collapsible="true" style="display:none">
       <h2>Move-by-move heatmap</h2>
       <p class="tagline" style="margin-bottom:16px">
         Games stacked on top of each other by move number — your 1st move across every game, then your 2nd, and so
@@ -846,17 +856,47 @@ app.innerHTML = `
       <div id="depth-output"></div>
     </section>
 
-    <section class="card" id="achievements-section" data-tier="secondary" data-coming-soon="true">
+    <section class="card lab-tool-card" id="achievements-section" data-lab-tool="achievements" data-non-collapsible="true">
       <h2>Achievements</h2>
       <div id="achievements-output"></div>
     </section>
 
-    <section class="card" id="insights-section" data-tier="secondary" data-coming-soon="true" style="display:none">
+    <section class="card lab-tool-card" id="insights-section" data-lab-tool="insights" data-non-collapsible="true" style="display:none">
       <h2>Insights</h2>
+      <p class="tagline" style="margin-bottom:16px">
+        Your accuracy, your biggest leak, and your weakest phase and opening, with a way to practice each.
+      </p>
       <div id="insights-output" class="insights-list"></div>
     </section>
 
-    <section class="card" id="blunder-rate-section" data-tier="secondary" data-coming-soon="true" style="display:none">
+    <section class="card lab-tool-card" id="motifs-section" data-lab-tool="motifs" data-non-collapsible="true" style="display:none">
+      <h2>Tactical motifs</h2>
+      <p class="tagline" style="margin-bottom:16px">
+        Every mistake and blunder in your analyzed games, sorted by the tactic behind it: the shots you missed, and
+        the ones you let your opponent have. Pick one to see your worst examples and train it.
+      </p>
+      <div id="motifs-output"></div>
+    </section>
+
+    <section class="card lab-tool-card" id="dna-section" data-lab-tool="dna" data-non-collapsible="true" style="display:none">
+      <h2>Blunder DNA</h2>
+      <p class="tagline" style="margin-bottom:16px">
+        Your mistakes compared with all your other moves: the clock, the game phase, the score and the piece. A
+        bar that runs past its marker means you make more mistakes there than your normal rate.
+      </p>
+      <div id="dna-output"></div>
+    </section>
+
+    <section class="card lab-tool-card" id="time-section" data-lab-tool="time" data-non-collapsible="true" style="display:none">
+      <h2>Time trouble</h2>
+      <p class="tagline" style="margin-bottom:16px">
+        How often you go wrong at each stage of your clock, and how long your best and worst moves take. From the
+        clock times stored with your games.
+      </p>
+      <div id="time-output"></div>
+    </section>
+
+    <section class="card lab-tool-card" id="blunder-rate-section" data-lab-tool="blunder-rate" data-non-collapsible="true" style="display:none">
       <h2>Blunder rate over time</h2>
       <p class="tagline" style="margin-bottom:16px">
         One-move oversights per 100 moves — the single biggest rating leak below 2000. Watch this line fall.
@@ -864,15 +904,15 @@ app.innerHTML = `
       <div id="blunder-rate-output"></div>
     </section>
 
-    <section class="card" id="consistency-section" data-tier="secondary" data-coming-soon="true" style="display:none">
-      <h2>Consistency &amp; tilt</h2>
+    <section class="card lab-tool-card" id="consistency-section" data-lab-tool="consistency" data-non-collapsible="true" style="display:none">
+      <h2>Consistency and tilt</h2>
       <p class="tagline" style="margin-bottom:16px">
         How your results hold up after a loss and deep into a session — measured from your own game history.
       </p>
       <div id="consistency-output"></div>
     </section>
 
-    <section class="card" id="convert-section" data-tier="secondary" data-coming-soon="true" style="display:none">
+    <section class="card lab-tool-card" id="convert-section" data-lab-tool="convert" data-non-collapsible="true" style="display:none">
       <h2>Games you didn't convert</h2>
       <p class="tagline" style="margin-bottom:16px">
         Analyzed games where you reached a clearly winning position and drew or lost it — worst first, with the move
@@ -881,7 +921,7 @@ app.innerHTML = `
       <div id="convert-output"></div>
     </section>
 
-    <section class="card" id="patterns-section" data-tier="secondary" data-coming-soon="true" style="display:none">
+    <section class="card lab-tool-card" id="patterns-section" data-lab-tool="patterns" data-non-collapsible="true" style="display:none">
       <h2>Game patterns</h2>
       <p class="tagline" style="margin-bottom:16px">
         From every synced game, not just the ones analyzed by the engine — how your games end, your rating over
@@ -890,7 +930,7 @@ app.innerHTML = `
       <div id="patterns-output"></div>
     </section>
 
-    <section class="card" id="rivals-section" data-tier="secondary" data-coming-soon="true" style="display:none">
+    <section class="card lab-tool-card" id="rivals-section" data-lab-tool="rivals" data-non-collapsible="true" style="display:none">
       <h2>Rivals</h2>
       <p class="tagline" style="margin-bottom:16px">
         Opponents you've faced more than once — your real record against each one, not just a lifetime win rate.
@@ -898,10 +938,10 @@ app.innerHTML = `
       <div id="rivals-output"></div>
     </section>
 
-    <section class="card" id="practice-section" data-tier="secondary" data-coming-soon="true">
-      <h2>Practice positions</h2>
+    <section class="card lab-tool-card" id="practice-section" data-lab-tool="endgames" data-non-collapsible="true">
+      <h2>Endgame drills</h2>
       <p class="tagline" style="margin-bottom:16px">
-        Standard endgame technique drills, playable right in the Play vs. bot board — no synced account needed.
+        Standard endgame technique, played on the main board against the bot. No account needed.
       </p>
       <div class="play-controls">
         <label for="drill-select">Drill</label>
@@ -911,20 +951,6 @@ app.innerHTML = `
         <button type="button" id="drill-load-btn">Load drill</button>
       </div>
       <p id="drill-objective" class="status-line"></p>
-    </section>
-
-    <div class="studio-utilities-header">
-      <p class="section-divider">Studio Lab Suite</p>
-    </div>
-
-    <section class="card studio-lab-card" id="coming-soon-section">
-      <h2>Coming soon · 15 Lab Tools</h2>
-      <div class="lab-inspector-panel" id="lab-inspector-panel" aria-live="polite">
-        <span class="lab-inspector-hint">Cursor over any tool below to preview its capabilities.</span>
-      </div>
-      <div class="lab-bento-grid">
-        ${renderLabBentoGrid()}
-      </div>
     </section>
 
     <div class="studio-utilities-header">
@@ -1051,34 +1077,19 @@ wireEmptyStateCtas();
 wireMiniBoardReplay(document);
 showEmptyStates(); // seed data-dependent cards for a visitor with no synced account (redesign #5)
 
-// Wire Lab Bento Grid tiles to expand their corresponding tools and update the hover caption panel
-const labGrid = document.querySelector(".lab-bento-grid");
-const inspectorPanel = document.getElementById("lab-inspector-panel");
-
-labGrid?.addEventListener("click", (e) => {
-  const tile = (e.target as HTMLElement).closest(".lab-tile");
-  if (!tile) return;
-  const targetId = tile.getAttribute("data-target");
-  if (targetId) {
-    expandCard(targetId);
-  }
-});
-
-labGrid?.addEventListener("mouseover", (e) => {
-  const tile = (e.target as HTMLElement).closest(".lab-tile");
-  if (!tile || !inspectorPanel) return;
-  const name = tile.getAttribute("data-name");
-  const desc = tile.getAttribute("data-desc");
-  if (name && desc) {
-    inspectorPanel.innerHTML = `<strong>${name}</strong> — <span>${desc}</span>`;
-    inspectorPanel.classList.add("active");
-  }
-});
-
-labGrid?.addEventListener("mouseleave", () => {
-  if (!inspectorPanel) return;
-  inspectorPanel.innerHTML = `<span class="lab-inspector-hint">Cursor over any tool below to preview its capabilities.</span>`;
-  inspectorPanel.classList.remove("active");
+// The Studio Lab: the tool list, one open tool at a time, and the note shown
+// in place of a tool that has nothing to show yet (labView.ts). onOpen runs
+// on the next tick: a deep link opens a tool while this module is still
+// starting, before the puzzle and vision state further down exists.
+setupLabView({
+  onOpen: (tool) => window.setTimeout(() => onLabToolOpen(tool.cardId), 0),
+  onConnect: () => {
+    revealSection("sync-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.setTimeout(() => document.getElementById("username")?.focus(), 400);
+  },
+  onTryDemo: () => void triggerDemoLoad(),
+  onAnalyze: () => document.getElementById("hero-analyze-btn")?.click(),
+  onShowGames: () => revealSection("picker-section")?.scrollIntoView({ block: "start" }),
 });
 
 setupFeedbackWidget(); // Featurebase widget — org slug "mibottega" set in feedback.ts
@@ -4291,6 +4302,12 @@ const consistencySection = document.querySelector<HTMLElement>("#consistency-sec
 const consistencyOutput = document.querySelector<HTMLDivElement>("#consistency-output")!;
 const convertSection = document.querySelector<HTMLElement>("#convert-section")!;
 const convertOutput = document.querySelector<HTMLDivElement>("#convert-output")!;
+const motifsSection = document.querySelector<HTMLElement>("#motifs-section")!;
+const motifsOutput = document.querySelector<HTMLDivElement>("#motifs-output")!;
+const dnaSection = document.querySelector<HTMLElement>("#dna-section")!;
+const dnaOutput = document.querySelector<HTMLDivElement>("#dna-output")!;
+const timeSection = document.querySelector<HTMLElement>("#time-section")!;
+const timeOutput = document.querySelector<HTMLDivElement>("#time-output")!;
 
 let roadTarget = 2000;
 let lastRoadFeatures: Record<string, number> | null = null;
@@ -4504,8 +4521,14 @@ async function refreshProfile() {
     weeklyPlanSection.style.display = "none";
     blunderRateSection.style.display = "none";
     convertSection.style.display = "none";
+    motifsSection.style.display = "none";
+    dnaSection.style.display = "none";
+    timeSection.style.display = "none";
+    lastMotifs = null;
     // Consistency only needs synced game results.
     renderGrowthConsistency(allGames, []);
+    updateLabNotes();
+    setLabDataState({ synced: allGames.length, analyzed: 0 });
     return;
   }
   clearEmptyFor("profile-section");
@@ -4587,7 +4610,95 @@ async function refreshProfile() {
   // --- Growth cards (Road to rating / Weekly plan / Blunder rate /
   // Consistency / Games you didn't convert) ---
   renderGrowthCards(analyzedGames, ownMoves, allGames, strength, assessment);
+
+  // --- Studio Lab leak tools (Tactical motifs / Blunder DNA / Time trouble) ---
+  renderLeakTools(analyzedGames, ownMoves, allGames);
+  updateLabNotes();
+  setLabDataState({ synced: allGames.length, analyzed: profile.gamesAnalyzed });
 }
+
+let lastMotifs: MotifSummary | null = null;
+let selectedMotif: string | undefined;
+
+/** Tactical motifs, Blunder DNA and Time trouble: plain counting over the
+ * moves refreshProfile already loaded, so they render with everything else. */
+function renderLeakTools(analyzedGames: GameRecord[], ownMoves: MoveAnalysisRecord[], allGames: GameRecord[]) {
+  lastMotifs = computeMotifSummary(analyzedGames, ownMoves);
+  if (lastMotifs) {
+    if (selectedMotif && !lastMotifs.rows.some((r) => r.motif.id === selectedMotif)) selectedMotif = undefined;
+    motifsOutput.innerHTML = renderTacticalMotifs(lastMotifs, selectedMotif);
+    motifsSection.style.display = "";
+  } else {
+    motifsSection.style.display = "none";
+  }
+
+  const dna = computeBlunderDnaProfile(analyzedGames, ownMoves);
+  if (dna) {
+    dnaOutput.innerHTML = renderBlunderDnaProfile(dna);
+    dnaSection.style.display = "";
+  } else {
+    dnaSection.style.display = "none";
+  }
+
+  const clock = computeClockLeaks(analyzedGames, ownMoves, allGames);
+  if (clock) {
+    timeOutput.innerHTML = renderClockLeaks(clock);
+    timeSection.style.display = "";
+  } else {
+    timeSection.style.display = "none";
+  }
+}
+
+motifsOutput.addEventListener("click", (e) => {
+  const target = e.target as HTMLElement;
+  const pick = target.closest<HTMLButtonElement>("[data-motif-select]");
+  if (pick && lastMotifs) {
+    selectedMotif = pick.dataset.motifSelect;
+    motifsOutput.innerHTML = renderTacticalMotifs(lastMotifs, selectedMotif);
+    motifsOutput.querySelector<HTMLButtonElement>(`[data-motif-select="${selectedMotif}"]`)?.focus();
+    return;
+  }
+  const train = target.closest<HTMLButtonElement>("[data-motif-train]");
+  if (train) {
+    const motif = motifFor(train.dataset.motifTrain);
+    if (motif.themes.length) practiceLichessThemes(motif.themes, motif.trainLabel);
+  }
+});
+
+dnaOutput.addEventListener("click", (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-dna-drill]");
+  if (!btn) return;
+  const { phase } = JSON.parse(btn.dataset.dnaDrill ?? "{}") as { phase?: "opening" | "middlegame" | "endgame" | null };
+  puzzleFocusFilter = phase ? { phase } : null;
+  updatePuzzleFocusIndicator();
+  expandCard("puzzle-section");
+  loadPuzzle();
+});
+
+/** The counts on the Studio Lab's tiles ("35 positions"). */
+function updateLabNotes() {
+  const n = (x: number, one: string, many: string) => `${x.toLocaleString()} ${x === 1 ? one : many}`;
+  setLabToolNote("puzzles", currentPuzzles.length ? n(currentPuzzles.length, "position", "positions") : null);
+  setLabToolNote("vision", visionPositions.length ? n(visionPositions.length, "position", "positions") : null);
+  const unredeemed = redemptionRows.filter((r) => !r.redeemed).length;
+  setLabToolNote("redeem", redemptionRows.length ? (unredeemed ? `${n(unredeemed, "position", "positions")} to redeem` : "All redeemed") : null);
+  setLabToolNote("motifs", lastMotifs ? `${n(lastMotifs.total, "mistake", "mistakes")} sorted` : null);
+}
+
+/** Work a Studio Lab tool does only when it is opened (labView.ts's onOpen). */
+function onLabToolOpen(cardId: string) {
+  if (cardId === "puzzle-section" && !activePuzzle && currentPuzzles.length) loadPuzzle();
+  if (cardId === "vision-section" && !visionCurrentFen && visionPositions.length) loadVisionPosition();
+}
+
+// "Review this move" buttons inside any Studio Lab tool open that game in the
+// review, on that move.
+document.getElementById("lab-view")!.addEventListener("click", (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-review-game]");
+  if (!btn) return;
+  const ply = Number(btn.dataset.reviewPly);
+  void openPickedGame(btn.dataset.reviewGame!, Number.isFinite(ply) && ply > 0 ? ply : undefined);
+});
 
 function renderGrowthConsistency(allGames: GameRecord[], ownMoves: MoveAnalysisRecord[]) {
   const consistency = computeConsistency(allGames, ownMoves);
@@ -4640,14 +4751,12 @@ function renderGrowthCards(
   // Consistency & tilt.
   renderGrowthConsistency(allGames, ownMoves);
 
-  // Games you didn't convert.
+  // Games you didn't convert. Shown even when there are none: that is an
+  // answer too, and the Studio Lab tile says so.
   const thrown = findThrownGames(analyzedGames, ownMoves);
-  if (thrown.length > 0) {
-    convertSection.style.display = "";
-    convertOutput.innerHTML = renderThrownGames(thrown);
-  } else {
-    convertSection.style.display = "none";
-  }
+  convertSection.style.display = "";
+  convertOutput.innerHTML = renderThrownGames(thrown);
+  setLabToolNote("convert", thrown.length ? `${thrown.length} ${thrown.length === 1 ? "game" : "games"}` : "None so far");
 }
 
 // --- Insights (quick-win stats derived from data already computed) ---
@@ -4691,9 +4800,9 @@ function renderInsights(
     const worstPos = worstPositionInOpening(games, ownMoves, opening.openingName);
     const actions = [
       `<button type="button" data-practice-opening="${escAttr(opening.openingName)}">Practice this line</button>`,
-      `<button type="button" data-open-games-opening="${escAttr(opening.openingName)}">See these games ↓</button>`,
+      `<button type="button" data-open-games-opening="${escAttr(opening.openingName)}">See these games →</button>`,
       worstPos
-        ? `<button type="button" data-review-worst-game="${escAttr(worstPos.gameId)}" data-review-worst-ply="${worstPos.ply}">Review the key position ↓</button>`
+        ? `<button type="button" data-review-worst-game="${escAttr(worstPos.gameId)}" data-review-worst-ply="${worstPos.ply}">Review the key position →</button>`
         : "",
     ].join("");
     items.push(`<div class="insight-item">${opening.text}<p class="card-action">${actions}</p></div>`);
@@ -5279,6 +5388,7 @@ function renderAchievementsSection() {
   achievementsOutput.innerHTML = `
     <p class="status-line">${unlocked.size}/${ACHIEVEMENTS.length} unlocked</p>
     <div class="achv-grid">${grid}</div>`;
+  setLabToolNote("achievements", `${unlocked.size} of ${ACHIEVEMENTS.length} unlocked`);
 }
 
 function refreshAchievements() {
@@ -5521,7 +5631,12 @@ drillLoadBtn.addEventListener("click", async () => {
     });
   }
   playBoard.reset(humanColor, drill.fen);
-  setStatus(playStatus, "Drill loaded — your move.");
+  // The drill is played on the main board, which sits on another screen than
+  // the Studio Lab: go there, with the objective where the moves are.
+  expandCard("play-section");
+  selectPanelTab("analysis");
+  setStatus(playStatus, `${drill.objective} Your move.`, "ok");
+  playBoardWrap.scrollIntoView({ behavior: "smooth", block: "center" });
   await maybePlayBotMove(playBoard);
 });
 

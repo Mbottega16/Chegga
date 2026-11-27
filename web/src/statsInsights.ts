@@ -212,5 +212,5 @@ const ROUGH_ACPL_BANDS: [number, string][] = [
 
 export function roughRatingBandContext(avgCentipawnLoss: number): string {
   const band = ROUGH_ACPL_BANDS.find(([ceiling]) => avgCentipawnLoss <= ceiling)![1];
-  return `An average centipawn loss around ${avgCentipawnLoss} cp is roughly in the ballpark players see at ${band} — a rough general pattern, not a precise rating estimate (that's what the strength model above is for).`;
+  return `An average centipawn loss around ${avgCentipawnLoss} cp is roughly in the ballpark players see at ${band} — a rough general pattern, not a precise rating estimate (Road to a target rating shows the strength model's estimate).`;
 }

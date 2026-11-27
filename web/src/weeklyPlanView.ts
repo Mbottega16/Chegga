@@ -25,7 +25,7 @@ export function renderWeeklyPlan(plan: WeeklyPlan, doneIds: Set<string>): string
                 <input type="checkbox" class="plan-check" data-task="${esc(t.id)}"${done ? " checked" : ""} />
                 <span>${esc(t.label)}</span>
               </label>
-              <button type="button" class="plan-jump-btn" data-action="${esc(JSON.stringify(t.action))}">Go ↓</button>
+              <button type="button" class="plan-jump-btn" data-action="${esc(JSON.stringify(t.action))}">Go →</button>
             </li>`;
         })
         .join("");

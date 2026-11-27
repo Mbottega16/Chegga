@@ -146,7 +146,23 @@ export function showViewFor(id: string): HTMLElement | null {
     selectPanelTab(tab);
     setSideCollapsed(false, false);
   }
+  showToolFor(target);
   return target;
+}
+
+/** A screen that holds tools (the Studio Lab's `section.card[data-lab-tool]`)
+ * shows one at a time: the tool that holds `target`, or the list of tools
+ * when `target` is outside every tool. labView.ts follows the
+ * "chegga:tool-change" event. */
+function showToolFor(target: HTMLElement): void {
+  const view = target.closest<HTMLElement>("[data-shell-view]");
+  if (!view || !view.querySelector("section.card[data-lab-tool]")) return;
+  const card = target.closest<HTMLElement>("section.card[data-lab-tool]");
+  const next = card?.id ?? "";
+  const changed = (view.dataset.tool ?? "") !== next;
+  if (next) view.dataset.tool = next;
+  else delete view.dataset.tool;
+  view.dispatchEvent(new CustomEvent("chegga:tool-change", { detail: { cardId: next, changed } }));
 }
 
 export function revealSection(id: string): HTMLElement | null {

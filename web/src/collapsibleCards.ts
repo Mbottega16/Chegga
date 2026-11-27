@@ -33,17 +33,15 @@ const STATE_KEY_PREFIX = "chegga-web:card-collapsed:";
 // puzzle-section start life as display:none and are revealed once there's
 // data -- listing them here means they come up already expanded, not as a
 // collapsed strip the player has to hunt for and click.
+// The Studio Lab's tools (`data-lab-tool`) are not collapsible at all: the
+// lab shows one tool at a time, always open (labView.ts).
 const DEFAULT_EXPANDED_IDS = new Set([
   "today-section",
-  "weekly-plan-section",
   "focus-section",
-  "road-section",
   "sync-section",
   "picker-section",
   "profile-section",
-  "puzzle-section",
   "play-section",
-  "coming-soon-section",
 ]);
 
 /** Collapsed by default until the viewer explicitly opens (and thereby
@@ -70,17 +68,12 @@ function saveCollapsed(id: string, collapsed: boolean): void {
 /** Forces a specific card open and persists that as its saved state --
  * for the "Go practice this" focus prescription, which needs to actually
  * reveal the puzzle/vision/drill card it's pointing at, not just scroll to
- * a collapsed shell. No-op if the card isn't wrapped yet or has no id
- * match. */
+ * a collapsed shell. For a Studio Lab tool this opens that tool (via
+ * showViewFor). No-op if the card has no id match. */
 export function expandCard(cardId: string): void {
   const card = document.getElementById(cardId);
   if (!card) return;
-  showViewFor(cardId); // it may sit on another screen or panel tab
-  // A card parked behind the front-page "Coming soon" declutter (see
-  // `data-coming-soon` in style.css) is still fully wired underneath --
-  // an explicit deep link (a "Your focus" prescription, a #open= hash,
-  // etc.) should actually land on it, not scroll to something invisible.
-  if (card.dataset.comingSoon) delete card.dataset.comingSoon;
+  showViewFor(cardId); // it may sit on another screen, panel tab or lab tool
   const body = card.querySelector<HTMLElement>(".card-body");
   const chevron = card.querySelector<HTMLElement>(".card-chevron");
   const toggleBtn = card.querySelector<HTMLElement>(".card-heading-toggle");

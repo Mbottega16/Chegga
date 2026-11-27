@@ -1,0 +1,576 @@
+/* Chegga Web — the Studio Lab screen (labView.ts): the list of tools, and one
+   tool at a time. Colours come from the theme tokens, so the dark, light and
+   OLED modes all work. Loaded after shell.css. */
+
+/* ---- Which part shows ---- */
+/* The list: no tool cards, no tool bar. */
+#lab-view:not([data-tool]) > section.lab-tool-card,
+#lab-view:not([data-tool]) > .lab-toolbar,
+#lab-view:not([data-tool]) > .lab-needs-data {
+  display: none !important;
+}
+/* One tool: only the bar, the open card, and the note that stands in for a
+   card with nothing to show yet. */
+#lab-view[data-tool] > :not(.lab-toolbar):not(.lab-needs-data):not(.lab-open) {
+  display: none !important;
+}
+
+/* ---- The list of tools ---- */
+.lab-hub {
+  padding: 4px 0 8px;
+}
+.lab-hub-head h2 {
+  margin: 0 0 4px;
+  font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.lab-hub-sub {
+  margin: 0 0 22px;
+  color: var(--muted);
+}
+.lab-group {
+  margin: 0 0 24px;
+}
+.lab-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0 0 10px;
+}
+.lab-group-head h3 {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+.lab-group-head p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.lab-tiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: 10px;
+}
+.lab-tile-item {
+  display: flex;
+  min-width: 0;
+}
+.lab-tile {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  color: var(--text);
+  text-decoration: none;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  touch-action: manipulation;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.lab-tile:hover {
+  border-color: var(--accent);
+  background: var(--panel-hover);
+}
+.lab-tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.lab-tile-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-wash);
+  color: var(--accent);
+}
+.lab-tile-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.lab-tile-name {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.lab-tile-blurb {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.lab-tile-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.lab-tile-status::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted-dim);
+}
+.lab-tile-status[data-ready="true"] {
+  color: var(--text);
+}
+.lab-tile-status[data-ready="true"]::before {
+  background: var(--win);
+}
+.lab-tile-status:empty {
+  display: none;
+}
+
+/* ---- One open tool ---- */
+.lab-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 0 0 12px;
+}
+.lab-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 16px 0 10px;
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  touch-action: manipulation;
+}
+.lab-back:hover {
+  border-color: var(--accent);
+  background: var(--panel-hover);
+}
+.lab-back:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.lab-crumb {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+#lab-view > section.lab-tool-card {
+  padding: 20px 24px;
+  opacity: 1;
+}
+#lab-view > section.lab-tool-card > h2,
+.lab-needs-data > h2 {
+  margin: 0 0 10px;
+  font-size: clamp(1.35rem, 1.1rem + 0.8vw, 1.75rem);
+  letter-spacing: -0.015em;
+  color: var(--text);
+}
+#lab-view h2[tabindex="-1"]:focus:not(:focus-visible) {
+  outline: none; /* moved there by script, not by the keyboard; :focus-visible still shows a ring */
+}
+/* A select with long option names (the endgame drills) shrinks to the row
+   instead of pushing the page sideways on a phone. */
+#lab-view > section.lab-tool-card .play-controls select {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.lab-needs-data {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  padding: 28px 24px;
+  background: var(--panel);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+}
+.lab-needs-data[hidden],
+.lab-needs-actions button[hidden] {
+  display: none;
+}
+.lab-needs-data > h2 {
+  margin-bottom: 0;
+}
+.lab-needs-blurb {
+  margin: 0;
+  color: var(--muted);
+}
+.lab-needs-text {
+  margin: 0;
+  max-width: 62ch;
+  line-height: 1.55;
+}
+.lab-needs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+.lab-needs-actions button {
+  min-height: 44px;
+}
+
+/* ---- Shared by the newer tools ---- */
+.motif-headline,
+.dna-headline,
+.clock-headline {
+  max-width: 72ch;
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+/* ---- Tactical motifs ---- */
+.motif-split {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+  margin: 6px 0;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--border);
+}
+.motif-split-seg {
+  min-width: 4px;
+  background: var(--side-color);
+}
+.motif-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0 0 18px;
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.motif-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  vertical-align: -1px;
+  border-radius: 2px;
+  background: var(--side-color);
+}
+.motif-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .motif-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.motif-rows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+button.motif-row {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-weight: 400;
+  text-align: left;
+  white-space: normal;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+button.motif-row:hover {
+  background: var(--panel-hover);
+  border-color: var(--border-strong);
+}
+button.motif-row:active {
+  transform: none;
+}
+button.motif-row[aria-pressed="true"] {
+  background: var(--panel-hover);
+  border-color: var(--side-color);
+}
+.motif-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 8px;
+}
+.motif-row-label {
+  font-weight: 700;
+}
+.motif-side-chip {
+  padding: 1px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+}
+.motif-row-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--border);
+}
+.motif-row-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--side-color);
+}
+.motif-row-stats {
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.motif-detail {
+  padding: 16px 18px;
+  background: var(--panel-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.motif-detail h3 {
+  margin: 0 0 6px;
+}
+.motif-detail h4 {
+  margin: 16px 0 8px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.motif-advice {
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+.motif-examples {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.motif-example {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.motif-example-board .mini-board-svg {
+  display: block;
+  width: 96px;
+  height: 96px;
+  border-radius: 4px;
+}
+.motif-example-text p {
+  margin: 0 0 4px;
+  line-height: 1.45;
+}
+.motif-example-text button {
+  margin-top: 4px;
+  min-height: 36px;
+}
+.motif-quality {
+  display: inline-flex;
+  justify-content: center;
+  min-width: 1.6em;
+  margin-right: 4px;
+  padding: 0 4px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #111;
+  border-radius: 4px;
+  background: var(--q-color);
+}
+
+/* ---- Blunder DNA ---- */
+.dna-strands {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.dna-strand,
+.clock-block {
+  padding: 14px 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.dna-strand h3,
+.clock-block h3 {
+  margin: 0 0 4px;
+}
+.dna-normal {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.dna-rows,
+.clock-rows {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dna-row-head,
+.clock-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 8px;
+  font-size: 0.9rem;
+}
+.dna-row-label {
+  font-weight: 600;
+}
+.dna-row-verdict {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.dna-row-standout .dna-row-verdict {
+  font-weight: 700;
+  color: var(--text);
+}
+.dna-track {
+  position: relative;
+  height: 8px;
+  margin: 5px 0 3px;
+  border-radius: 4px;
+  background: var(--border);
+}
+.dna-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 4px;
+}
+.dna-marker {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--text);
+}
+.dna-row-stats {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Time trouble ---- */
+.clock-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+#time-output > .clock-block {
+  margin-bottom: 16px;
+}
+.clock-block h3 {
+  margin-bottom: 10px;
+}
+.clock-block p {
+  margin: 0;
+  line-height: 1.5;
+}
+.clock-rows {
+  margin-bottom: 8px;
+}
+.clock-row-stats {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.clock-track {
+  height: 8px;
+  margin-top: 5px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--border);
+}
+.clock-track > span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+}
+.clock-row-thin .clock-track > span {
+  opacity: 0.55;
+}
+.clock-advice {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.5;
+}
+
+/* ---- Games you didn't convert: the review button beside the site link ---- */
+.ctw-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+/* ---- Phones ---- */
+@media (max-width: 600px) {
+  #lab-view > section.lab-tool-card {
+    padding: 14px;
+  }
+  .lab-needs-data {
+    padding: 20px 16px;
+  }
+  .motif-example {
+    grid-template-columns: 80px minmax(0, 1fr);
+  }
+  .motif-example-board .mini-board-svg {
+    width: 80px;
+    height: 80px;
+  }
+}
