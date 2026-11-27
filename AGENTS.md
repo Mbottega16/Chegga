@@ -15,7 +15,8 @@ A client-side-only Chess.com & Lichess game analyzer and tactical trainer. Stock
   with Leitner spaced repetition, a ~99k-puzzle CC0 Lichess library, play vs. bot).
 - **The pitch (narrowed 2026-09-14):** **the single-game review moment, made more exciting,
   tactile and informative than Chess.com's or Lichess's game review.** The broader
-  history/coaching cards are built but parked behind a "Coming soon" gate.
+  history/coaching tools live on their own screen, the **Studio Lab** (19 tools, launched
+  2026-11-27).
 - **For:** any Chess.com or Lichess player who wants a better look at their own games.
 - **Platform:** a static web app on Vercel. Free; nothing leaves the visitor's device.
 - **What "done" looks like:** a review screen that feels better than the big sites', proven
@@ -33,17 +34,21 @@ A client-side-only Chess.com & Lichess game analyzer and tactical trainer. Stock
   a JS constant, labelled a rough estimate with its real cross-validation score shown.
 - **Chess piece/board art is original or properly licensed and attributed** — never a copy of
   Chess.com's piece set or board skin.
-- **Parked, not cut:** 15 broader cards carry `data-coming-soon="true"`; every deep link into
-  them still works because `expandCard()` clears the gate on its target first.
+- **The Studio Lab is launched (owner, 2026-11-27):** the 15 cards once parked behind "Coming
+  soon" are tools again, plus Tactical motifs, Blunder DNA, Time trouble and two cards that
+  had no tile (Game patterns, Redeem a loss). No `data-coming-soon` gate remains. The lab shows
+  one tool at a time at its own address (`#open=<card id>`); the review stays the front page.
 - **Tests before every push** is wired via tracked `.githooks/pre-push` and `.git/hooks/pre-push` (`npm test` + `npm run build`). Escape hatch: `git push --no-verify` or `CHEGGA_SKIP_PRE_PUSH=1`.
 
 ## How it's built
 
-Chegga was consolidated on 2026-08-28 so that `web/` is the entire product. On 2026-09-14 the product focus narrowed to making **single-game review** more visually exciting, tactile, and informative than Chess.com or Lichess, while parking 15 broader history/coaching cards behind a `data-coming-soon="true"` gate (still reachable via deep links and `expandCard()`).
+Chegga was consolidated on 2026-08-28 so that `web/` is the entire product. On 2026-09-14 the product focus narrowed to making **single-game review** more visually exciting, tactile, and informative than Chess.com or Lichess; the broader history/coaching cards were parked, then launched again on 2026-11-27 as the Studio Lab's tools.
 
 | File / Group | Responsibility |
 |---|---|
-| `main.ts`, `heroArt.ts` | Broadcast Studio `1360px` split-stage shell, SVG hero tactical showcase (`heroArt.ts`), reactive `--stage-aura` board lighting, `⚙ Settings` popover drawer, `data-coming-soon` folding, and sticky mode dock. |
+| `main.ts`, `heroArt.ts` | Broadcast Studio `1360px` split-stage shell, SVG hero tactical showcase (`heroArt.ts`), reactive `--stage-aura` board lighting, `⚙ Settings` popover drawer, and sticky mode dock. |
+| `labTools.ts`, `labView.ts`, `lab.css` | The Studio Lab: the tool list (19 tools in four groups, one entry per card: name = the card's `<h2>`, what it needs), and one open tool at a time. `studioMenu.ts`'s `showViewFor()` sets the lab's `data-tool`; every route into a tool passes through it. Tiles are links (`#open=<card id>`), so Back closes a tool. |
+| `tacticalMotifs.ts`, `blunderDnaProfile.ts`, `clockLeaks.ts` (+ `*View.ts`, `labFormat.ts`) | The three lab tools that read stored analysis: mistakes sorted by tactic (with Lichess themes to train each), where mistakes cluster (piece, phase, score, clock), and how the clock changes move quality (bands, time spent, games lost on time). Plain counting, no engine calls. |
 | `playBoard.ts` | 2D interactive chessboard, drag/tap move input, keyboard arrow/ARIA navigation (`9297dc9`), candidate move heatmaps & flowing trails (`9f20294`), stepped reticles & NAG glyph badges (`7846a03`). |
 | `board3d.ts` | Three.js 360° 3D board (`LatheGeometry` Staunton pieces, orbit/pinch zoom, full-screen overlay, shared CSS theme variables). |
 | `engine.ts`, `engineAnalysis.ts` | Web Worker Stockfish UCI bridge (depth 14, MultiPV 3 candidate lines, lazy WASM initialization). |
@@ -65,7 +70,7 @@ Run from `web/` (or use root `npm test` / `npm run build` which proxy to `web/`)
 
 ```powershell
 cd web
-npm test               # Vitest unit suite (409 tests) — MUST pass before any commit
+npm test               # Vitest unit suite (447 tests) — MUST pass before any commit
 npm run build          # TypeScript typecheck (tsc) + Vite production build
 npm run test:smoke     # Playwright E2E smoke suite (review picker, tutorial, sync, mobile)
 npm run pre-push       # Full pre-push gate (npm test && npm run build) — runs automatically on git push
@@ -105,15 +110,16 @@ To prevent multi-megabyte data blobs and archived legacy apps from slowing down 
 
 *Overwrite this at the end of every session; move the previous handoff into `HISTORY.md` first.*
 
-- **Last Worked On (2026-11-26, PC, Claude):** opponents' profile pictures in the "Last 10 games" list (the earlier review UI pass is in `HISTORY.md`).
-  - `opponentAvatars.ts` looks each Chess.com opponent up with `GET /pub/player/{name}` (`ChessComClient.getPlayer`): one at a time, never during a game download. Every answer, "no picture" included, is cached for a week in localStorage (`chegga-web:opponent-avatars`). A rate limit or network error stops lookups until the next visit.
-  - Only https links on `chesscomfiles.com` reach an `<img>`, checked again when the cache is read back; images load with no referrer. Lichess players, the sample games and players with no picture show initials. `PickerCard.site` now says where a game was played.
-- **Current State:** Vitest 409/409; build clean. Playwright `review-picker` (with a new picture test), `smoke`, `studio-layout`, `lichess-history`: pass on desktop, mobile and WebKit. On phones the `lichess-history` tests now open the menu drawer first.
-  - Failing before and after this session (checked on `d028319`): `tutorial.spec.ts:282` and `opening-insight.spec.ts:170` (their targets sit in hidden views), plus 9 stale `live-verify.spec.ts` tests.
-  - **Known defect:** `web/public/sw.js` opens IndexedDB at version 4 (`db.ts` is 5), and its config key does not fit `syncState`. Closed-app background sync cannot work.
+- **Last Worked On (2026-11-27, PC, Claude):** every "Coming soon" feature launched as the **Studio Lab** (owner: "begin working on all the coming soon features"). The opponent-pictures session is in `HISTORY.md`.
+  - Menu "What's Coming Soon" → **Studio Lab** (`#lab-section`): 19 tools in four groups. Each tile is a link (`#open=<card id>`) with a visible line of text and a status ("35 positions", "Needs analyzed games"). One tool shows at a time under an "All tools" bar; Back and "All tools" return to the list and to the tile; the page title names the tool; a tool with nothing to show yet shows a note with the next step (connect, sample games, analyze). A tool opened from another card (a plan's "Go →") gets its address too.
+  - New tools: **Tactical motifs** (by tactic, missed vs allowed, costliest examples open in the review, "Train it" on matching themed puzzles), **Blunder DNA** (mistake rate by piece, phase, score and clock against your normal rate; one-line typical mistake; drill), **Time trouble** (by clock band and time spent, games lost and won on time, advice only for real gaps).
+  - Fixed: tile names match their cards (two were swapped, three opened the wrong card); Game patterns and Redeem a loss got tiles; Endgame drills now switch to the board; Blunder puzzles and Vision load a position on open; "Games you didn't convert" shows when none are found and has "Review the slip"; jump buttons say "→", not "↓"; stale copy about "Your focus" and "the strength model above".
+- **Current State:** Vitest 447/447; build clean. Full Playwright run (desktop, Pixel 7, iPhone 14 WebKit, 2 workers): 175 passed, 2 failed, 9 skipped. Both failures were WebKit only: `studio-layout.spec.ts:160` passed alone (a memory flake; free RAM was 0.2 GB), and `lichess-history.spec.ts:72` fails on the pre-session build too (WebKit's slow IndexedDB stays "Reading your Lichess games" past the budget). After the last fixes: `lab`, `opening-insight`, `live-verify`, `studio-layout` and `tutorial.spec.ts:282` give 93 passed, 9 skipped on all three projects. Screenshots checked at 390, 1366 (light) and 1440/1920 (dark).
+  - The old failures are fixed: `tutorial.spec.ts:282`, `opening-insight.spec.ts:170`, the stale `live-verify` tests (removed: header Feedback and Play buttons; the phone tabbing test now opens the menu drawer).
+  - **Known defect (unchanged):** `web/public/sw.js` opens IndexedDB at version 4 (`db.ts` is 5), and its config key does not fit `syncState`. Closed-app background sync cannot work.
 - **Next Up:**
-  1. Owner playtest of the pictures and the review screen (`npm run dev:playtest`, port 5175).
-  2. Fix the e2e tests the one-screen layout broke: `live-verify` (9), `tutorial.spec.ts:282`, `opening-insight.spec.ts:170`.
+  1. Owner playtest of the Studio Lab on real games (`npm run dev:playtest`, port 5175): do Tactical motifs, Blunder DNA and Time trouble ring true?
+  2. `lichess-history.spec.ts:72` on WebKit: raise its budget or shrink its game count.
   3. Fix the `sw.js` IndexedDB version and config storage.
   4. Real-phone check: heatmap, 3D pinch-zoom, eval-curve scrubbing, large-account sync on Safari.
-  5. `REQUIREMENTS.md` work, in the order `PLAN.md` sets.
+  5. `REQUIREMENTS.md` work, in the order `PLAN.md` sets (Player model is now PARTIAL, in this browser only).

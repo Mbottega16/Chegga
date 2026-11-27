@@ -43,15 +43,16 @@ Claude-generated coaching report, which stays parked.
 2. **Analyze** — Stockfish works your newest games first, so useful data
    shows up quickly. Analysis is real engine time in your browser; a big
    history is a long run.
-3. **Your focus** / **Your profile** — a rule-based skill assessment,
-   aggregate stats, phase/opening breakdown, a play-quality trend, and a
-   rough strength estimate (honest about its small-sample cross-validation
-   score).
-4. **Puzzles** — your own blunders as replay puzzles, plus a bundled
-   ~99k-puzzle CC0 Lichess tactics library with a personal puzzle rating,
-   a daily "Today" set, a redemption list, and achievements.
-5. **Play vs. bot**, board themes, piece sets, a PK-mastery taxonomy
-   browser, rival tracking.
+3. **Review** a game — move classifications, the evaluation curve,
+   candidate moves on the board, and plain-language tactical explanations.
+4. **Studio Lab** — 19 tools built on the same data, one at a time:
+   your own blunders as puzzles, a bundled ~99k-puzzle CC0 Lichess tactics
+   library, vision and endgame drills, Tactical motifs, Blunder DNA, Time
+   trouble, the move explorer, game patterns, rivals, a road to a target
+   rating (a rough strength estimate, honest about its small sample), a
+   weekly plan and achievements. A daily "Today" set has its own screen.
+5. **Play vs. bot**, board themes, piece sets, and a PK-mastery curriculum
+   map.
 
 ## Notes
 

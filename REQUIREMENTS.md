@@ -19,10 +19,10 @@ _Written Nov 23, 2026 by Michael (owner) via Rin. This file is the working brief
 - [ ] Games can also be synced/reviewed outside the browser session (i.e. games played elsewhere or earlier are available after sign-in, on any device).
 - [ ] The sync process itself should be optimized — fast, reliable, no duplicate or lost games.
 
-### 3. Player model — train against yourself — NOT STARTED
+### 3. Player model — train against yourself — PARTIAL (in this browser only)
 - [ ] Build a model of how the individual user plays from their synced games.
-- [ ] Identify their common blunders and recurring mistakes.
-- [ ] Provide a way to program/drill improvement in those specific weak areas (targeted training generated from the user's own patterns).
+- [x] Identify their common blunders and recurring mistakes. *(Nov 27, 2026: the Studio Lab's Tactical motifs and Blunder DNA tools, from the games analyzed in this browser. Cross-device needs Requirement 1.)*
+- [ ] Provide a way to program/drill improvement in those specific weak areas (targeted training generated from the user's own patterns). *(Started: each motif trains on matching themed puzzles; Blunder DNA drills your own mistakes in the phase that stands out. Not yet a program.)*
 
 ### 4. Move visualization + heat map — IN PROGRESS
 - [ ] Better polish on move visualization generally.

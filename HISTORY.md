@@ -19,6 +19,13 @@ This repo is public, so private planning notes stay in the owner's vault, not he
 
 ---
 
+## 2026-11-26 — Opponents' profile pictures in the Last 10 games list
+*PC · Claude · commit `929ade0`*
+- **Changed:** `opponentAvatars.ts` looks each Chess.com opponent up with `GET /pub/player/{name}` (`ChessComClient.getPlayer`): one at a time, never during a game download. Every answer, "no picture" included, is cached for a week in localStorage (`chegga-web:opponent-avatars`); a rate limit or network error stops lookups until the next visit. Only https links on `chesscomfiles.com` reach an `<img>`, checked again when the cache is read back; images load with no referrer. Lichess players, the sample games and players with no picture show initials. `PickerCard.site` now says where a game was played.
+- **Why:** not recorded in that session's handoff (moved here as written, 2026-11-27).
+- **Verified:** Vitest 409/409; build clean. Playwright `review-picker` (with a new picture test), `smoke`, `studio-layout`, `lichess-history` pass on desktop, mobile and WebKit. On phones the `lichess-history` tests now open the menu drawer first.
+- **Left open:** failing before and after (checked on `d028319`): `tutorial.spec.ts:282`, `opening-insight.spec.ts:170` and 9 stale `live-verify.spec.ts` tests. `sw.js` opens IndexedDB at version 4 (`db.ts` is 5).
+
 ## 2026-11-26 — Review UI pass: left menu, icon buttons, Evaluation Flow, turning point
 *PC · Claude · commit `e889edd`*
 - **Changed:** the menu docks flush left, full height, and holds "Get connected." (side panel tabs: Games, Analysis; no sideways rail words). Every review control is an icon with a hover/focus pill and `aria-label` (`setIconButtonLabel()` in `main.ts`); play is dark blue in the centre of the step bar. Removed worst move, fix your mistakes, save key moments, the "position before" checkbox and the idle "Ready" line (`W`, `F`, `B` shortcuts remain). Phase names moved to a strip under the chart; the sticky step bar is opaque. One turning-point card (`renderTurningPoint`) replaced the chip ticker. `chooseTrailBend` / `splitTrail` got unit tests.
