@@ -110,14 +110,15 @@ To prevent multi-megabyte data blobs and archived legacy apps from slowing down 
 
 *Overwrite this at the end of every session; move the previous handoff into `HISTORY.md` first.*
 
-- **Last Worked On (2026-11-27, PC, Claude):** every "Coming soon" feature launched as the **Studio Lab** (owner's ask). Commits `426a8f8`…`8cbee72` say what changed and why.
-  - Menu → **Studio Lab** (`#lab-section`): 19 tools in four groups. Tiles are links (`#open=<card id>`) with text and a status; one tool shows at a time under "All tools"; Back works; a tool with nothing to show says what it needs.
-  - New: **Tactical motifs**, **Blunder DNA**, **Time trouble** (`tacticalMotifs.ts`, `blunderDnaProfile.ts`, `clockLeaks.ts`). Fixed: tile/card names, Endgame drills off screen, puzzle and vision auto-load, "Review the slip" in Games you didn't convert, stale copy.
-- **Current State:** Vitest 447/447; build clean. Full Playwright (3 projects, 2 workers): 175 passed, 2 failed, 9 skipped. Both failures WebKit: `studio-layout.spec.ts:160` passed alone (memory flake, 0.2 GB free); `lichess-history.spec.ts:72` fails on the pre-session build too. After the last fixes, the lab and touched specs: 93 passed, 9 skipped. The old `tutorial:282`, `opening-insight:170` and stale `live-verify` failures are fixed.
+- **Last Worked On (2026-11-27, PC, Claude):** every "Coming soon" feature launched as the **Studio Lab** (`426a8f8`…`8cbee72`), then the owner's "merge everything" (`ad6545a`…`9801eb3`).
+  - Studio Lab (`#lab-section`): 19 tools in four groups, one at a time at its own address (`#open=<card id>`), with a "needs data" note. New: **Tactical motifs**, **Blunder DNA**, **Time trouble**.
+  - Merged two held crew branches: 429 backoff with jitter (`backoff.ts`; its fetch call broke every Chess.com request in browsers, fixed in `1550cb4`), and the coaching voice guide as `docs/coaching-voice.md`.
+  - Not merged: `feature/accounts-sync-2026-11-23` (dormant magic-link endpoints on Neon + Resend; waits for the owner's yes) and 9 old branches that main supersedes or that would break it (`git branch -a --no-merged main`).
+- **Current State:** Vitest 457/457; build clean. Before the merges, full Playwright: 175 passed, 2 WebKit failed (a memory flake; `lichess-history.spec.ts:72`, which fails on the old build too). After them: desktop smoke, lichess-history, tutorial, review-picker and lab pass; phone tutorial + smoke 23/23. WebKit not re-checked (pages crashed at 0.9 GB free RAM).
   - **Known defect (unchanged):** `web/public/sw.js` opens IndexedDB at version 4 (`db.ts` is 5), and its config key does not fit `syncState`. Closed-app background sync cannot work.
 - **Next Up:**
-  1. Owner playtest of the Studio Lab on real games (`npm run dev:playtest`, port 5175).
-  2. `lichess-history.spec.ts:72` on WebKit: raise its budget or shrink its game count.
+  1. Owner playtest of the Studio Lab on real games (`npm run dev:playtest`, port 5175). Owner: merge the accounts backend or not?
+  2. Re-run WebKit e2e on a quiet machine; fix `lichess-history.spec.ts:72`'s budget.
   3. Fix the `sw.js` IndexedDB version and config storage.
   4. Real-phone check: heatmap, 3D pinch-zoom, eval-curve scrubbing, large-account sync on Safari.
   5. `REQUIREMENTS.md` work, in the order `PLAN.md` sets (Player model: PARTIAL, this browser only).
