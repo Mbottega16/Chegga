@@ -19,6 +19,7 @@
 
 import { ChessComClient, ChessComHttpError } from "./chessComClient";
 import type { ChessComRawGame } from "./chessComClient";
+import { calculateBackoffWithJitter } from "./backoff";
 import { gameExists, getSyncState, putGame, putSyncState } from "./db";
 import { normalizeGame, UntrackedUserError } from "./gameNormalizer";
 
@@ -27,6 +28,8 @@ export interface SyncProgress {
   totalMonths: number;
   gamesAdded: number;
   currentMonth?: string;
+  statusText?: string;
+  rateLimitSeconds?: number;
 }
 
 export interface SyncResult {
@@ -40,11 +43,15 @@ function currentYearMonth(): string {
 }
 
 // https://api.chess.com/pub/player/{user}/games/{YYYY}/{MM}
-function yearMonthFromArchiveUrl(url: string): string {
+export function yearMonthFromArchiveUrl(url: string): string {
   const parts = url.replace(/\/+$/, "").split("/");
   const month = parts[parts.length - 1];
   const year = parts[parts.length - 2];
   return `${year}-${month}`;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /** Fetches and upserts one archive month, marking it "complete" in
@@ -59,6 +66,7 @@ async function processMonth(
   username: string,
   archiveUrl: string,
   currentMonth: string,
+  onRateLimit?: (secondsRemaining: number) => void,
 ): Promise<{ yearMonth: string; addedThisMonth: number } | undefined> {
   const yearMonth = yearMonthFromArchiveUrl(archiveUrl);
 
@@ -68,19 +76,32 @@ async function processMonth(
   }
 
   let rawGames: ChessComRawGame[];
-  try {
-    rawGames = await client.getArchive(archiveUrl);
-  } catch (err) {
-    // A month Chess.com's own archive-list endpoint names can still 404 on
-    // the archive endpoint itself (observed live against a real account,
-    // not a documented API behavior) -- treat it as an empty month rather
-    // than aborting the whole sync over one bad URL. Any other error
-    // (network failure, a genuine server error after retries) still
-    // propagates -- this is deliberately narrow.
-    if (err instanceof ChessComHttpError && err.status === 404) {
-      console.warn(`Chess.com archive 404 for ${yearMonth} (${archiveUrl}) -- treating as an empty month`);
-      rawGames = [];
-    } else {
+  const maxMonthRetries = 3;
+  for (let monthAttempt = 1; ; monthAttempt++) {
+    try {
+      rawGames = await client.getArchive(archiveUrl);
+      break;
+    } catch (err) {
+      // A month Chess.com's own archive-list endpoint names can still 404 on
+      // the archive endpoint itself (observed live against a real account,
+      // not a documented API behavior) -- treat it as an empty month rather
+      // than aborting the whole sync over one bad URL. Any other error
+      // (network failure, a genuine server error after retries) still
+      // propagates -- this is deliberately narrow.
+      if (err instanceof ChessComHttpError && err.status === 404) {
+        console.warn(`Chess.com archive 404 for ${yearMonth} (${archiveUrl}) -- treating as an empty month`);
+        rawGames = [];
+        break;
+      }
+      if (err instanceof ChessComHttpError && err.status === 429 && monthAttempt <= maxMonthRetries) {
+        const delayMs = calculateBackoffWithJitter(monthAttempt, { baseDelayMs: 2000 });
+        const totalSec = Math.max(1, Math.ceil(delayMs / 1000));
+        for (let s = totalSec; s > 0; s--) {
+          onRateLimit?.(s);
+          await sleep(Math.min(1000, delayMs / totalSec));
+        }
+        continue;
+      }
       throw err;
     }
   }
@@ -122,26 +143,55 @@ export async function syncGames(
   username: string,
   onProgress?: (progress: SyncProgress) => void,
 ): Promise<SyncResult> {
-  const archiveUrls = await client.getArchiveUrls(username);
   const currentMonth = currentYearMonth();
-  const totalMonths = archiveUrls.length;
-
+  let currentMonthDisplay: string | undefined;
   let monthsProcessed = 0;
   let gamesAdded = 0;
+  let totalMonths = 0;
 
-  for (const archiveUrl of archiveUrls) {
-    const result = await processMonth(db, client, username, archiveUrl, currentMonth);
-    monthsProcessed += 1;
-    if (result) gamesAdded += result.addedThisMonth;
-    // Reported even on a skip (already-synced month) -- a skipped month is
-    // still real progress through the account's history, just not a
-    // fetch. Not reporting these made the progress bar look frozen for a
-    // re-sync where most months are already done, then jump to "done" all
-    // at once.
-    onProgress?.({ monthsProcessed, totalMonths, gamesAdded, currentMonth: result?.yearMonth ?? yearMonthFromArchiveUrl(archiveUrl) });
+  const handleRateLimit = (secondsLeft: number) => {
+    onProgress?.({
+      monthsProcessed,
+      totalMonths,
+      gamesAdded,
+      currentMonth: currentMonthDisplay,
+      statusText: `Rate limited — sync will resume in ${secondsLeft} seconds`,
+      rateLimitSeconds: secondsLeft,
+    });
+  };
+
+  const prevOnRateLimit = client.onRateLimit;
+  client.onRateLimit = (secondsLeft: number) => {
+    prevOnRateLimit?.(secondsLeft);
+    handleRateLimit(secondsLeft);
+  };
+
+  try {
+    const archiveUrls = await client.getArchiveUrls(username);
+    totalMonths = archiveUrls.length;
+
+    for (const archiveUrl of archiveUrls) {
+      currentMonthDisplay = yearMonthFromArchiveUrl(archiveUrl);
+      const result = await processMonth(db, client, username, archiveUrl, currentMonth, handleRateLimit);
+      monthsProcessed += 1;
+      if (result) gamesAdded += result.addedThisMonth;
+      // Reported even on a skip (already-synced month) -- a skipped month is
+      // still real progress through the account's history, just not a
+      // fetch. Not reporting these made the progress bar look frozen for a
+      // re-sync where most months are already done, then jump to "done" all
+      // at once.
+      onProgress?.({
+        monthsProcessed,
+        totalMonths,
+        gamesAdded,
+        currentMonth: result?.yearMonth ?? currentMonthDisplay,
+      });
+    }
+
+    return { monthsProcessed, gamesAdded };
+  } finally {
+    client.onRateLimit = prevOnRateLimit;
   }
-
-  return { monthsProcessed, gamesAdded };
 }
 
 /** Fast first-sync: walks archive months newest-first and stops once
@@ -159,24 +209,53 @@ export async function quickSyncRecentGames(
   targetGameCount: number,
   onProgress?: (progress: SyncProgress) => void,
 ): Promise<SyncResult & { fullyCaughtUp: boolean }> {
-  const archiveUrls = await client.getArchiveUrls(username);
   const currentMonth = currentYearMonth();
-  const totalMonths = archiveUrls.length;
-  const newestFirst = [...archiveUrls].reverse();
-
+  let currentMonthDisplay: string | undefined;
   let monthsProcessed = 0;
   let gamesAdded = 0;
+  let totalMonths = 0;
 
-  for (const archiveUrl of newestFirst) {
-    const result = await processMonth(db, client, username, archiveUrl, currentMonth);
-    monthsProcessed += 1;
-    if (result) gamesAdded += result.addedThisMonth;
-    onProgress?.({ monthsProcessed, totalMonths, gamesAdded, currentMonth: result?.yearMonth ?? yearMonthFromArchiveUrl(archiveUrl) });
+  const handleRateLimit = (secondsLeft: number) => {
+    onProgress?.({
+      monthsProcessed,
+      totalMonths,
+      gamesAdded,
+      currentMonth: currentMonthDisplay,
+      statusText: `Rate limited — sync will resume in ${secondsLeft} seconds`,
+      rateLimitSeconds: secondsLeft,
+    });
+  };
 
-    if (gamesAdded >= targetGameCount) {
-      return { monthsProcessed, gamesAdded, fullyCaughtUp: monthsProcessed >= totalMonths };
+  const prevOnRateLimit = client.onRateLimit;
+  client.onRateLimit = (secondsLeft: number) => {
+    prevOnRateLimit?.(secondsLeft);
+    handleRateLimit(secondsLeft);
+  };
+
+  try {
+    const archiveUrls = await client.getArchiveUrls(username);
+    totalMonths = archiveUrls.length;
+    const newestFirst = [...archiveUrls].reverse();
+
+    for (const archiveUrl of newestFirst) {
+      currentMonthDisplay = yearMonthFromArchiveUrl(archiveUrl);
+      const result = await processMonth(db, client, username, archiveUrl, currentMonth, handleRateLimit);
+      monthsProcessed += 1;
+      if (result) gamesAdded += result.addedThisMonth;
+      onProgress?.({
+        monthsProcessed,
+        totalMonths,
+        gamesAdded,
+        currentMonth: result?.yearMonth ?? currentMonthDisplay,
+      });
+
+      if (gamesAdded >= targetGameCount) {
+        return { monthsProcessed, gamesAdded, fullyCaughtUp: monthsProcessed >= totalMonths };
+      }
     }
-  }
 
-  return { monthsProcessed, gamesAdded, fullyCaughtUp: true };
+    return { monthsProcessed, gamesAdded, fullyCaughtUp: true };
+  } finally {
+    client.onRateLimit = prevOnRateLimit;
+  }
 }

@@ -10,6 +10,10 @@
 // Lichess's own rules for the API. The tutorial and the sync form each
 // make a single request, so neither needs a queue.
 
+import { calculateBackoffWithJitter } from "./backoff";
+
+export { calculateBackoffWithJitter };
+
 const LICHESS_API_BASE = "https://lichess.org/api";
 
 export interface LichessPlayer {
@@ -72,6 +76,18 @@ export function parseNdjson(text: string): LichessRawGame[] {
   return games;
 }
 
+export interface LichessFetchOptions {
+  max: number;
+  sinceMs?: number;
+  untilMs?: number;
+  maxRetries?: number;
+  baseDelayMs?: number;
+  maxDelayMs?: number;
+  randomFn?: () => number;
+  sleepFn?: (ms: number) => Promise<void>;
+  onRateLimit?: (secondsRemaining: number) => void;
+}
+
 /** The games URL, with the same fields every Lichess request asks for so a
  * stored game has the same shape whichever path fetched it. `sinceMs` and
  * `untilMs` are milliseconds. */
@@ -87,23 +103,67 @@ export function lichessGamesUrl(username: string, opts: { max: number; sinceMs?:
   return `${LICHESS_API_BASE}/games/user/${encodeURIComponent(username)}?${params.toString()}`;
 }
 
+function defaultSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /** The newest `max` games, newest first. `sinceMs` limits it to games
- * played after that time, for an incremental re-sync. */
+ * played after that time, for an incremental re-sync.
+ * Retries HTTP 429 rate limits using exponential backoff with jitter. */
 export async function fetchLichessGames(
   username: string,
-  opts: { max: number; sinceMs?: number; untilMs?: number },
+  opts: LichessFetchOptions,
   fetchImpl: typeof fetch = fetch,
 ): Promise<LichessRawGame[]> {
   const url = lichessGamesUrl(username, opts);
+  const maxRetries = opts.maxRetries ?? 3;
+  const baseDelayMs = opts.baseDelayMs ?? 1000;
+  const maxDelayMs = opts.maxDelayMs ?? 60_000;
+  const sleep = opts.sleepFn ?? defaultSleep;
 
-  let response: Response;
-  try {
-    response = await fetchImpl(url, { headers: { Accept: "application/x-ndjson" } });
-  } catch {
-    throw new LichessHttpError(0, "Could not reach Lichess. Check your connection and try again.");
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    let response: Response;
+    try {
+      response = await fetchImpl(url, { headers: { Accept: "application/x-ndjson" } });
+    } catch {
+      throw new LichessHttpError(0, "Could not reach Lichess. Check your connection and try again.");
+    }
+
+    if (response.status === 429) {
+      if (attempt >= maxRetries) {
+        throw new LichessHttpError(429, messageFor(429, username));
+      }
+      const retryAfterHeader = response.headers?.get?.("Retry-After");
+      const retryAfterSec = retryAfterHeader ? parseFloat(retryAfterHeader) : null;
+      const delayMs = calculateBackoffWithJitter(attempt, {
+        baseDelayMs,
+        maxDelayMs,
+        retryAfterSeconds: Number.isFinite(retryAfterSec) && (retryAfterSec ?? 0) > 0 ? retryAfterSec : null,
+        randomFn: opts.randomFn,
+      });
+
+      const totalSeconds = Math.max(1, Math.ceil(delayMs / 1000));
+      if (delayMs <= 1000) {
+        opts.onRateLimit?.(totalSeconds);
+        await sleep(delayMs);
+      } else {
+        let remainingMs = delayMs;
+        while (remainingMs > 0) {
+          const secondsLeft = Math.ceil(remainingMs / 1000);
+          opts.onRateLimit?.(secondsLeft);
+          const step = Math.min(1000, remainingMs);
+          await sleep(step);
+          remainingMs -= step;
+        }
+      }
+      continue;
+    }
+
+    if (!response.ok) throw new LichessHttpError(response.status, messageFor(response.status, username));
+    return parseNdjson(await response.text());
   }
-  if (!response.ok) throw new LichessHttpError(response.status, messageFor(response.status, username));
-  return parseNdjson(await response.text());
+
+  throw new LichessHttpError(429, messageFor(429, username));
 }
 
 /** The same request as fetchLichessGames, but the body is read as it
@@ -114,20 +174,64 @@ export async function fetchLichessGames(
  * response can be long. */
 export async function* streamLichessGames(
   username: string,
-  opts: { max: number; sinceMs?: number; untilMs?: number },
+  opts: LichessFetchOptions,
   fetchImpl: typeof fetch = fetch,
   signal?: AbortSignal,
 ): AsyncGenerator<LichessRawGame> {
   const url = lichessGamesUrl(username, opts);
+  const maxRetries = opts.maxRetries ?? 1;
+  const baseDelayMs = opts.baseDelayMs ?? 1000;
+  const maxDelayMs = opts.maxDelayMs ?? 60_000;
+  const sleep = opts.sleepFn ?? defaultSleep;
 
-  let response: Response;
-  try {
-    response = await fetchImpl(url, { headers: { Accept: "application/x-ndjson" }, signal });
-  } catch {
+  let response: Response | undefined;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     if (signal?.aborted) return;
-    throw new LichessHttpError(0, "Could not reach Lichess. Check your connection and try again.");
+    try {
+      response = await fetchImpl(url, { headers: { Accept: "application/x-ndjson" }, signal });
+    } catch {
+      if (signal?.aborted) return;
+      throw new LichessHttpError(0, "Could not reach Lichess. Check your connection and try again.");
+    }
+
+    if (response.status === 429) {
+      if (attempt >= maxRetries) {
+        throw new LichessHttpError(429, messageFor(429, username));
+      }
+      const retryAfterHeader = response.headers?.get?.("Retry-After");
+      const retryAfterSec = retryAfterHeader ? parseFloat(retryAfterHeader) : null;
+      const delayMs = calculateBackoffWithJitter(attempt, {
+        baseDelayMs,
+        maxDelayMs,
+        retryAfterSeconds: Number.isFinite(retryAfterSec) && (retryAfterSec ?? 0) > 0 ? retryAfterSec : null,
+        randomFn: opts.randomFn,
+      });
+
+      const totalSeconds = Math.max(1, Math.ceil(delayMs / 1000));
+      if (delayMs <= 1000) {
+        opts.onRateLimit?.(totalSeconds);
+        await sleep(delayMs);
+      } else {
+        let remainingMs = delayMs;
+        while (remainingMs > 0 && !signal?.aborted) {
+          const secondsLeft = Math.ceil(remainingMs / 1000);
+          opts.onRateLimit?.(secondsLeft);
+          const step = Math.min(1000, remainingMs);
+          await sleep(step);
+          remainingMs -= step;
+        }
+      }
+      continue;
+    }
+
+    if (!response.ok) throw new LichessHttpError(response.status, messageFor(response.status, username));
+    break;
   }
-  if (!response.ok) throw new LichessHttpError(response.status, messageFor(response.status, username));
+
+  if (!response || !response.ok) {
+    if (signal?.aborted) return;
+    throw new LichessHttpError(429, messageFor(429, username));
+  }
 
   if (!response.body) {
     // No streaming in this environment: fall back to the whole body.
