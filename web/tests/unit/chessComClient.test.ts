@@ -168,3 +168,24 @@ describe("ChessComClient HTTP 429 rate limit handling", () => {
     expect(attempts).toBe(3);
   });
 });
+
+describe("ChessComClient default fetch", () => {
+  // Browsers throw "Illegal invocation" when fetch runs with any receiver but
+  // the global object; Node's fetch does not care. This stand-in behaves like
+  // a browser, so storing fetch bare and calling `this.fetchImpl(url)` fails.
+  it("calls the global fetch without the client as its receiver", async () => {
+    const original = globalThis.fetch;
+    let receiverOk = true;
+    globalThis.fetch = function (this: unknown) {
+      if (this !== undefined && this !== globalThis) receiverOk = false;
+      return Promise.resolve(mockResponse(200, { archives: ["https://api.chess.com/pub/player/t/games/2026/11"] }));
+    } as unknown as typeof fetch;
+    try {
+      const client = new ChessComClient("test", { minIntervalSeconds: 0 });
+      expect(await client.getArchiveUrls("t")).toHaveLength(1);
+      expect(receiverOk).toBe(true);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});

@@ -76,7 +76,10 @@ export class ChessComClient {
     this.maxRetries = opts.maxRetries ?? 5;
     this.baseDelayMs = opts.baseDelayMs ?? 1000;
     this.maxDelayMs = opts.maxDelayMs ?? 60_000;
-    this.fetchImpl = opts.fetchImpl ?? globalThis.fetch;
+    // Wrapped, not stored bare: `this.fetchImpl(url)` would call the browser's
+    // fetch with this client as its receiver, which throws "Illegal invocation"
+    // in every browser (Node's fetch does not care, so the unit tests pass).
+    this.fetchImpl = opts.fetchImpl ?? ((input, init) => globalThis.fetch(input, init));
     this.randomFn = opts.randomFn;
     this.sleepFn = opts.sleepFn;
     this.onRateLimit = opts.onRateLimit;
