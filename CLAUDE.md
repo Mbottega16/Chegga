@@ -110,16 +110,14 @@ To prevent multi-megabyte data blobs and archived legacy apps from slowing down 
 
 *Overwrite this at the end of every session; move the previous handoff into `HISTORY.md` first.*
 
-- **Last Worked On (2026-11-27, PC, Claude):** every "Coming soon" feature launched as the **Studio Lab** (owner: "begin working on all the coming soon features"). The opponent-pictures session is in `HISTORY.md`.
-  - Menu "What's Coming Soon" → **Studio Lab** (`#lab-section`): 19 tools in four groups. Each tile is a link (`#open=<card id>`) with a visible line of text and a status ("35 positions", "Needs analyzed games"). One tool shows at a time under an "All tools" bar; Back and "All tools" return to the list and to the tile; the page title names the tool; a tool with nothing to show yet shows a note with the next step (connect, sample games, analyze). A tool opened from another card (a plan's "Go →") gets its address too.
-  - New tools: **Tactical motifs** (by tactic, missed vs allowed, costliest examples open in the review, "Train it" on matching themed puzzles), **Blunder DNA** (mistake rate by piece, phase, score and clock against your normal rate; one-line typical mistake; drill), **Time trouble** (by clock band and time spent, games lost and won on time, advice only for real gaps).
-  - Fixed: tile names match their cards (two were swapped, three opened the wrong card); Game patterns and Redeem a loss got tiles; Endgame drills now switch to the board; Blunder puzzles and Vision load a position on open; "Games you didn't convert" shows when none are found and has "Review the slip"; jump buttons say "→", not "↓"; stale copy about "Your focus" and "the strength model above".
-- **Current State:** Vitest 447/447; build clean. Full Playwright run (desktop, Pixel 7, iPhone 14 WebKit, 2 workers): 175 passed, 2 failed, 9 skipped. Both failures were WebKit only: `studio-layout.spec.ts:160` passed alone (a memory flake; free RAM was 0.2 GB), and `lichess-history.spec.ts:72` fails on the pre-session build too (WebKit's slow IndexedDB stays "Reading your Lichess games" past the budget). After the last fixes: `lab`, `opening-insight`, `live-verify`, `studio-layout` and `tutorial.spec.ts:282` give 93 passed, 9 skipped on all three projects. Screenshots checked at 390, 1366 (light) and 1440/1920 (dark).
-  - The old failures are fixed: `tutorial.spec.ts:282`, `opening-insight.spec.ts:170`, the stale `live-verify` tests (removed: header Feedback and Play buttons; the phone tabbing test now opens the menu drawer).
+- **Last Worked On (2026-11-27, PC, Claude):** every "Coming soon" feature launched as the **Studio Lab** (owner's ask). Commits `426a8f8`…`8cbee72` say what changed and why.
+  - Menu → **Studio Lab** (`#lab-section`): 19 tools in four groups. Tiles are links (`#open=<card id>`) with text and a status; one tool shows at a time under "All tools"; Back works; a tool with nothing to show says what it needs.
+  - New: **Tactical motifs**, **Blunder DNA**, **Time trouble** (`tacticalMotifs.ts`, `blunderDnaProfile.ts`, `clockLeaks.ts`). Fixed: tile/card names, Endgame drills off screen, puzzle and vision auto-load, "Review the slip" in Games you didn't convert, stale copy.
+- **Current State:** Vitest 447/447; build clean. Full Playwright (3 projects, 2 workers): 175 passed, 2 failed, 9 skipped. Both failures WebKit: `studio-layout.spec.ts:160` passed alone (memory flake, 0.2 GB free); `lichess-history.spec.ts:72` fails on the pre-session build too. After the last fixes, the lab and touched specs: 93 passed, 9 skipped. The old `tutorial:282`, `opening-insight:170` and stale `live-verify` failures are fixed.
   - **Known defect (unchanged):** `web/public/sw.js` opens IndexedDB at version 4 (`db.ts` is 5), and its config key does not fit `syncState`. Closed-app background sync cannot work.
 - **Next Up:**
-  1. Owner playtest of the Studio Lab on real games (`npm run dev:playtest`, port 5175): do Tactical motifs, Blunder DNA and Time trouble ring true?
+  1. Owner playtest of the Studio Lab on real games (`npm run dev:playtest`, port 5175).
   2. `lichess-history.spec.ts:72` on WebKit: raise its budget or shrink its game count.
   3. Fix the `sw.js` IndexedDB version and config storage.
   4. Real-phone check: heatmap, 3D pinch-zoom, eval-curve scrubbing, large-account sync on Safari.
-  5. `REQUIREMENTS.md` work, in the order `PLAN.md` sets (Player model is now PARTIAL, in this browser only).
+  5. `REQUIREMENTS.md` work, in the order `PLAN.md` sets (Player model: PARTIAL, this browser only).
