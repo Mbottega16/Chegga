@@ -108,6 +108,8 @@ describe("chooseTrailBend", () => {
     expect(chooseTrailBend({ x: 6.25, y: 93.75 }, { x: 18.75, y: 6.25 })).toBe(-0.09);
   });
 
+  // About 340,000 checks: ~3 s alone, past the 5 s default when the PC is
+  // busy (it timed out twice in full runs on 2026-11-27), so it gets 30 s.
   it("never bows a trail off the board, for any move from any square, in either orientation", () => {
     for (const from of SQUARES) {
       for (const to of SQUARES) {
@@ -123,7 +125,7 @@ describe("chooseTrailBend", () => {
         }
       }
     }
-  });
+  }, 30_000);
 });
 
 describe("splitTrail", () => {
